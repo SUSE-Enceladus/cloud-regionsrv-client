@@ -441,18 +441,6 @@ def has_repos(smt_server_name):
 
 
 # ----------------------------------------------------------------------------
-def import_smtcert_11(smt):
-    """Import the SMT certificate on SLES 11"""
-    key_chain = '/etc/ssl/certs'
-    if not smt.write_cert(key_chain):
-        return 0
-    if not update_ca_chain(['c_rehash', key_chain]):
-        return 0
-
-    return 1
-
-
-# ----------------------------------------------------------------------------
 def import_smtcert_12(smt):
     """Import the SMT certificate on SLES 12"""
     key_chain = '/usr/share/pki/trust/anchors'
@@ -467,11 +455,9 @@ def import_smtcert_12(smt):
 # ----------------------------------------------------------------------------
 def import_smt_cert(smt):
     """Import the SMT certificate for the given server"""
-    import_result = None
-    if is_sles11():
-        import_result = import_smtcert_11(smt)
-    else:
-        import_result = import_smtcert_12(smt)
+    # 1 step of indirection to allow us to handle different cert import
+    # mechanisms per distribution
+    import_result = import_smtcert_12(smt)
     if not import_result:
         logging.error('SMT certificate import failed')
         return None
@@ -486,18 +472,6 @@ def is_registered(smt):
         return 1
 
     return None
-
-
-# ----------------------------------------------------------------------------
-def is_sles11():
-    """Return true if this is SLES 11"""
-    if os.path.exists('/etc/SuSE-release'):
-        content = open('/etc/SuSE-release', 'r').readlines()
-        for ln in content:
-            if 'SUSE Linux Enterprise Server 11' in ln:
-                return True
-
-    return False
 
 
 # ----------------------------------------------------------------------------
