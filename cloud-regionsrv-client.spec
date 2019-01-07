@@ -2,7 +2,7 @@
 # spec file for package cloud-regionsrv-client
 # this code base is under development
 #
-# Copyright (c) 2015 SUSE LLC
+# Copyright (c) 2019 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -16,13 +16,13 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
-%define base_version 8.0.6
+%define base_version 8.0.7
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
 License:        LGPL-3.0
 Summary:        Cloud Environment Guest Registration
-URL:            http://www.github.com:SUSE/Enceladus
+URL:            http://www.github.com:SUSE-Enceladus/cloud-regionsrv-client
 Group:          Productivity/Networking/Web/Servers
 Source0:        %{name}-%{version}.tar.bz2
 Requires:       ca-certificates

@@ -441,18 +441,6 @@ def has_repos(smt_server_name):
 
 
 # ----------------------------------------------------------------------------
-def import_smtcert_11(smt):
-    """Import the SMT certificate on SLES 11"""
-    key_chain = '/etc/ssl/certs'
-    if not smt.write_cert(key_chain):
-        return 0
-    if not update_ca_chain(['c_rehash', key_chain]):
-        return 0
-
-    return 1
-
-
-# ----------------------------------------------------------------------------
 def import_smtcert_12(smt):
     """Import the SMT certificate on SLES 12"""
     key_chain = '/usr/share/pki/trust/anchors'
@@ -467,11 +455,9 @@ def import_smtcert_12(smt):
 # ----------------------------------------------------------------------------
 def import_smt_cert(smt):
     """Import the SMT certificate for the given server"""
-    import_result = None
-    if is_sles11():
-        import_result = import_smtcert_11(smt)
-    else:
-        import_result = import_smtcert_12(smt)
+    # 1 step of indirection to allow us to handle different cert import
+    # mechanisms per distribution
+    import_result = import_smtcert_12(smt)
     if not import_result:
         logging.error('SMT certificate import failed')
         return None
@@ -486,18 +472,6 @@ def is_registered(smt):
         return 1
 
     return None
-
-
-# ----------------------------------------------------------------------------
-def is_sles11():
-    """Return true if this is SLES 11"""
-    if os.path.exists('/etc/SuSE-release'):
-        content = open('/etc/SuSE-release', 'r').readlines()
-        for ln in content:
-            if 'SUSE Linux Enterprise Server 11' in ln:
-                return True
-
-    return False
 
 
 # ----------------------------------------------------------------------------
@@ -580,18 +554,16 @@ def replace_hosts_entry(current_smt, new_smt):
     current_smt_ipv4 = current_smt.get_ipv4()
     current_smt_ipv6 = current_smt.get_ipv6()
     smt_ipv6_access = has_ipv6_access(new_smt)
+    smt_ip = new_smt.get_ipv4()
+    if smt_ipv6_access:
+         smt_ip = new_smt.get_ipv6()
     new_entry = '%s\t' + new_smt.get_FQDN() + '\t' + new_smt.get_name() + '\n'
     for entry in known_hosts:
-        if current_smt_ipv4 and entry.startswith(current_smt_ipv4):
-            if smt_ipv6_access:
-                new_hosts += new_entry % new_smt.get_ipv6()
-            else:
-                new_hosts += new_entry % new_smt.get_ipv4()
-        elif current_smt_ipv6 and entry.startswith(current_smt_ipv6):
-            if smt_ipv6_access:
-                new_hosts += new_entry % new_smt.get_ipv6()
-            else:
-                new_hosts += new_entry % new_smt.get_ipv4()
+        if (
+                (current_smt_ipv4 and entry.startswith(current_smt_ipv4)) or
+                (current_smt_ipv6 and entry.startswith(current_smt_ipv6))
+        ):
+            new_hosts += new_entry % smt_ip
         else:
             new_hosts += entry
         

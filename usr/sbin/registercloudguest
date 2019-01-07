@@ -321,32 +321,51 @@ if cfg.has_section('instance'):
                 msg = 'Configured dataProvider "%s" is not executable' % cmd
                 logging.error(msg)
 
-register11 = '/usr/lib/suseRegister/bin/clientSetup4SMT.sh'
-register12 = '/usr/sbin/SUSEConnect'
-if (os.path.exists(register11) and os.access(register11, os.X_OK)):
-    base_registered = False
-    failed_smts = []
-    while not base_registered:
-        cmd = register11
-        cmd += ' --host %s ' % registration_target.get_FQDN()
-        cmd += '--fingerprint %s ' % registration_target.get_fingerprint()
-        cmd += '--yes '
+register_cmd = '/usr/sbin/SUSEConnect'
+if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
+    logging.error('No registration executable found')
+    sys.exit(1)
 
-        if os.path.exists(instance_data_filepath):
-            cmd += '--regdata %s' % instance_data_filepath
+# get product list
+products = get_products()
+if products is None:
+    logging.error('No products installed on system')
+    sys.exit(1)
 
-        if force_new_registration:
-            cmd += ' > /dev/null 2>&1'
+if not utils.import_smt_cert(registration_target):
+    logging.error('SMT certificate import failed')
+    sys.exit(1)
 
-        logging.info('Registration: %s' % cmd)
-        res = os.system(cmd)
-
-        if res:
+# Register the base product first
+base_registered = False
+failed_smts = []
+while not base_registered:
+    cmd = [
+        register_cmd,
+        '--url',
+        'https://%s' % registration_target.get_FQDN()
+    ]
+    if os.path.exists(instance_data_filepath):
+        cmd.append('--instance-data')
+        cmd.append(instance_data_filepath)
+    p = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    res = p.communicate()
+    for item in res:
+        entry = item.decode()
+        if error_exp.match(entry):
             failed_smts.append(registration_target.get_ipv4())
             if len(failed_smts) == len(region_smt_servers):
-                logging.error('Registration failed')
+                logging.error('Baseproduct registration failed')
+                logging.error('\t%s' % entry)
                 sys.exit(1)
             for smt in region_smt_servers:
+                target_smt_ipv4 = registration_target.get_ipv4()
+                target_smt_ipv6 = registration_target.get_ipv6()
+                new_smt_ipv4 = smt.get_ipv4()
+                new_smt_ipv6 = smt.get_ipv6()
                 if (
                         smt.get_ipv4() != registration_target.get_ipv4() and
                         smt.get_ipv4() not in failed_smts
@@ -354,110 +373,41 @@ if (os.path.exists(register11) and os.access(register11, os.X_OK)):
                     error_msg = 'Registration with %s failed. Trying %s'
                     logging.error(
                         error_msg % (
-                            registration_target.get_ipv4(),
-                            smt.get_ipv4()
+                            str((target_smt_ipv4, target_smt_ipv6)),
+                            str((new_smt_ipv4, new_smt_ipv6))
                         )
                     )
                     utils.remove_registration_data()
                     utils.add_hosts_entry(smt)
                     registration_target = smt
                     break
-        else:
-            base_registered = True
+            break
+    else:
+        base_registered = True
 
-    # registration was successful, let's check if the repos do
-    # really exist and if not complete the registration by calling
-    # suse_register with the restore-repos option
-    reposExist = utils.has_repos(registration_target.get_FQDN())
-    if not reposExist:
-        cmd = "suse_register --restore-repos"
-        res = os.system(cmd)
-        if res:
-            logging.info('Repositories were not restored')
+for product in products:
+    cmd = [
+        register_cmd,
+        '--url',
+        'https://%s' % registration_target.get_FQDN(),
+        '--product',
+        product]
+    if os.path.exists(instance_data_filepath):
+        cmd.append('--instance-data')
+        cmd.append(instance_data_filepath)
 
-    utils.enable_repository('SLE11-Public-Cloud-Module')
+    logging.info('Registration: %s' % ' '.join(cmd))
+    p = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    res = p.communicate()
 
-elif (os.path.exists(register12) and os.access(register12, os.X_OK)):
-    # get product list
-    products = get_products()
-    if products is None:
-        sys.exit(1)
+    for item in res:
+        entry = item.decode()
+        if 'Error:' in entry:
+            logging.error('\tRegistration failed: %s' % entry)
 
-    if not utils.import_smt_cert(registration_target):
-        logging.error('SMT certificate import failed')
-        sys.exit(1)
-
-    # Register the base product first
-    base_registered = False
-    failed_smts = []
-    while not base_registered:
-        cmd = [register12, '--url']
-        cmd.append('https://%s' % registration_target.get_FQDN())
-        if os.path.exists(instance_data_filepath):
-            cmd.append('--instance-data')
-            cmd.append(instance_data_filepath)
-        p = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        res = p.communicate()
-        for item in res:
-            entry = item.decode()
-            if error_exp.match(entry):
-                failed_smts.append(registration_target.get_ipv4())
-                if len(failed_smts) == len(region_smt_servers):
-                    logging.error('Baseproduct registration failed')
-                    logging.error('\t%s' % entry)
-                    sys.exit(1)
-                for smt in region_smt_servers:
-                    target_smt_ipv4 = registration_target.get_ipv4()
-                    target_smt_ipv6 = registration_target.get_ipv6()
-                    new_smt_ipv4 = smt.get_ipv4()
-                    new_smt_ipv6 = smt.get_ipv6()
-                    if (
-                            smt.get_ipv4() != registration_target.get_ipv4() and
-                            smt.get_ipv4() not in failed_smts
-                    ):
-                        error_msg = 'Registration with %s failed. Trying %s'
-                        logging.error(
-                            error_msg % (
-                                str((target_smt_ipv4, target_smt_ipv6)),
-                                str((new_smt_ipv4, new_smt_ipv6))
-                            )
-                        )
-                        utils.remove_registration_data()
-                        utils.add_hosts_entry(smt)
-                        registration_target = smt
-                        break
-                break
-        else:
-            base_registered = True
-
-    for product in products:
-        cmd = [
-            register12,
-            '--url',
-            'https://%s' % registration_target.get_FQDN(),
-            '--product',
-            product]
-        if os.path.exists(instance_data_filepath):
-            cmd.append('--instance-data')
-            cmd.append(instance_data_filepath)
-
-        logging.info('Registration: %s' % ' '.join(cmd))
-        p = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        res = p.communicate()
-
-        for item in res:
-            entry = item.decode()
-            if 'Error:' in entry:
-                logging.error('\tRegistration failed: %s' % entry)
-else:
-    logging.error('No registration executable found')
-    sys.exit(1)
 
 if os.path.exists(instance_data_filepath):
     os.unlink(instance_data_filepath)
