@@ -298,28 +298,11 @@ utils.set_as_current_smt(registration_target)
 
 # Check if we need to send along any instance data
 instance_data_filepath = utils.REGISTRATION_DATA_DIR + str(uuid.uuid4())
-if cfg.has_section('instance'):
-    if cfg.has_option('instance', 'dataProvider'):
-        instance_data_cmd = cfg.get('instance', 'dataProvider')
-        cmd = instance_data_cmd.split()[0]
-        if cmd != 'none':
-            if cmd[0] != '/':
-                try:
-                    p = subprocess.Popen(
-                        ['which %s' % cmd],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                except:
-                    errMsg = 'Could not find configured dataProvider: %s' % cmd
-                    logging.error(errMsg)
-            if os.access(cmd, os.X_OK):
-                os.system("%s > %s" % (instance_data_cmd,
-                                       instance_data_filepath))
-            else:
-                msg = 'Configured dataProvider "%s" is not executable' % cmd
-                logging.error(msg)
+instance_data = utils.get_instance_data(cfg)
+if instance_data:
+    inst_data_out = open(instance_data_filepath, 'w')
+    inst_data_out.write(instance_data)
+    inst_data_out.close()
 
 register_cmd = '/usr/sbin/SUSEConnect'
 if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
