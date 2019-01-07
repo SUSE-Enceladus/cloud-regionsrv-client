@@ -554,18 +554,16 @@ def replace_hosts_entry(current_smt, new_smt):
     current_smt_ipv4 = current_smt.get_ipv4()
     current_smt_ipv6 = current_smt.get_ipv6()
     smt_ipv6_access = has_ipv6_access(new_smt)
+    smt_ip = new_smt.get_ipv4()
+    if smt_ipv6_access:
+         smt_ip = new_smt.get_ipv6()
     new_entry = '%s\t' + new_smt.get_FQDN() + '\t' + new_smt.get_name() + '\n'
     for entry in known_hosts:
-        if current_smt_ipv4 and entry.startswith(current_smt_ipv4):
-            if smt_ipv6_access:
-                new_hosts += new_entry % new_smt.get_ipv6()
-            else:
-                new_hosts += new_entry % new_smt.get_ipv4()
-        elif current_smt_ipv6 and entry.startswith(current_smt_ipv6):
-            if smt_ipv6_access:
-                new_hosts += new_entry % new_smt.get_ipv6()
-            else:
-                new_hosts += new_entry % new_smt.get_ipv4()
+        if (
+                (current_smt_ipv4 and entry.startswith(current_smt_ipv4)) or
+                (current_smt_ipv6 and entry.startswith(current_smt_ipv6))
+        ):
+            new_hosts += new_entry % smt_ip
         else:
             new_hosts += entry
         

@@ -340,8 +340,11 @@ if not utils.import_smt_cert(registration_target):
 base_registered = False
 failed_smts = []
 while not base_registered:
-    cmd = [register_cmd, '--url']
-    cmd.append('https://%s' % registration_target.get_FQDN())
+    cmd = [
+        register_cmd,
+        '--url',
+        'https://%s' % registration_target.get_FQDN()
+    ]
     if os.path.exists(instance_data_filepath):
         cmd.append('--instance-data')
         cmd.append(instance_data_filepath)
