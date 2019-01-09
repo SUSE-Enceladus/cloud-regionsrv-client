@@ -15,6 +15,7 @@
 
 """This script provides the repositories for on-demand instances."""
 
+import base64
 import glob
 import json
 import logging
@@ -70,10 +71,10 @@ update_server_ip = update_server.get_ipv4()
 if utils.has_ipv6_access(update_server):
     update_server_ip = update_server.get_ipv6()
 
-instance_data = utils.get_instance_data(utils.get_config())
+instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
 headers = {}
 if instance_data:
-    headers['X-Instance-Data'] = instance_data
+    headers['X-Instance-Data'] = base64.b64encode(instance_data)
     headers['X-Repo-format'] = 'plugin:/susecloud?repo='
 
 req = requests.get(
@@ -150,5 +151,5 @@ if len(product_def) > 1:
 #product_info = json.loads(req.text)
 #products['extensions'][0]['repositories']
 ## FIXME finsih the "make myself obsolete" implementtaion
-#
+# Must schedule a zypper job since this runs within zypper
     

@@ -33,6 +33,7 @@ Requires:       python3
 Requires:       python3-lxml
 Requires:       python3-M2Crypto
 Requires:       python3-requests
+Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
 Requires:       SUSEConnect
 Requires:       zypper
@@ -121,11 +122,11 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %doc README LICENSE
 %dir %{_usr}/lib/zypp
 %dir %{_usr}/lib/zypp/plugins
-%dir %{_usr}/lib/zypp/plugins/services
+%dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/lib/cloudregister
 %{_sbindir}/registercloudguest
 %{_sbindir}/cloudguest-repo-service
-%{_usr}/lib/zypp/plugins/services/cloud_update
+%{_usr}/lib/zypp/plugins/urlresolver/susecloud
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*
 %{python3_sitelib}/cloudregister/smt*
