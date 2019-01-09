@@ -16,7 +16,7 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
-%define base_version 8.0.7
+%define base_version 8.1.0
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -124,6 +124,7 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %dir %{_usr}/lib/zypp/plugins/services
 %dir /var/lib/cloudregister
 %{_sbindir}/registercloudguest
+%{_sbindir}/cloudguest-repo-service
 %{_usr}/lib/zypp/plugins/services/cloud_update
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*

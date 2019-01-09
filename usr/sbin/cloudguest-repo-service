@@ -1,0 +1,154 @@
+#!/usr/bin/python3
+
+# Copyright (c) 2019, SUSE LLC, All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library.
+
+"""This script provides the repositories for on-demand instances."""
+
+import glob
+import json
+import logging
+import os
+import platform
+import requests
+import sys
+
+from requests.auth import HTTPBasicAuth
+from lxml import etree
+
+import cloudregister.registerutils as utils
+
+def print_repo_data(repo_elem, credentials_file):
+    """Print repository data from an XML element describing the repo"""
+    credential_ref = None
+    if credentials_file:
+        credential_ref = os.path.basename(credentials_file)
+    name = repo_elem.get('name')
+    refresh = repo_elem.get('autorefresh')
+    enabled = repo_elem.get('enabled')
+    path = repo_elem.get('path')
+    print('[%s]' % name)
+    print('name=%s' %name)
+    print('enabled=%s' % enabled)
+    print('autorefresh=%s' % refresh)
+    base_url = 'baseurl=plugin:susecloud?repo=%s' % path
+    if credential_ref:
+        print(base_url + '?credentials=%s\n' % credential_ref)
+    else:
+        print(base_url + '\n')
+
+
+utils.start_logging()
+utils.set_proxy()
+
+update_server = utils.get_smt()
+if not update_server:
+    logging.info('[Repo-Service] No update server found cannot provide repos')
+    sys.exit(1)
+
+credentials_file = update_server.get_credentials_file()
+user, user_pass = update_server.get_credentials()
+if not user and user_pass:
+    logging.error('[Repo-Service] Unable to extract username and password '
+                  'for "%s"' % update_server.get_FQDN()
+    )
+    sys.exit(1)
+
+auth_creds = HTTPBasicAuth(user, user_pass)
+
+update_server_ip = update_server.get_ipv4()
+if utils.has_ipv6_access(update_server):
+    update_server_ip = update_server.get_ipv6()
+
+instance_data = utils.get_instance_data(utils.get_config())
+headers = {}
+if instance_data:
+    headers['X-Instance-Data'] = instance_data
+    headers['X-Repo-format'] = 'plugin:/susecloud?repo='
+
+req = requests.get(
+    'http://%s/repo/repoindex.xml' % update_server_ip,
+    auth=auth_creds,
+    headers=headers
+)
+
+if req.status_code != 200:
+    logging.error('[Repo-Service] Unable to get repositories from '
+                  'update server: "%s"' % update_server_ip)
+    logging.error('\tReason: "%s"' % req.reason)
+    logging.error('\tCode: ', req.status_code)
+    sys.exit(1)
+
+# Write the repo data
+installed_products = utils.get_installed_product_names()
+data_start = req.text.index('<repoindex>')
+repo_data = etree.fromstring(req.text[data_start:])
+for repo in repo_data.findall('repo'):
+    repo_name = repo.get('name')
+    if 'Product' in repo_name:
+        print_repo_data(repo, credentials_file)
+        continue
+    comp_repo_name = repo_name.lower()
+    if 'module' in comp_repo_name:
+        for product_name in installed_products:
+            if comp_repo_name.startswith(product_name):
+                print_repo_data(repo, credentials_file)
+
+
+
+# Detect the repo format. If the server delivers the plugin format
+# make this service plugin obsolete
+
+# Work around for images that had improper baseproduct link
+# this would need to be modified if/when we bring CaaSP as on-demand image
+product_def = glob.glob('/etc/products.d/SLES*.prod')
+if len(product_def) > 1:
+    logging.error('[Repo-Service] Ambiguous base product definition: '
+                  '"%s"' % str(product_def))
+
+#product_tree = ET.parse(product_def[0])
+#product_root = product_tree.getroot()
+#product_name = product_root.findall('name')[0].text
+#product_version = product_root.findall('version')[0].text
+#
+## Handle potential inconsistent nomenclature
+#if '.' in product_version:
+#    product_version, product_sp = product_version.split('.')
+#else:
+#    product_sp = product_root.findall('patchlevel')[0].text
+#
+## Might have to revisit for ARM
+#arch = platform.machine()
+#
+#version_id = product_version
+#if product_sp != '0':
+#    version_id = product_version + '-' + product_sp
+#
+#api_params = {
+#    'identifier': product_name,
+#    'version': versio_id,
+#    'arch': arch
+#}
+#
+#req = requests.get(
+#    'http://%s/connect/systems/products' % update_server_ip,
+#    auth=auth,
+#    headers=headers,
+#    params=params
+#)
+#
+#product_info = json.loads(req.text)
+#products['extensions'][0]['repositories']
+## FIXME finsih the "make myself obsolete" implementtaion
+#
+    

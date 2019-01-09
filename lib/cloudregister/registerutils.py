@@ -338,6 +338,27 @@ def get_current_smt():
 
 
 # ----------------------------------------------------------------------------
+def get_installed_product_names():
+    """Return a list of the names of the products installed on the system"""
+    product_names = []
+    installed_product_files = glob.glob('/etc/products.d/*.prod')
+    for product_file in installed_product_files:
+        product_xml = open(product_file).read()
+        product_start = product_xml.index('<product ')
+        try:
+            product_tree = etree.fromstring(product_xml[product_start:])
+        except:
+            return product_names
+        product_names.append(product_tree.findall('name')[0].text)
+    
+    # Special cases
+    # sle-module-devtools -> sle-module-development-tools | SLE 15
+    product_names.append('sle-module-devtools')
+
+    return product_names
+
+
+# ----------------------------------------------------------------------------
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
@@ -392,6 +413,53 @@ def get_repo_url(repo_name):
                 return repo_cfg.get(section, 'baseurl')
 
     return None
+
+
+# ----------------------------------------------------------------------------
+def get_smt():
+    """Returns an update server that is reachable."""
+
+    smt_ip = None
+    available_servers = get_available_smt_servers()
+    current_smt = get_current_smt()
+    if current_smt:
+        if is_registered(current_smt):
+            alive = current_smt.is_responsive()
+            if alive:
+                logging.info('Current update server will be used: '
+                             '"%s"' % str(
+                                 (current_smt.get_ipv4(),
+                                  current_smt.get_ipv6())
+                             )
+                )
+                return current_smt
+            else:
+                # The configured server is not resposive, let's check if
+                # we can find an equivalent server
+                new_target = find_equivalent_smt_server(
+                    current_smt,
+                    available_servers
+                )
+                if new_target:
+                    logging.info('Using equivalent update server: '
+                                 '"%s"' % str(
+                                     (new_target.get_ipv4(),
+                                      new_target.get_ipv6())
+                                 )
+                    )
+                    return new_target
+    else:
+        # Try any other update server we might know about
+        for smt in available_servers:
+            if smt.is_responsive():
+                import_smt_cert(smt)
+                logging.info('Found alternate update server: '
+                             '"%s"' % str(
+                                 (smt.get_ipv4(),
+                                  smt.get_ipv6())
+                             )
+                )
+                return smt
 
 
 # ----------------------------------------------------------------------------

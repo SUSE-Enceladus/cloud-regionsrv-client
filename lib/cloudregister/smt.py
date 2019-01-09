@@ -14,6 +14,7 @@
 """Class to hold the information we need to connect and identify an SMT
    server."""
 
+import glob
 import logging
 import requests
 
@@ -62,6 +63,50 @@ class SMT:
                     self._cert = cert
 
         return self._cert
+
+    # --------------------------------------------------------------------
+    def get_credentials(self):
+        """Return the credentials for this SMT server
+           Note this is based on naming convention and the credentials
+           are not cached. This can only succeed after the system is
+           properly registered."""
+        username = None
+        password = None
+        credentials_file = self.get_credentials_file()
+        if not credentials_file:
+            return (username, password)
+
+        credentials = open(credentials_file).readlines()
+        for entry in credentials:
+            if entry.startswith('username'):
+                username = entry.split('=')[-1].strip()
+            elif entry.startswith('password'):
+                password = entry.split('=')[-1].strip()
+            else:
+                logging.warning('Found unknown entry in '
+                                'credentials file "%s"' % entry)
+
+        return (username, password)
+
+    # --------------------------------------------------------------------
+    def get_credentials_file(self):
+        """Return the full path of the file for the credentials file
+           that matches this server. If the system has not been registered
+           with this or an equivalent server this will fail."""
+        smt_ref_name = self._fqdn.replace('.','_')
+        credentials_file = glob.glob(
+            '/etc/zypp/credentials.d/*%s' % smt_ref_name
+        )
+        if len(credentials_file) > 1:
+            logging.error('Ambiguous credential defintion files, found: '
+                          '"%s"' % str(credentials_file))
+            return ''
+        elif len(credentials_file) == 0:
+            logging.error('System not registered with equivalent update '
+                          'server for "%s"' % self._fqdn)
+            return ''
+
+        return credentials_file[0]
 
     # --------------------------------------------------------------------
     def get_domain_name(self):
