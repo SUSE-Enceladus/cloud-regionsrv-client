@@ -406,3 +406,5 @@ if utils.has_nvidia_support():
             logging.info(msg % (url.hostname, repo_name))
         else:
             utils.enable_repository(repo_name)
+
+utils.switch_services_to_plugin()

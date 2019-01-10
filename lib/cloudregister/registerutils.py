@@ -295,7 +295,7 @@ def get_config(configFile=None):
     cfg = configparser.RawConfigParser()
     try:
         parsed = cfg.read(configFile)
-    except:
+    except configparser.Error:
         print('Could not parse configuration file %s' % configFile)
         type, value, tb = sys.exc_info()
         print(format(value))
@@ -637,6 +637,54 @@ def set_proxy():
     return True
 
 
+# ----------------------------------------------------------------------------
+def switch_services_to_plugin():
+    """Switches a .service based RIS service that points to the update
+       infrastructure to the service plugin"""
+    service_plugin = '/usr/sbin/cloudguest-repo-service'
+    service_plugin_loc = '/usr/lib/zypp/plugins/services/'
+    service_files = glob.glob('/etc/zypp/services.d/*.service')
+    update_servers = get_available_smt_servers()
+    # If we have no available servers there is a risk that we would break
+    # the user setup if additional services that do not point to the update
+    # infrastructure exists, thus do nothing
+    if not update_servers:
+        return
+    service_targets = []
+    for update_server in update_servers:
+        service_targets.append(update_server.get_ipv4())
+        service_targets.append(update_server.get_ipv6())
+        service_targets.append(update_server.get_FQDN())
+
+    for service_file in service_files:
+        link_created = None
+        cfg = configparser.RawConfigParser()
+        try:
+            parsed = cfg.read(service_file)
+        except configparser.Error:
+            logging.warning('Unable to parse "%s" skipping' % service_file)
+            continue
+        # This implementation depends on each config file having all sections
+        # point to the same service target. If this is not the case and one
+        # of the sections points to a target we recognize then the other
+        # service will be dropped
+        for section in cfg.sections():
+            url = cfg.get(section, 'url')
+            if url and not url.startswith('plugin:'):
+                for service_target in service_targets:
+                    if url.startswith('http://%s' % service_target):
+                        link_dest = service_plugin_loc + section
+                        # Assume /usr/sbin and /usr/lib/zypp/plugins are on the
+                        # same filesystem
+                        if os.path.exists(link_dest):
+                            os.unlink(link_dest)
+                        os.symlink(service_plugin, link_dest)
+                        link_created = 1
+        if link_created:
+            os.unlink(service_file)
+                        
+
+    
 # ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""

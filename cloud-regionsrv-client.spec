@@ -39,7 +39,11 @@ Requires:       SUSEConnect
 Requires:       zypper
 BuildRequires:  systemd
 %{?systemd_requires}
+BuildRequires:  python3-lxml
+BuildRequires:  python3-M2Crypto
+BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
+BuildRequires:  python3-zypp-plugin
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildArch:      noarch
@@ -109,6 +113,7 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %service_add_pre guestregister.service
 
 %post
+/usr/sbin/switchcloudguestservices
 %service_add_post guestregister.service
 
 %preun
@@ -124,8 +129,9 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/lib/cloudregister
-%{_sbindir}/registercloudguest
 %{_sbindir}/cloudguest-repo-service
+%{_sbindir}/switchcloudguestservices
+%{_sbindir}/registercloudguest
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*
