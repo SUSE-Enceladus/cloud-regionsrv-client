@@ -29,127 +29,93 @@ from lxml import etree
 
 import cloudregister.registerutils as utils
 
-def print_repo_data(repo_elem, credentials_file):
-    """Print repository data from an XML element describing the repo"""
-    credential_ref = None
-    if credentials_file:
-        credential_ref = os.path.basename(credentials_file)
-    name = repo_elem.get('name')
-    refresh = repo_elem.get('autorefresh')
-    enabled = repo_elem.get('enabled')
-    path = repo_elem.get('path')
-    print('[%s]' % name)
-    print('name=%s' %name)
-    print('enabled=%s' % enabled)
-    print('autorefresh=%s' % refresh)
-    base_url = 'baseurl=plugin:susecloud?repo=%s' % path
-    if credential_ref:
-        print(base_url + '?credentials=%s\n' % credential_ref)
-    else:
-        print(base_url + '\n')
+def print_repo_data(update_server, activation):
+    """Print repository data from product activation info."""
+    service_info = activation.get('service')
+    service_name = service_info.get('name')
+    product_info = service_info.get('product')
+    product_name = product_info.get('name')
+    product_version = product_info.get('version')
+    arch = platform.machine()
+    base_product_name = product_name.replace(
+        product_version, '').replace(arch, '').strip().replace(' ', '_')
+    
+    credentials_file = os.path.basename(
+        utils.get_credentials_file(
+            update_server,
+            base_product_name
+        )
+    )
+    for repo in product_info.get('repositories'):
+        name = repo.get('name')
+        refresh = repo.get('autorefresh')
+        enabled = repo.get('enabled')
+        url = repo.get('url')
+        if url.startswith('plugin:'):
+            is_plugin_url = True
+            base_url = url
+        elif url.startswith('http'):
+            relative_path = url.split('repo')[-1]
+            base_url = 'plugin:susecloud?'
+            if credentials_file:
+                base_url += 'credentials=%s&' % credentials_file
+            base_url += 'path=/repo%s' % relative_path
+        print('[%s]' % name)
+        print('name=%s' % name)
+        print('enabled=%d' % int(enabled == True))
+        print('autorefresh=%s' % int(refresh == True))
+        print('baseurl=%s' % base_url)
 
 
 utils.start_logging()
 utils.set_proxy()
 
+# Make sure we are pointing to a reachable server
 update_server = utils.get_smt()
 if not update_server:
     logging.info('[Repo-Service] No update server found cannot provide repos')
     sys.exit(1)
 
-credentials_file = update_server.get_credentials_file()
-user, user_pass = update_server.get_credentials()
-if not user and user_pass:
+user, password = utils.get_credentials(
+    utils.get_credentials_file(update_server)
+)
+if not user and password:
     logging.error('[Repo-Service] Unable to extract username and password '
                   'for "%s"' % update_server.get_FQDN()
     )
     sys.exit(1)
 
-auth_creds = HTTPBasicAuth(user, user_pass)
-
-update_server_ip = update_server.get_ipv4()
-if utils.has_ipv6_access(update_server):
-    update_server_ip = update_server.get_ipv6()
+auth_creds = HTTPBasicAuth(user, password)
 
 instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
 headers = {}
 if instance_data:
     headers['X-Instance-Data'] = base64.b64encode(instance_data)
-    headers['X-Repo-format'] = 'plugin:/susecloud?repo='
 
 req = requests.get(
-    'http://%s/repo/repoindex.xml' % update_server_ip,
+    'https://%s/connect/systems/activations' % update_server.get_FQDN(),
     auth=auth_creds,
     headers=headers
 )
 
 if req.status_code != 200:
-    logging.error('[Repo-Service] Unable to get repositories from '
-                  'update server: "%s"' % update_server_ip)
+    srv_ipv4 = update_server.get_ipv4()
+    srv_ipv6 = update_server.get_ipv6()
+    logging.error('[Repo-Service] Unable to get product info from '
+                  'update server: "%s"' % str((srv_ipv4, srv_ipv6))
+    )
     logging.error('\tReason: "%s"' % req.reason)
-    logging.error('\tCode: ', req.status_code)
+    logging.error('\tCode: %d', req.status_code)
     sys.exit(1)
 
-# Write the repo data
-installed_products = utils.get_installed_product_names()
-data_start = req.text.index('<repoindex>')
-repo_data = etree.fromstring(req.text[data_start:])
-for repo in repo_data.findall('repo'):
-    repo_name = repo.get('name')
-    if 'Product' in repo_name:
-        print_repo_data(repo, credentials_file)
-        continue
-    comp_repo_name = repo_name.lower()
-    if 'module' in comp_repo_name:
-        for product_name in installed_products:
-            if comp_repo_name.startswith(product_name):
-                print_repo_data(repo, credentials_file)
+product_activations = json.loads(req.text)
+for activation in product_activations:
+    print_repo_data(update_server, activation)
+
+#if has_plugin_format:
+#    # FIXME Re-add the .service file
+#    # Remove my link
+#    pass
 
 
 
-# Detect the repo format. If the server delivers the plugin format
-# make this service plugin obsolete
-
-# Work around for images that had improper baseproduct link
-# this would need to be modified if/when we bring CaaSP as on-demand image
-product_def = glob.glob('/etc/products.d/SLES*.prod')
-if len(product_def) > 1:
-    logging.error('[Repo-Service] Ambiguous base product definition: '
-                  '"%s"' % str(product_def))
-
-#product_tree = ET.parse(product_def[0])
-#product_root = product_tree.getroot()
-#product_name = product_root.findall('name')[0].text
-#product_version = product_root.findall('version')[0].text
-#
-## Handle potential inconsistent nomenclature
-#if '.' in product_version:
-#    product_version, product_sp = product_version.split('.')
-#else:
-#    product_sp = product_root.findall('patchlevel')[0].text
-#
-## Might have to revisit for ARM
-#arch = platform.machine()
-#
-#version_id = product_version
-#if product_sp != '0':
-#    version_id = product_version + '-' + product_sp
-#
-#api_params = {
-#    'identifier': product_name,
-#    'version': versio_id,
-#    'arch': arch
-#}
-#
-#req = requests.get(
-#    'http://%s/connect/systems/products' % update_server_ip,
-#    auth=auth,
-#    headers=headers,
-#    params=params
-#)
-#
-#product_info = json.loads(req.text)
-#products['extensions'][0]['repositories']
-## FIXME finsih the "make myself obsolete" implementtaion
-# Must schedule a zypper job since this runs within zypper
-    
