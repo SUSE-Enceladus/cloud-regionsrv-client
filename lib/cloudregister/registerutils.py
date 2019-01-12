@@ -13,9 +13,10 @@
 
 """Utility functions for the cloud guest registration"""
 
-import configparser
 import base64
+import configparser
 import glob
+import json
 import logging
 import os
 import pickle
@@ -31,6 +32,7 @@ from cloudregister import smt
 from lxml import etree
 from M2Crypto import X509
 from pathlib import Path
+from requests.auth import HTTPBasicAuth
 
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 HOSTSFILE_PATH = '/etc/hosts'
@@ -274,6 +276,44 @@ def find_repos(contains_name):
                 repo_names.append(cfg_repo_name)
 
     return repo_names
+
+
+# ----------------------------------------------------------------------------
+def get_activations():
+    """Get the activated products from the update server"""
+    activations = {}
+    update_server = get_smt()
+    user, password = get_credentials(get_credentials_file(update_server))
+    if not user and password:
+        logging.error('Unable to extract username and password '
+                      'for "%s"' % update_server.get_FQDN()
+        )
+        return activations
+    
+    auth_creds = HTTPBasicAuth(user, password)
+
+    instance_data = bytes(get_instance_data(get_config()), 'utf-8')
+    headers = {}
+    if instance_data:
+        headers['X-Instance-Data'] = base64.b64encode(instance_data)
+
+    req = requests.get(
+        'https://%s/connect/systems/activations' % update_server.get_FQDN(),
+        auth=auth_creds,
+        headers=headers
+    )
+
+    if req.status_code != 200:
+        srv_ipv4 = update_server.get_ipv4()
+        srv_ipv6 = update_server.get_ipv6()
+        logging.error('Unable to get product info from '
+                      'update server: "%s"' % str((srv_ipv4, srv_ipv6))
+        )
+        logging.error('\tReason: "%s"' % req.reason)
+        logging.error('\tCode: %d', req.status_code)
+        return activations
+
+    return json.loads(req.text)
 
 
 # ----------------------------------------------------------------------------

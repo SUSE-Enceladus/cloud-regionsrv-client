@@ -15,17 +15,10 @@
 
 """This script provides the repositories for on-demand instances."""
 
-import base64
-import glob
-import json
 import logging
 import os
 import platform
-import requests
 import sys
-
-from requests.auth import HTTPBasicAuth
-from lxml import etree
 
 import cloudregister.registerutils as utils
 
@@ -46,6 +39,8 @@ def print_repo_data(update_server, activation):
             base_product_name
         )
     )
+    is_plugin_url = False
+    service_revert_file = utils.REGISTRATION_DATA_DIR + 'installservice'
     for repo in product_info.get('repositories'):
         name = repo.get('name')
         refresh = repo.get('autorefresh')
@@ -53,6 +48,8 @@ def print_repo_data(update_server, activation):
         url = repo.get('url')
         if url.startswith('plugin:'):
             is_plugin_url = True
+            with open(service_revert_file, 'a') as trigger:
+                trigger.write("%s\n" % service_name)
             base_url = url
         elif url.startswith('http'):
             relative_path = url.split('repo')[-1]
@@ -66,6 +63,8 @@ def print_repo_data(update_server, activation):
         print('autorefresh=%s' % int(refresh == True))
         print('baseurl=%s' % base_url)
 
+    return is_plugin_url
+
 
 utils.start_logging()
 utils.set_proxy()
@@ -76,46 +75,16 @@ if not update_server:
     logging.info('[Repo-Service] No update server found cannot provide repos')
     sys.exit(1)
 
-user, password = utils.get_credentials(
-    utils.get_credentials_file(update_server)
-)
-if not user and password:
-    logging.error('[Repo-Service] Unable to extract username and password '
-                  'for "%s"' % update_server.get_FQDN()
+product_activations = utils.get_activations()
+if not product_activations:
+    logging.error('[Repo-Service] Unable to retrieve product activations '
+                  'from "%s"' % update_server.get_FQDN()
     )
     sys.exit(1)
 
-auth_creds = HTTPBasicAuth(user, password)
-
-instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
-headers = {}
-if instance_data:
-    headers['X-Instance-Data'] = base64.b64encode(instance_data)
-
-req = requests.get(
-    'https://%s/connect/systems/activations' % update_server.get_FQDN(),
-    auth=auth_creds,
-    headers=headers
-)
-
-if req.status_code != 200:
-    srv_ipv4 = update_server.get_ipv4()
-    srv_ipv6 = update_server.get_ipv6()
-    logging.error('[Repo-Service] Unable to get product info from '
-                  'update server: "%s"' % str((srv_ipv4, srv_ipv6))
-    )
-    logging.error('\tReason: "%s"' % req.reason)
-    logging.error('\tCode: %d', req.status_code)
-    sys.exit(1)
-
-product_activations = json.loads(req.text)
+trigger_set = False
 for activation in product_activations:
-    print_repo_data(update_server, activation)
-
-#if has_plugin_format:
-#    # FIXME Re-add the .service file
-#    # Remove my link
-#    pass
-
-
-
+    has_plugin_format = print_repo_data(update_server, activation)
+    if has_plugin_format and not trigger_set:
+        trigger_set = True
+        os.spawnl(os.P_DETACH, '/usr/sbin/switchcloudguestservices')
