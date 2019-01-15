@@ -78,7 +78,7 @@ def add_region_server_args_to_URL(api, cfg):
                 regionSrvArgs = '?' + mod.generateRegionSrvArgs()
                 logging.info('Region server arguments: %s' % regionSrvArgs)
                 api += regionSrvArgs
-            except:
+            except Exception:
                 msg = 'Configured instanceArgs module could not be loaded. '
                 msg += 'Continuing without additional arguments.'
                 logging.warning(msg)
@@ -155,7 +155,7 @@ def exec_subprocess(cmd, return_output=False):
         if return_output:
             return (out, err)
         return proc.returncode
-    except:
+    except OSError:
         return -1
 
 
@@ -227,7 +227,7 @@ def fetch_smt_data(cfg, proxies):
                     logging.error('Server returned: %d' % response.status_code)
                     logging.error('Server error: "%s"' % response.reason)
                     logging.error('=' * 20)
-            except:
+            except requests.exceptions.RequestException:
                 logging.error('No response from: %s' % srvName)
                 if srv == region_servers[-1]:
                     logging.error('None of the servers responded')
@@ -284,12 +284,13 @@ def get_activations():
     activations = {}
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
-    if not user and password:
-        logging.error('Unable to extract username and password '
-                      'for "%s"' % update_server.get_FQDN()
+    if not (user and password):
+        logging.error(
+            'Unable to extract username and password '
+            'for "%s"' % update_server.get_FQDN()
         )
         return activations
-    
+
     auth_creds = HTTPBasicAuth(user, password)
 
     instance_data = bytes(get_instance_data(get_config()), 'utf-8')
@@ -306,14 +307,15 @@ def get_activations():
     if req.status_code != 200:
         srv_ipv4 = update_server.get_ipv4()
         srv_ipv6 = update_server.get_ipv6()
-        logging.error('Unable to get product info from '
-                      'update server: "%s"' % str((srv_ipv4, srv_ipv6))
+        logging.error(
+            'Unable to get product info from '
+            'update server: "%s"' % str((srv_ipv4, srv_ipv6))
         )
         logging.error('\tReason: "%s"' % req.reason)
         logging.error('\tCode: %d', req.status_code)
         return activations
 
-    return json.loads(req.text)
+    return req.json()
 
 
 # ----------------------------------------------------------------------------
@@ -403,7 +405,7 @@ def get_credentials_file(update_server, service_name=None):
                     'hoping for the best' % service_name)
             credentials_file = cred_files[0]
             break
-        
+
         if not credentials_file:
             logging.error('No matching credentials file found')
 
@@ -449,10 +451,10 @@ def get_installed_product_names():
         product_start = product_xml.index('<product ')
         try:
             product_tree = etree.fromstring(product_xml[product_start:])
-        except:
+        except etree.XMLSyntaxError:
             return product_names
         product_names.append(product_tree.findall('name')[0].text)
-    
+
     # Special cases
     # sle-module-devtools -> sle-module-development-tools | SLE 15
     product_names.append('sle-module-devtools')
@@ -480,7 +482,7 @@ def get_instance_data(config):
                         stderr=subprocess.PIPE,
                         close_fds=True
                     )
-                except:
+                except OSError:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
@@ -492,7 +494,7 @@ def get_instance_data(config):
                         close_fds=True
                     )
                     instance_data, errors = p.communicate()
-                except:
+                except OSError:
                     errMsg = 'Error collecting instance data with "%s"'
                     logging.error(errMsg % instance_data_cmd)
                 if errors:
@@ -505,6 +507,8 @@ def get_instance_data(config):
         # service and repo information
         instance_data += b'<repoformat>plugin:susecloud</repoformat>\n'
         return instance_data.decode()
+
+    return instance_data
 
 
 # ----------------------------------------------------------------------------
@@ -524,18 +528,17 @@ def get_repo_url(repo_name):
 def get_smt():
     """Returns an update server that is reachable."""
 
-    smt_ip = None
     available_servers = get_available_smt_servers()
     current_smt = get_current_smt()
     if current_smt:
         if is_registered(current_smt):
             alive = current_smt.is_responsive()
             if alive:
-                logging.info('Current update server will be used: '
-                             '"%s"' % str(
-                                 (current_smt.get_ipv4(),
-                                  current_smt.get_ipv6())
-                             )
+                logging.info(
+                    'Current update server will be used: '
+                    '"%s"' % str(
+                        (current_smt.get_ipv4(), current_smt.get_ipv6())
+                    )
                 )
                 return current_smt
             else:
@@ -546,29 +549,27 @@ def get_smt():
                     available_servers
                 )
                 if new_target:
-                    logging.info('Using equivalent update server: '
-                                 '"%s"' % str(
-                                     (new_target.get_ipv4(),
-                                      new_target.get_ipv6())
-                                 )
+                    logging.info(
+                        'Using equivalent update server: '
+                        '"%s"' % str(
+                            (new_target.get_ipv4(), new_target.get_ipv6())
+                        )
                     )
                     replace_hosts_entry(current_smt, new_target)
                     set_as_current_smt(new_target)
                     return new_target
     else:
         # Try any other update server we might know about
-        for smt in available_servers:
-            if smt.is_responsive():
-                import_smt_cert(smt)
-                logging.info('Found alternate update server: '
-                             '"%s"' % str(
-                                 (smt.get_ipv4(),
-                                  smt.get_ipv6())
-                             )
+        for server in available_servers:
+            if server.is_responsive():
+                import_smt_cert(server)
+                logging.info(
+                    'Found alternate update server: '
+                    '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
-                replace_hosts_entry(current_smt, smt)
-                set_as_current_smt(smt)
-                return smt
+                replace_hosts_entry(current_smt, server)
+                set_as_current_smt(server)
+                return server
 
 
 # ----------------------------------------------------------------------------
@@ -582,7 +583,7 @@ def get_smt_from_store(smt_store_file_path):
         u = pickle.Unpickler(smt_file)
         try:
             smt = u.load()
-        except:
+        except pickle.UnpicklingError:
             pass
 
     return smt
@@ -810,9 +811,8 @@ def switch_services_to_plugin():
                         link_created = 1
         if link_created:
             os.unlink(service_file)
-                        
 
-    
+
 # ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
@@ -840,17 +840,18 @@ def replace_hosts_entry(current_smt, new_smt):
     known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
     new_hosts = ''
     if not current_smt:
-        logging.error('System in inconsistent state, request to replace '
-                      'entry in hosts file, but not registration server '
-                      'provided. WIll not take any action'
-                  )
+        logging.error(
+            'System in inconsistent state, request to replace '
+            'entry in hosts file, but not registration server '
+            'provided. Will not take any action'
+        )
         return
     current_smt_ipv4 = current_smt.get_ipv4()
     current_smt_ipv6 = current_smt.get_ipv6()
     smt_ipv6_access = has_ipv6_access(new_smt)
     smt_ip = new_smt.get_ipv4()
     if smt_ipv6_access:
-         smt_ip = new_smt.get_ipv6()
+        smt_ip = new_smt.get_ipv6()
     new_entry = '%s\t' + new_smt.get_FQDN() + '\t' + new_smt.get_name() + '\n'
     for entry in known_hosts:
         if (
@@ -860,7 +861,7 @@ def replace_hosts_entry(current_smt, new_smt):
             new_hosts += new_entry % smt_ip
         else:
             new_hosts += entry
-        
+
     with open(HOSTSFILE_PATH, 'w') as hosts_file:
         hosts_file.write(new_hosts)
 
@@ -929,9 +930,10 @@ def __get_referenced_credentials(smt_server_name):
             url = repo_cfg.get(section, 'baseurl')
             if url:
                 if (
-                        (smt_server_name in url or
-                        'plugin:susecloud' in url) and
-                        'credentials=' in url
+                        (
+                            smt_server_name in url or
+                            'plugin:susecloud' in url
+                        ) and 'credentials=' in url
                 ):
                     line_parts = url.split('?credentials=')
                     if len(line_parts) > 1:
@@ -962,7 +964,7 @@ def __get_service_plugins():
 
     return plugin_link_names
 
-    
+
 # ----------------------------------------------------------------------------
 def __has_credentials(smt_server_name):
     """Check if a credentials file exists."""
@@ -1016,7 +1018,7 @@ def __remove_service(smt_server_name):
     for service_file in service_files:
         service_cfg = get_config(service_file)
         for section in service_cfg.sections():
-            url = cfg.cfg.get(section, 'url')
+            url = service_cfg.get(section, 'url')
             if url:
                 if (
                         smt_server_name in url or
@@ -1026,7 +1028,7 @@ def __remove_service(smt_server_name):
                                  % os.path.basename(service_file))
                     os.unlink(service_file)
 
-    service_plugins = __get_service_plugins()    
+    service_plugins = __get_service_plugins()
     for service_plugin in service_plugins:
         os.unlink(service_plugin)
 

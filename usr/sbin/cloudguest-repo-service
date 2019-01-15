@@ -15,14 +15,20 @@
 
 """This script provides the repositories for on-demand instances."""
 
+import base64
 import logging
 import os
 import platform
+import requests
 import sys
+
+from lxml import etree
+from requests.auth import HTTPBasicAuth
 
 import cloudregister.registerutils as utils
 
-def print_repo_data(update_server, activation):
+
+def print_repo_data(update_server, activation, available_repos):
     """Print repository data from product activation info."""
     service_info = activation.get('service')
     service_name = service_info.get('name')
@@ -43,6 +49,8 @@ def print_repo_data(update_server, activation):
     service_revert_file = utils.REGISTRATION_DATA_DIR + 'installservice'
     for repo in product_info.get('repositories'):
         name = repo.get('name')
+        if name not in available_repos:
+            continue
         refresh = repo.get('autorefresh')
         enabled = repo.get('enabled')
         url = repo.get('url')
@@ -75,16 +83,49 @@ if not update_server:
     logging.info('[Repo-Service] No update server found cannot provide repos')
     sys.exit(1)
 
+# Get the available repos from the server
+user, password = utils.get_credentials(
+    utils.get_credentials_file(update_server)
+)
+auth_creds = HTTPBasicAuth(user, password)
+instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
+headers = {}
+if instance_data:
+    headers['X-Instance-Data'] = base64.b64encode(instance_data)
+req = requests.get(
+    'https://%s/repo/repoindex.xml' % update_server.get_FQDN(),
+    auth=auth_creds,
+    headers=headers
+)
+if not req.status_code == 200:
+    logging.info('[Repo-Service] Unable to retrieve update server repo data')
+    sys.exit(1)
+
+repo_info_xml = req.text
+repo_info_start = repo_info_xml.index('<repoindex>')
+repo_data = etree.fromstring(repo_info_xml[repo_info_start:])
+
+available_repos = []
+for repo in repo_data.findall('repo'):
+    available_repos.append(repo.get('name'))
+
+# Get activated products for repo processing
+# We have to process the activation information as otherwise it is difficult
+# to relate services to repositories since the repoindex.xml file
+# does not provide such correlation.
 product_activations = utils.get_activations()
 if not product_activations:
-    logging.error('[Repo-Service] Unable to retrieve product activations '
-                  'from "%s"' % update_server.get_FQDN()
+    logging.error(
+        '[Repo-Service] Unable to retrieve product activations '
+        'from "%s"' % update_server.get_FQDN()
     )
     sys.exit(1)
 
 trigger_set = False
 for activation in product_activations:
-    has_plugin_format = print_repo_data(update_server, activation)
+    has_plugin_format = print_repo_data(
+        update_server, activation, available_repos
+    )
     if has_plugin_format and not trigger_set:
         trigger_set = True
         os.spawnl(os.P_DETACH, '/usr/sbin/switchcloudguestservices')

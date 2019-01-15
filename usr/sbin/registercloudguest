@@ -61,7 +61,7 @@ def get_products():
             ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
         )
         product_xml = cmd.communicate()
-    except:
+    except OSError:
         errMsg = 'Could not get product list %s' % cmd[1]
         logging.error(errMsg)
         return

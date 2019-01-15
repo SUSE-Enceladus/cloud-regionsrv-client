@@ -27,35 +27,36 @@ from zypp_plugin import Plugin
 utils.start_logging()
 utils.set_proxy()
 
+
 class SUSECloudPlugin(Plugin):
     def RESOLVEURL(self, headers, body):
         """Convert the URL for the repo"""
         update_server = utils.get_smt()
-        server_name = None
+        server_name = ''
         if not update_server:
             # Something went seriously wrong, however try the name from
             # the hosts file
             server_name = utils.get_update_server_name_from_hosts()
         else:
             server_name = update_server.get_FQDN()
-        if not server_name:
-            # Point to localhost, which is wrong but produces a valid url
-            # zypper will fail gracefully with a reasonable message
-            server_name = '127.0.0.1'
-        srv_url = 'https://%s' % server_name
-        repo_url = srv_url + headers.get('path')
-        credentials = headers.get('credentials')
-        if credentials:
-            repo_url += '?credentials=' + credentials
-        instance_data = bytes(
-            utils.get_instance_data(utils.get_config()),
-            'utf-8'
-        )
+        if server_name:
+            srv_url = 'https://%s' % server_name
+            repo_url = srv_url + headers.get('path')
+            credentials = headers.get('credentials')
+            if credentials:
+                repo_url += '?credentials=' + credentials
+            instance_data = bytes(
+                utils.get_instance_data(utils.get_config()),
+                'utf-8'
+            )
+        else:
+            repo_url = None
         self.answer(
             'RESOLVEDURL',
-            { 'X-Instance-Data': base64.b64encode(instance_data) },
+            {'X-Instance-Data': base64.b64encode(instance_data)},
             repo_url
         )
+
 
 plugin = SUSECloudPlugin()
 plugin.main()

@@ -34,6 +34,9 @@ if os.path.exists(service_revert_file):
     # need the service plugin
     while utils.get_zypper_pid():
         time.sleep(5)
+    # zypper creates a weird date stamped service file, we need to get rid
+    # of it later. Keep track of services that are not under our control
+    current_services = glob.glob('/etc/zypp/services.d/*.service')
     switch_services = open(service_revert_file, 'r').readlines()
     product_activations = utils.get_activations()
     if not product_activations:
@@ -68,6 +71,14 @@ if os.path.exists(service_revert_file):
             logging.info(
                 '[Serviceswitch] Re-created service plugin "%s"' % service_name
             )
+        else:
+            current_services.append(
+                '/etc/zypp/services.d/%s.service' % service_name
+            )
+    all_services = glob.glob('/etc/zypp/services.d/*.service')
+    for service in all_services:
+        if service not in current_services:
+            os.unlink(service)
     os.unlink(service_revert_file)
     utils.exec_subprocess(['zypper', 'refs'])
 else:

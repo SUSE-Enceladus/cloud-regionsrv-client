@@ -14,7 +14,6 @@
 """Class to hold the information we need to connect and identify an SMT
    server."""
 
-import glob
 import logging
 import requests
 
