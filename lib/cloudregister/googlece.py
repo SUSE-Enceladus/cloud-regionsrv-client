@@ -25,7 +25,7 @@ def generateRegionSrvArgs():
 
     try:
         zoneResp = requests.get(metaDataUrl + zoneInfo, headers=headers)
-    except:
+    except requests.exceptions.RequestException:
         msg = 'Unable to determine zone information from "%s"'
         logging.warning(msg % (metaDataUrl + zoneInfo))
         return
@@ -33,7 +33,7 @@ def generateRegionSrvArgs():
     if zoneResp.status_code == 200:
         try:
             country, region, zone = zoneResp.text.split('/')[-1].split('-')
-        except:
+        except Exception:
             logging.warning('Unable to form region string from text: %s'
                             % zoneResp.text)
             return

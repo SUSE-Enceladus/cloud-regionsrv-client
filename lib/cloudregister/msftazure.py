@@ -16,7 +16,9 @@ import logging
 import requests
 import re
 import time
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 
 from html.parser import HTMLParser
 
@@ -35,7 +37,7 @@ def generateRegionSrvArgs():
     meta_data_url = 'http://169.254.169.254/metadata/instance/'
     zone_info = 'compute/location'
     headers = {'Metadata': 'true'}
-    params = { "format": "text", "api-version": "2017-04-02" }
+    params = {"format": "text", "api-version": "2017-04-02"}
 
     zone_response = None
     try:
@@ -45,7 +47,7 @@ def generateRegionSrvArgs():
             params=params,
             timeout=5
         )
-    except:
+    except requests.exceptions.RequestException:
         msg = 'Unable to determine instance placement from metadata '
         msg += 'server "%s"'
         logging.warning(msg % (meta_data_url + zone_info))
@@ -71,7 +73,7 @@ def generateRegionSrvArgs():
                     headers=headers,
                     timeout=15
                 )
-            except:
+            except requests.exceptions.RequestException:
                 msg = 'Could not retrieve goal state XML from %s' % nameserver
                 logging.warning(msg)
                 continue
@@ -93,7 +95,7 @@ def generateRegionSrvArgs():
                     headers=headers,
                     timeout=15
                 )
-            except:
+            except requests.exceptions.RequestException:
                 msg = 'Could not get extensions information from "%s"'
                 logging.warning(msg % extensionsURI)
                 continue

@@ -24,7 +24,7 @@ def generateRegionSrvArgs():
 
     try:
         zoneResp = requests.get(metaDataUrl + zoneInfo)
-    except:
+    except requests.exceptions.RequestException:
         msg = 'Unable to determine instance placement from "%s"'
         logging.warning(msg % (metaDataUrl + zoneInfo))
         return

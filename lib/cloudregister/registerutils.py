@@ -13,9 +13,10 @@
 
 """Utility functions for the cloud guest registration"""
 
-import configparser
 import base64
+import configparser
 import glob
+import json
 import logging
 import os
 import pickle
@@ -30,6 +31,8 @@ import time
 from cloudregister import smt
 from lxml import etree
 from M2Crypto import X509
+from pathlib import Path
+from requests.auth import HTTPBasicAuth
 
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 HOSTSFILE_PATH = '/etc/hosts'
@@ -75,7 +78,7 @@ def add_region_server_args_to_URL(api, cfg):
                 regionSrvArgs = '?' + mod.generateRegionSrvArgs()
                 logging.info('Region server arguments: %s' % regionSrvArgs)
                 api += regionSrvArgs
-            except:
+            except Exception:
                 msg = 'Configured instanceArgs module could not be loaded. '
                 msg += 'Continuing without additional arguments.'
                 logging.warning(msg)
@@ -86,6 +89,10 @@ def add_region_server_args_to_URL(api, cfg):
 # ----------------------------------------------------------------------------
 def check_registration(smt_server_name):
     """Check if the instance is already registerd"""
+    # For a "valid" registration the repos must exist, just having the
+    # service is not sufficient. Therefore we check for the repos here.
+    # If the repos do not exist that implies they were removed by the
+    # service.
     if has_repos(smt_server_name) and __has_credentials(smt_server_name):
         return 1
 
@@ -148,7 +155,7 @@ def exec_subprocess(cmd, return_output=False):
         if return_output:
             return (out, err)
         return proc.returncode
-    except:
+    except OSError:
         return -1
 
 
@@ -218,9 +225,9 @@ def fetch_smt_data(cfg, proxies):
                 else:
                     logging.error('=' * 20)
                     logging.error('Server returned: %d' % response.status_code)
-                    logging.error(response.text)
+                    logging.error('Server error: "%s"' % response.reason)
                     logging.error('=' * 20)
-            except:
+            except requests.exceptions.RequestException:
                 logging.error('No response from: %s' % srvName)
                 if srv == region_servers[-1]:
                     logging.error('None of the servers responded')
@@ -272,6 +279,46 @@ def find_repos(contains_name):
 
 
 # ----------------------------------------------------------------------------
+def get_activations():
+    """Get the activated products from the update server"""
+    activations = {}
+    update_server = get_smt()
+    user, password = get_credentials(get_credentials_file(update_server))
+    if not (user and password):
+        logging.error(
+            'Unable to extract username and password '
+            'for "%s"' % update_server.get_FQDN()
+        )
+        return activations
+
+    auth_creds = HTTPBasicAuth(user, password)
+
+    instance_data = bytes(get_instance_data(get_config()), 'utf-8')
+    headers = {}
+    if instance_data:
+        headers['X-Instance-Data'] = base64.b64encode(instance_data)
+
+    res = requests.get(
+        'https://%s/connect/systems/activations' % update_server.get_FQDN(),
+        auth=auth_creds,
+        headers=headers
+    )
+
+    if res.status_code != 200:
+        srv_ipv4 = update_server.get_ipv4()
+        srv_ipv6 = update_server.get_ipv6()
+        logging.error(
+            'Unable to get product info from '
+            'update server: "%s"' % str((srv_ipv4, srv_ipv6))
+        )
+        logging.error('\tReason: "%s"' % res.reason)
+        logging.error('\tCode: %d', res.status_code)
+        return activations
+
+    return res.json()
+
+
+# ----------------------------------------------------------------------------
 def get_available_smt_servers():
     """Return a list of available SMT servers"""
     availabe_smt_servers = []
@@ -295,7 +342,7 @@ def get_config(configFile=None):
     cfg = configparser.RawConfigParser()
     try:
         parsed = cfg.read(configFile)
-    except:
+    except configparser.Error:
         print('Could not parse configuration file %s' % configFile)
         type, value, tb = sys.exc_info()
         print(format(value))
@@ -306,6 +353,63 @@ def get_config(configFile=None):
         sys.exit(1)
 
     return cfg
+
+
+# ----------------------------------------------------------------------------
+def get_credentials(credentials_file):
+    """Return username and password extracted from the given file"""
+    username = None
+    password = None
+    if not os.path.exists(credentials_file):
+        logging.error('Credentials file not found: "%s"' % credentials_file)
+        return (username, password)
+    credentials = open(credentials_file).readlines()
+    for entry in credentials:
+        if entry.startswith('username'):
+            username = entry.split('=')[-1].strip()
+        elif entry.startswith('password'):
+            password = entry.split('=')[-1].strip()
+        else:
+            logging.warning('Found unknown entry in '
+                            'credentials file "%s"' % entry)
+
+    return (username, password)
+
+
+# ----------------------------------------------------------------------------
+def get_credentials_file(update_server, service_name=None):
+        """Return the credentials filename.
+           Credentials are stored per service. If there is a service
+           associated with a given repo use those credentials, if not
+           use the default credentials associated with the server providing
+           the service.
+           Note this is based on naming convention. This can only succeed
+           after the system is properly registered."""
+        credentials_file = ''
+        credentials_loc = '/etc/zypp/credentials.d/'
+        credential_names = [
+            '*' + update_server.get_FQDN().replace('.', '_'),
+            'SCC*'
+        ]
+        if service_name:
+            credential_names.insert(0, '*' + service_name + '*')
+
+        for entry in credential_names:
+            cred_files = glob.glob(credentials_loc + entry)
+            if not cred_files:
+                logging.info('No credentials entry for "%s"' % entry)
+                continue
+            if len(cred_files) > 1:
+                logging.warning(
+                    'Found multiple credentials for "%s" entry and '
+                    'hoping for the best' % service_name)
+            credentials_file = cred_files[0]
+            break
+
+        if not credentials_file:
+            logging.error('No matching credentials file found')
+
+        return credentials_file
 
 
 # ----------------------------------------------------------------------------
@@ -341,7 +445,7 @@ def get_current_smt():
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
-    instance_data = None
+    instance_data = ''
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -357,7 +461,7 @@ def get_instance_data(config):
                         stderr=subprocess.PIPE,
                         close_fds=True
                     )
-                except:
+                except OSError:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
@@ -369,7 +473,7 @@ def get_instance_data(config):
                         close_fds=True
                     )
                     instance_data, errors = p.communicate()
-                except:
+                except OSError:
                     errMsg = 'Error collecting instance data with "%s"'
                     logging.error(errMsg % instance_data_cmd)
                 if errors:
@@ -378,7 +482,12 @@ def get_instance_data(config):
                     logging.error(errMsg)
 
     if instance_data:
+        # Marker for the server to not return https:// formated
+        # service and repo information
+        instance_data += b'<repoformat>plugin:susecloud</repoformat>\n'
         return instance_data.decode()
+
+    return instance_data
 
 
 # ----------------------------------------------------------------------------
@@ -391,7 +500,55 @@ def get_repo_url(repo_name):
             if repo_name == repo_cfg.get(section, 'name'):
                 return repo_cfg.get(section, 'baseurl')
 
-    return None
+    return ''
+
+
+# ----------------------------------------------------------------------------
+def get_smt():
+    """Returns an update server that is reachable."""
+
+    available_servers = get_available_smt_servers()
+    current_smt = get_current_smt()
+    if current_smt:
+        if is_registered(current_smt):
+            alive = current_smt.is_responsive()
+            if alive:
+                logging.info(
+                    'Current update server will be used: '
+                    '"%s"' % str(
+                        (current_smt.get_ipv4(), current_smt.get_ipv6())
+                    )
+                )
+                return current_smt
+            else:
+                # The configured server is not responsive, let's check if
+                # we can find an equivalent server
+                new_target = find_equivalent_smt_server(
+                    current_smt,
+                    available_servers
+                )
+                if new_target:
+                    logging.info(
+                        'Using equivalent update server: '
+                        '"%s"' % str(
+                            (new_target.get_ipv4(), new_target.get_ipv6())
+                        )
+                    )
+                    replace_hosts_entry(current_smt, new_target)
+                    set_as_current_smt(new_target)
+                    return new_target
+    else:
+        # Try any other update server we might know about
+        for server in available_servers:
+            if server.is_responsive():
+                import_smt_cert(server)
+                logging.info(
+                    'Found alternate update server: '
+                    '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
+                )
+                replace_hosts_entry(current_smt, server)
+                set_as_current_smt(server)
+                return server
 
 
 # ----------------------------------------------------------------------------
@@ -405,10 +562,24 @@ def get_smt_from_store(smt_store_file_path):
         u = pickle.Unpickler(smt_file)
         try:
             smt = u.load()
-        except:
+        except pickle.UnpicklingError:
             pass
 
     return smt
+
+
+# ----------------------------------------------------------------------------
+def get_update_server_name_from_hosts():
+    """Try and extract the update server name from the /etc/hosts file"""
+    logging.warning('The system is in an inconsistent state repositories '
+                    'definitions, cached update server data, and credentials '
+                    'file do not match')
+    servers = get_available_smt_servers()
+    hosts_content = open(HOSTSFILE_PATH).read()
+    for server in servers:
+        name = server.get_FQDN()
+        if name in hosts_content:
+            return name
 
 
 # ----------------------------------------------------------------------------
@@ -441,14 +612,14 @@ def has_ipv6_access(smt):
         return False
     logging.info('Attempt to access update server over IPv6')
     try:
-        cert_rq = requests.get(
+        cert_res = requests.get(
             'http://%s/smt.crt' % smt.get_ipv6(),
             timeout=3
         )
     except Exception:
         logging.info('Update server not reachable over IPv6')
         return False
-    if cert_rq and cert_rq.status_code == 200:
+    if cert_res and cert_res.status_code == 200:
         return True
 
 
@@ -476,12 +647,17 @@ def has_repos(smt_server_name):
     """Check if repositories exist."""
     repo_files = glob.glob('/etc/zypp/repos.d/*')
     for repo_file in repo_files:
-        content = open(repo_file, 'r').readlines()
-        for ln in content:
-            if 'baseurl' in ln and smt_server_name in ln:
-                return 1
+        repo_cfg = get_config(repo_file)
+        for section in repo_cfg.sections():
+            url = repo_cfg.get(section, 'baseurl')
+            if url:
+                if (
+                        smt_server_name in url or
+                        'plugin:susecloud' in url
+                ):
+                    return True
 
-    return None
+    return False
 
 
 # ----------------------------------------------------------------------------
@@ -570,6 +746,53 @@ def set_proxy():
 
 
 # ----------------------------------------------------------------------------
+def switch_services_to_plugin():
+    """Switches a .service based RIS service that points to the update
+       infrastructure to the service plugin"""
+    service_plugin = '/usr/sbin/cloudguest-repo-service'
+    service_plugin_loc = '/usr/lib/zypp/plugins/services/'
+    service_files = glob.glob('/etc/zypp/services.d/*.service')
+    update_servers = get_available_smt_servers()
+    # If we have no available servers there is a risk that we would break
+    # the user setup if additional services that do not point to the update
+    # infrastructure exists, thus do nothing
+    if not update_servers:
+        return
+    service_targets = []
+    for update_server in update_servers:
+        service_targets.append(update_server.get_ipv4())
+        service_targets.append(update_server.get_ipv6())
+        service_targets.append(update_server.get_FQDN())
+
+    for service_file in service_files:
+        link_created = None
+        cfg = configparser.RawConfigParser()
+        try:
+            parsed = cfg.read(service_file)
+        except configparser.Error:
+            logging.warning('Unable to parse "%s" skipping' % service_file)
+            continue
+        # This implementation depends on each config file having all sections
+        # point to the same service target. If this is not the case and one
+        # of the sections points to a target we recognize then the other
+        # service will be dropped
+        for section in cfg.sections():
+            url = cfg.get(section, 'url')
+            if url and not url.startswith('plugin:'):
+                for service_target in service_targets:
+                    if url.startswith('http://%s' % service_target):
+                        link_dest = service_plugin_loc + section
+                        # Assume /usr/sbin and /usr/lib/zypp/plugins are on the
+                        # same filesystem
+                        if os.path.exists(link_dest):
+                            os.unlink(link_dest)
+                        os.symlink(service_plugin, link_dest)
+                        link_created = 1
+        if link_created:
+            os.unlink(service_file)
+
+
+# ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
     smt_data_file = __get_registered_smt_file_path()
@@ -595,12 +818,19 @@ def replace_hosts_entry(current_smt, new_smt):
     """Replace the information of the SMT server in /etc/hosts"""
     known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
     new_hosts = ''
+    if not current_smt:
+        logging.error(
+            'System in inconsistent state, request to replace '
+            'entry in hosts file, but not registration server '
+            'provided. Will not take any action'
+        )
+        return
     current_smt_ipv4 = current_smt.get_ipv4()
     current_smt_ipv6 = current_smt.get_ipv6()
     smt_ipv6_access = has_ipv6_access(new_smt)
     smt_ip = new_smt.get_ipv4()
     if smt_ipv6_access:
-         smt_ip = new_smt.get_ipv6()
+        smt_ip = new_smt.get_ipv6()
     new_entry = '%s\t' + new_smt.get_FQDN() + '\t' + new_smt.get_name() + '\n'
     for entry in known_hosts:
         if (
@@ -610,7 +840,7 @@ def replace_hosts_entry(current_smt, new_smt):
             new_hosts += new_entry % smt_ip
         else:
             new_hosts += entry
-        
+
     with open(HOSTSFILE_PATH, 'w') as hosts_file:
         hosts_file.write(new_hosts)
 
@@ -673,15 +903,22 @@ def __get_referenced_credentials(smt_server_name):
     """Return a list of credential names referenced by repositories"""
     repo_files = glob.glob('/etc/zypp/repos.d/*.repo')
     referenced_credentials = []
-    for repo in repo_files:
-        content = open(repo, 'r').readlines()
-        for ln in content:
-            if 'baseurl' in ln and smt_server_name in ln:
-                line_parts = ln.split('?credentials=')
-                if len(line_parts) > 1:
-                    credentials_name = line_parts[-1].strip()
-                    if credentials_name not in referenced_credentials:
-                        referenced_credentials.append(credentials_name)
+    for repo_file in repo_files:
+        repo_cfg = get_config(repo_file)
+        for section in repo_cfg.sections():
+            url = repo_cfg.get(section, 'baseurl')
+            if url:
+                if (
+                        (
+                            smt_server_name in url or
+                            'plugin:susecloud' in url
+                        ) and 'credentials=' in url
+                ):
+                    line_parts = url.split('?credentials=')
+                    if len(line_parts) > 1:
+                        credentials_name = line_parts[-1].split('&')[0]
+                        if credentials_name not in referenced_credentials:
+                            referenced_credentials.append(credentials_name)
 
     return referenced_credentials
 
@@ -694,32 +931,40 @@ def __get_registered_smt_file_path():
 
 
 # ----------------------------------------------------------------------------
+def __get_service_plugins():
+    """Return the names of the links to the service plugin"""
+    plugin_link_names = []
+    service_plugins = glob.glob('/usr/lib/zypp/plugins/services/*')
+    for service_plugin in service_plugins:
+        if os.path.islink(service_plugin):
+            target = Path(service_plugin).resolve()
+            if os.path.basename(target) == 'cloudguest-repo-service':
+                plugin_link_names.append(service_plugin)
+
+    return plugin_link_names
+
+
+# ----------------------------------------------------------------------------
 def __has_credentials(smt_server_name):
     """Check if a credentials file exists."""
     referenced_credentials = __get_referenced_credentials(smt_server_name)
-    credential_files = glob.glob('/etc/zypp/credentials.d/*')
-    for credential_file in credential_files:
-        name = os.path.basename(credential_file)
-        if name in referenced_credentials:
-            return 1
+    system_credentials = glob.glob('/etc/zypp/credentials.d/*')
+    for system_credential in system_credentials:
+        if os.path.basename(system_credential) in referenced_credentials:
+            return True
 
-    return None
+    return False
 
 
 # ----------------------------------------------------------------------------
 def __remove_credentials(smt_server_name):
     """Remove the server generated credentials"""
     referenced_credentials = __get_referenced_credentials(smt_server_name)
-    base_credentials = ['NCCcredentials', 'SCCcredentials']
-    for credential_name in base_credentials:
-        if credential_name not in referenced_credentials:
-            referenced_credentials.append(credential_name)
-    credential_path = '/etc/zypp/credentials.d/'
-    for credential_name in referenced_credentials:
-        credential_file_path = credential_path + credential_name
-        if os.path.exists(credential_file_path):
-            logging.info('Removing credentials: %s' % credential_name)
-            os.unlink(credential_file_path)
+    system_credentials = glob.glob('/etc/zypp/credentials.d/*')
+    for system_credential in system_credentials:
+        if os.path.basename(system_credential) in referenced_credentials:
+            logging.info('Removing credentials: %s' % system_credential)
+            os.unlink(system_credential)
 
     return 1
 
@@ -729,26 +974,42 @@ def __remove_repos(smt_server_name):
     """Remove the repositories for the given server"""
     repo_files = glob.glob('/etc/zypp/repos.d/*')
     for repo_file in repo_files:
-        content = open(repo_file, 'r').readlines()
-        for ln in content:
-            if 'baseurl' in ln and smt_server_name in ln:
-                logging.info('Removing repo: %s' % os.path.basename(repo_file))
-                os.unlink(repo_file)
+        repo_cfg = get_config(repo_file)
+        for section in repo_cfg.sections():
+            url = repo_cfg.get(section, 'baseurl')
+            if url:
+                if (
+                        smt_server_name in url or
+                        'plugin:susecloud' in url
+                ):
+                    logging.info(
+                        'Removing repo: %s' % os.path.basename(repo_file)
+                    )
+                    os.unlink(repo_file)
 
     return 1
 
 
 # ----------------------------------------------------------------------------
 def __remove_service(smt_server_name):
-    """Remove the service for the given SMT server"""
+    """Remove the services pointing to the update infrastructure"""
     service_files = glob.glob('/etc/zypp/services.d/*')
     for service_file in service_files:
-        content = open(service_file, 'r').readlines()
-        for ln in content:
-            if 'url' in ln and smt_server_name in ln:
-                logging.info('Removing service: %s'
-                             % os.path.basename(service_file))
-                os.unlink(service_file)
+        service_cfg = get_config(service_file)
+        for section in service_cfg.sections():
+            url = service_cfg.get(section, 'url')
+            if url:
+                if (
+                        smt_server_name in url or
+                        'plugin:susecloud' in url
+                ):
+                    logging.info('Removing service: %s'
+                                 % os.path.basename(service_file))
+                    os.unlink(service_file)
+
+    service_plugins = __get_service_plugins()
+    for service_plugin in service_plugins:
+        os.unlink(service_plugin)
 
     return 1
 

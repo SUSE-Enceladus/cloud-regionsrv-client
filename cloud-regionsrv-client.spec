@@ -16,7 +16,7 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
-%define base_version 8.0.7
+%define base_version 8.1.0
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -33,12 +33,17 @@ Requires:       python3
 Requires:       python3-lxml
 Requires:       python3-M2Crypto
 Requires:       python3-requests
+Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
 Requires:       SUSEConnect
 Requires:       zypper
 BuildRequires:  systemd
 %{?systemd_requires}
+BuildRequires:  python3-lxml
+BuildRequires:  python3-M2Crypto
+BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
+BuildRequires:  python3-zypp-plugin
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
 
 BuildArch:      noarch
@@ -108,6 +113,7 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %service_add_pre guestregister.service
 
 %post
+/usr/sbin/switchcloudguestservices
 %service_add_post guestregister.service
 
 %preun
@@ -121,10 +127,12 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %doc README LICENSE
 %dir %{_usr}/lib/zypp
 %dir %{_usr}/lib/zypp/plugins
-%dir %{_usr}/lib/zypp/plugins/services
+%dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/lib/cloudregister
+%{_sbindir}/cloudguest-repo-service
+%{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest
-%{_usr}/lib/zypp/plugins/services/cloud_update
+%{_usr}/lib/zypp/plugins/urlresolver/susecloud
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*
 %{python3_sitelib}/cloudregister/smt*
