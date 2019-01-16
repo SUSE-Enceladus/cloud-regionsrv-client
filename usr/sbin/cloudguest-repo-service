@@ -92,16 +92,16 @@ instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
 headers = {}
 if instance_data:
     headers['X-Instance-Data'] = base64.b64encode(instance_data)
-req = requests.get(
+res = requests.get(
     'https://%s/repo/repoindex.xml' % update_server.get_FQDN(),
     auth=auth_creds,
     headers=headers
 )
-if not req.status_code == 200:
+if not res.status_code == 200:
     logging.info('[Repo-Service] Unable to retrieve update server repo data')
     sys.exit(1)
 
-repo_info_xml = req.text
+repo_info_xml = res.text
 repo_info_start = repo_info_xml.index('<repoindex>')
 repo_data = etree.fromstring(repo_info_xml[repo_info_start:])
 

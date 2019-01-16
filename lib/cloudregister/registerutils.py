@@ -298,24 +298,24 @@ def get_activations():
     if instance_data:
         headers['X-Instance-Data'] = base64.b64encode(instance_data)
 
-    req = requests.get(
+    res = requests.get(
         'https://%s/connect/systems/activations' % update_server.get_FQDN(),
         auth=auth_creds,
         headers=headers
     )
 
-    if req.status_code != 200:
+    if res.status_code != 200:
         srv_ipv4 = update_server.get_ipv4()
         srv_ipv6 = update_server.get_ipv6()
         logging.error(
             'Unable to get product info from '
             'update server: "%s"' % str((srv_ipv4, srv_ipv6))
         )
-        logging.error('\tReason: "%s"' % req.reason)
-        logging.error('\tCode: %d', req.status_code)
+        logging.error('\tReason: "%s"' % res.reason)
+        logging.error('\tCode: %d', res.status_code)
         return activations
 
-    return req.json()
+    return res.json()
 
 
 # ----------------------------------------------------------------------------
@@ -442,27 +442,6 @@ def get_current_smt():
 
 
 # ----------------------------------------------------------------------------
-def get_installed_product_names():
-    """Return a list of the names of the products installed on the system"""
-    product_names = []
-    installed_product_files = glob.glob('/etc/products.d/*.prod')
-    for product_file in installed_product_files:
-        product_xml = open(product_file).read()
-        product_start = product_xml.index('<product ')
-        try:
-            product_tree = etree.fromstring(product_xml[product_start:])
-        except etree.XMLSyntaxError:
-            return product_names
-        product_names.append(product_tree.findall('name')[0].text)
-
-    # Special cases
-    # sle-module-devtools -> sle-module-development-tools | SLE 15
-    product_names.append('sle-module-devtools')
-
-    return product_names
-
-
-# ----------------------------------------------------------------------------
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
@@ -542,7 +521,7 @@ def get_smt():
                 )
                 return current_smt
             else:
-                # The configured server is not resposive, let's check if
+                # The configured server is not responsive, let's check if
                 # we can find an equivalent server
                 new_target = find_equivalent_smt_server(
                     current_smt,
@@ -633,14 +612,14 @@ def has_ipv6_access(smt):
         return False
     logging.info('Attempt to access update server over IPv6')
     try:
-        cert_rq = requests.get(
+        cert_res = requests.get(
             'http://%s/smt.crt' % smt.get_ipv6(),
             timeout=3
         )
     except Exception:
         logging.info('Update server not reachable over IPv6')
         return False
-    if cert_rq and cert_rq.status_code == 200:
+    if cert_res and cert_res.status_code == 200:
         return True
 
 
