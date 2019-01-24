@@ -120,9 +120,23 @@ class SMT:
     # --------------------------------------------------------------------
     def is_responsive(self):
         """Check if the SMT server is responsive"""
-        request = self.__request_cert()
-        if request and request.status_code == 200:
-            if self.__is_cert_valid(request.text):
+        if self._cert:
+            try:
+                response = requests.get(
+                    'https://%s/api/health/status' % self.get_FQDN(),
+                    timeout=2
+                )
+            except Exception:
+                # Pointing at an SMT server just fall through to the SMT
+                # server response testing
+                pass
+            if response and response.status_code == 200:
+                status = response.json()
+                return status.get('state') == 'online'
+
+        response = self.__request_cert()
+        if response and response.status_code == 200:
+            if self.__is_cert_valid(response.text):
                 return True
             msg = 'Cert verify failed during access test, notify administrator'
             logging.error(msg)
@@ -179,22 +193,27 @@ class SMT:
     # --------------------------------------------------------------------
     def __request_cert(self):
         """Request the cert from the SMT server and return the request"""
-        cert_rq = None
+        cert_res = None
         attempts = 0
         retries = 3
         while attempts < retries:
             attempts += 1
-            try:
-                ip = self.get_ipv4()
-                if not ip:
-                    ip = self.get_ipv6()
-                cert_rq = requests.get('http://%s/smt.crt' % ip)
-            except Exception:
-                # No response from server
-                logging.error('=' * 20)
-                logging.error('Attempt %s of %s' % (attempts, retries))
-                logging.error('Server %s is unreachable' % ip)
-            if cert_rq and cert_rq.status_code == 200:
-                attempts = retries
+            for cert_name in ('smt.crt', 'rmt.crt'):
+                try:
+                    ip = self.get_ipv4()
+                    if not ip:
+                        ip = self.get_ipv6()
+                    cert_res = requests.get('http://%s/%s' % (ip, cert_name))
+                except Exception:
+                    # No response from server
+                    logging.error('=' * 20)
+                    logging.error(
+                        'Attempt %s with %s of %s' % (
+                            attempts, cert_name, retries)
+                    )
+                    logging.error('Server %s is unreachable' % ip)
+                if cert_res and cert_res.status_code == 200:
+                    attempts = retries
+                    break
 
-        return cert_rq
+        return cert_res

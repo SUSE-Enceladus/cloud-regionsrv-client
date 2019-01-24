@@ -821,7 +821,7 @@ def replace_hosts_entry(current_smt, new_smt):
     if not current_smt:
         logging.error(
             'System in inconsistent state, request to replace '
-            'entry in hosts file, but not registration server '
+            'entry in hosts file, but no registration server '
             'provided. Will not take any action'
         )
         return
