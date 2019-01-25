@@ -612,8 +612,9 @@ def has_ipv6_access(smt):
         return False
     logging.info('Attempt to access update server over IPv6')
     try:
+        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
         cert_res = requests.get(
-            'http://%s/smt.crt' % smt.get_ipv6(),
+            'http://[%s]/smt.crt' % smt.get_ipv6(),
             timeout=3
         )
     except Exception:

@@ -201,9 +201,19 @@ class SMT:
             for cert_name in ('smt.crt', 'rmt.crt'):
                 try:
                     ip = self.get_ipv4()
-                    if not ip:
-                        ip = self.get_ipv6()
-                    cert_res = requests.get('http://%s/%s' % (ip, cert_name))
+                    if self.get_ipv6():
+                        try:
+                            # Per rfc3986 IPv6 addresses in a URI are
+                            # enclosed in []
+                            cert_res = requests.get(
+                                'http://[%s]/%s' % (self.get_ipv6(), cert_name)
+                            )
+                        except Exception:
+                            pass
+                    else:
+                        cert_res = requests.get(
+                            'http://%s/%s' % (ip, cert_name)
+                        )
                 except Exception:
                     # No response from server
                     logging.error('=' * 20)
