@@ -49,11 +49,13 @@ class SUSECloudPlugin(Plugin):
                 utils.get_instance_data(utils.get_config()),
                 'utf-8'
             )
+            # zypper wants a string or bad things happen on the other side
+            inst_data_bin_str = base64.b64encode(instance_data).decode('utf-8')
         else:
             repo_url = None
         self.answer(
             'RESOLVEDURL',
-            {'X-Instance-Data': base64.b64encode(instance_data)},
+            {'X-Instance-Data': inst_data_bin_str},
             repo_url
         )
 

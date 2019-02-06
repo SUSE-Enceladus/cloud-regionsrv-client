@@ -781,7 +781,10 @@ def switch_services_to_plugin():
             url = cfg.get(section, 'url')
             if url and not url.startswith('plugin:'):
                 for service_target in service_targets:
-                    if url.startswith('http://%s' % service_target):
+                    if (
+                            url.startswith('http://%s' % service_target) or
+                            url.startswith('https://%s' % service_target)
+                    ):
                         link_dest = service_plugin_loc + section
                         # Assume /usr/sbin and /usr/lib/zypp/plugins are on the
                         # same filesystem
@@ -939,7 +942,7 @@ def __get_service_plugins():
     for service_plugin in service_plugins:
         if os.path.islink(service_plugin):
             target = Path(service_plugin).resolve()
-            if os.path.basename(target) == 'cloudguest-repo-service':
+            if os.path.basename(str(target)) == 'cloudguest-repo-service':
                 plugin_link_names.append(service_plugin)
 
     return plugin_link_names
