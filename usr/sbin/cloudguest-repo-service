@@ -18,8 +18,8 @@
 import base64
 import logging
 import os
-import platform
 import requests
+import subprocess
 import sys
 
 from lxml import etree
@@ -30,23 +30,37 @@ import cloudregister.registerutils as utils
 
 def print_repo_data(update_server, activation, available_repos):
     """Print repository data from product activation info."""
+    service_revert_file = utils.REGISTRATION_DATA_DIR + 'installservice'
     service_info = activation.get('service')
     service_name = service_info.get('name')
+    service_url = service_info.get('url')
+    is_plugin_url = False
+    if service_url.startswith('plugin:'):
+        is_plugin_url = True
+        if not os.path.exists('%s.lock' % service_revert_file):
+            if os.path.exists(service_revert_file):
+                # If the system was registered to RMT with the old client
+                # we have a link for every service to this file, for every
+                # service we go through all the activations
+                # Each service should be set as trigger only once
+                lines = open(service_revert_file).readlines()
+                for line in lines:
+                    if line.strip() == service_name:
+                        break
+                else:
+                    with open(service_revert_file, 'a') as trigger:
+                        trigger.write("%s\n" % service_name)
+            else:
+                with open(service_revert_file, 'a') as trigger:
+                    trigger.write("%s\n" % service_name)
+
     product_info = service_info.get('product')
-    product_name = product_info.get('name')
-    product_version = product_info.get('version')
-    arch = platform.machine()
-    base_product_name = product_name.replace(
-        product_version, '').replace(arch, '').strip().replace(' ', '_')
-    
     credentials_file = os.path.basename(
         utils.get_credentials_file(
             update_server,
-            base_product_name
+            service_name
         )
     )
-    is_plugin_url = False
-    service_revert_file = utils.REGISTRATION_DATA_DIR + 'installservice'
     for repo in product_info.get('repositories'):
         name = repo.get('name')
         if name not in available_repos:
@@ -55,10 +69,9 @@ def print_repo_data(update_server, activation, available_repos):
         enabled = repo.get('enabled')
         url = repo.get('url')
         if url.startswith('plugin:'):
-            is_plugin_url = True
-            with open(service_revert_file, 'a') as trigger:
-                trigger.write("%s\n" % service_name)
             base_url = url
+            if credentials_file:
+                base_url += '&credentials=%s' % credentials_file
         elif url.startswith('http'):
             relative_path = url.split('repo')[-1]
             base_url = 'plugin:susecloud?'
@@ -128,4 +141,10 @@ for activation in product_activations:
     )
     if has_plugin_format and not trigger_set:
         trigger_set = True
-        os.spawnl(os.P_DETACH, '/usr/sbin/switchcloudguestservices')
+        # Python has no sane way to create a detached process
+        subprocess.Popen(
+            ['nohup', '/usr/sbin/switchcloudguestservices'],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )

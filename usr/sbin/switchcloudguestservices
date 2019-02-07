@@ -14,7 +14,7 @@
 # License along with this library.
 
 """Switch any RIS service registered to the update infrastructure to
-   a plugin based service"""
+   a plugin based service or switch from plugin service to RIS"""
 
 import glob
 import logging
@@ -34,6 +34,15 @@ if os.path.exists(service_revert_file):
     # need the service plugin
     while utils.get_zypper_pid():
         time.sleep(5)
+    os.system('touch %s.lock' % service_revert_file)
+    # Special case for when we switch from SMT to RMT
+    # We know that SMT will never deliver URLs with "plugin:" syntax. Also
+    # RMT does not deliver the old service name
+    # SMT-http_smt-$FRAMEWORK_susecloud_net. Therefore we have to get
+    # rid of this service plugin symlink
+    old_services = glob.glob('/usr/lib/zypp/plugins/services/SMT-http*')
+    for old_service in old_services:
+        os.unlink(old_service)
     # zypper creates a weird date stamped service file, we need to get rid
     # of it later. Keep track of services that are not under our control
     current_services = glob.glob('/etc/zypp/services.d/*.service')
@@ -53,14 +62,35 @@ if os.path.exists(service_revert_file):
             product_service_name = product_service.get('name')
             if service_name == product_service_name:
                 break
+        if not service_name:
+            continue
         plugin = service_plugins.get(service_name)
         if plugin:
             logging.info(
                 '[Serviceswitch] Removing service plugin "%s"' % service_name
             )
             os.unlink(plugin)
+        cred_file = '/etc/zypp/credentials.d/%s' % service_name
+        if not os.path.exists(cred_file):
+            update_server = utils.get_smt()
+            user, password = utils.get_credentials(
+                utils.get_credentials_file(update_server)
+            )
+            with open(cred_file, 'w') as creds:
+                creds.write('username=%s\n' % user)
+                creds.write('password=%s\n' % password)
         service_url = product_service.get('url')
-        cmd = ['zypper', 'addservice', '--refresh', service_url, service_name]
+        cmd = [
+            'zypper',
+            '--non-interactive',
+            'addservice',
+            '--refresh',
+            service_url,
+            service_name
+        ]
+        # zypper is slow, wait loop
+        while utils.get_zypper_pid():
+            time.sleep(5)
         result = utils.exec_subprocess(cmd)
         if result:
             logging.info(
@@ -75,11 +105,16 @@ if os.path.exists(service_revert_file):
             current_services.append(
                 '/etc/zypp/services.d/%s.service' % service_name
             )
+
     all_services = glob.glob('/etc/zypp/services.d/*.service')
     for service in all_services:
         if service not in current_services:
             os.unlink(service)
     os.unlink(service_revert_file)
-    utils.exec_subprocess(['zypper', 'refs'])
+    os.unlink("%s.lock" % service_revert_file)
+    # zypper is slow, wait loop
+    while utils.get_zypper_pid():
+        time.sleep(5)
+    utils.exec_subprocess(['zypper', '--non-interactive', 'refs', '-f'])
 else:
     utils.switch_services_to_plugin()
