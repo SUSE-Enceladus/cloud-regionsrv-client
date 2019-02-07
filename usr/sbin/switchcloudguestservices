@@ -79,6 +79,7 @@ if os.path.exists(service_revert_file):
             with open(cred_file, 'w') as creds:
                 creds.write('username=%s\n' % user)
                 creds.write('password=%s\n' % password)
+            os.chmod(cred_file, 0o600)
         service_url = product_service.get('url')
         cmd = [
             'zypper',
