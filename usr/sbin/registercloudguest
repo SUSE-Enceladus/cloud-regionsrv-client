@@ -27,17 +27,11 @@
    2.) Check if already registered
    3.) Register"""
 
-import configparser
-import base64
-import copy
-import glob
 import json
 import logging
 import os
-import pickle
 import re
 import requests
-import stat
 import subprocess
 import sys
 import time
@@ -48,7 +42,6 @@ import cloudregister.registerutils as utils
 
 from cloudregister import smt
 from lxml import etree
-from M2Crypto import X509
 
 error_exp = re.compile('^error', re.IGNORECASE)
 
@@ -90,6 +83,43 @@ def get_products():
 
     return products
 
+# ----------------------------------------------------------------------------
+def register_modules(extensions, products, registered=[]):
+    """Register modules obeying dependencies"""
+    for extension in extensions:
+        arch = extension.get('arch')
+        identifier = extension.get('identifier')
+        version = extension.get('version')
+        triplet = '/'.join((identifier, version, arch))
+        if triplet in products and triplet not in registered:
+            registered.append(triplet)
+            cmd = [
+                register_cmd,
+                '--url',
+                'https://%s' % registration_target.get_FQDN(),
+                '--product',
+                triplet
+            ]
+            if os.path.exists(instance_data_filepath):
+                cmd.append('--instance-data')
+                cmd.append(instance_data_filepath)
+
+            logging.info('Registration: %s' % ' '.join(cmd))
+            p = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            res = p.communicate()
+
+            for item in res:
+                entry = item.decode()
+                if 'Error:' in entry:
+                    logging.error('\tRegistration failed: %s' % entry)
+
+        register_modules(
+            extension.get('extensions'), products, registered
+        )
 
 # ----------------------------------------------------------------------------
 # Support custom config file with -f command line option
@@ -201,8 +231,8 @@ for child in region_smt_data:
 # If we have extra SMT data check if the extra data clean up the entire cache
 if cached_smt_servers:
     logging.info('Have extra cached SMT data, clearing cache')
-    for smt in cached_smt_servers:
-        if registration_smt and smt.is_equivalent(registration_smt):
+    for smt_srv in cached_smt_servers:
+        if registration_smt and smt_srv.is_equivalent(registration_smt):
             msg = 'Extra cached server is current registration target, '
             msg += 'cleaning up registration'
             logging.info(msg)
@@ -274,11 +304,11 @@ if registration_smt:
 # Figure out which server is responsive and use it as registration target
 registration_target = None
 tested_smt_servers = []
-for smt in region_smt_servers:
-    tested_smt_servers.append((smt.get_ipv4(), smt.get_ipv6()))
-    alive = smt.is_responsive()
+for smt_srv in region_smt_servers:
+    tested_smt_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
+    alive = smt_srv.is_responsive()
     if alive:
-        registration_target = smt
+        registration_target = smt_srv
         # Use the first server that responds
         break
 
@@ -344,14 +374,15 @@ while not base_registered:
                 logging.error('Baseproduct registration failed')
                 logging.error('\t%s' % entry)
                 sys.exit(1)
-            for smt in region_smt_servers:
+            for smt_srv in region_smt_servers:
                 target_smt_ipv4 = registration_target.get_ipv4()
                 target_smt_ipv6 = registration_target.get_ipv6()
-                new_smt_ipv4 = smt.get_ipv4()
-                new_smt_ipv6 = smt.get_ipv6()
+                new_smt_ipv4 = smt_srv.get_ipv4()
+                new_smt_ipv6 = smt_srv.get_ipv6()
                 if (
-                        smt.get_ipv4() != registration_target.get_ipv4() and
-                        smt.get_ipv4() not in failed_smts
+                        smt_srv.get_ipv4() != \
+                        registration_target.get_ipv4() and
+                        smt_srv.get_ipv4() not in failed_smts
                 ):
                     error_msg = 'Registration with %s failed. Trying %s'
                     logging.error(
@@ -361,36 +392,40 @@ while not base_registered:
                         )
                     )
                     utils.remove_registration_data()
-                    utils.add_hosts_entry(smt)
-                    registration_target = smt
+                    utils.add_hosts_entry(smt_srv)
+                    registration_target = smt_srv
                     break
             break
     else:
         base_registered = True
 
-for product in products:
-    cmd = [
-        register_cmd,
-        '--url',
-        'https://%s' % registration_target.get_FQDN(),
-        '--product',
-        product]
-    if os.path.exists(instance_data_filepath):
-        cmd.append('--instance-data')
-        cmd.append(instance_data_filepath)
+base_prod_xml = open('/etc/products.d/baseproduct').read()
+prod_def_start = base_prod_xml.index('<product')
+product_tree = etree.fromstring(base_prod_xml[prod_def_start:])
+prod_identifier = product_tree.find('name').text.lower()
+version = product_tree.find('version').text
+arch = product_tree.find('register').find('target').text.split('-')[-1]
+headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
+query_args = 'identifier=%s&version=%s&arch=%s&release_type=ga' % (
+    prod_identifier, version, arch)
+res = requests.get(
+    'https://%s/connect/subscriptions/products?%s' % (
+        registration_target.get_FQDN(), query_args
+    ),
+    headers=headers
+)
+if res.status_code != 200:
+    err_msg = 'Unable to obtain product information from server "%s"\n'
+    err_msg += '\t%s\nUnable to register modules, exiting.'
+    ips = '%s,%s' % (
+        registration_target.get_ipv4, registration_target.get_ipv6
+    )
+    logging.error(err_msg % (ips, res.reason))
+    sys.exit(1)
 
-    logging.info('Registration: %s' % ' '.join(cmd))
-    p = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    res = p.communicate()
-
-    for item in res:
-        entry = item.decode()
-        if 'Error:' in entry:
-            logging.error('\tRegistration failed: %s' % entry)
-
+prod_data = json.loads(res.text)
+extensions = prod_data[0].get('extensions')
+register_modules(extensions, products)
 
 if os.path.exists(instance_data_filepath):
     os.unlink(instance_data_filepath)

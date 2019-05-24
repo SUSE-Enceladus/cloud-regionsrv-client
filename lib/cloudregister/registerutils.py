@@ -26,11 +26,8 @@ import requests
 import stat
 import subprocess
 import sys
-import time
 
-from cloudregister import smt
 from lxml import etree
-from M2Crypto import X509
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
 
@@ -769,7 +766,7 @@ def switch_services_to_plugin():
         link_created = None
         cfg = configparser.RawConfigParser()
         try:
-            parsed = cfg.read(service_file)
+            cfg.read(service_file)
         except configparser.Error:
             logging.warning('Unable to parse "%s" skipping' % service_file)
             continue
@@ -998,6 +995,7 @@ def __remove_repos(smt_server_name):
 def __remove_service(smt_server_name):
     """Remove the services pointing to the update infrastructure"""
     service_files = glob.glob('/etc/zypp/services.d/*')
+    service_files += glob.glob('usr/lib/zypp/plugins/services/*')
     for service_file in service_files:
         service_cfg = get_config(service_file)
         for section in service_cfg.sections():
