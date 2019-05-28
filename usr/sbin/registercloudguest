@@ -42,6 +42,7 @@ import cloudregister.registerutils as utils
 
 from cloudregister import smt
 from lxml import etree
+from requests.auth import HTTPBasicAuth
 
 error_exp = re.compile('^error', re.IGNORECASE)
 
@@ -404,14 +405,19 @@ prod_def_start = base_prod_xml.index('<product')
 product_tree = etree.fromstring(base_prod_xml[prod_def_start:])
 prod_identifier = product_tree.find('name').text.lower()
 version = product_tree.find('version').text
-arch = product_tree.find('register').find('target').text.split('-')[-1]
+arch = product_tree.find('arch').text
 headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
-query_args = 'identifier=%s&version=%s&arch=%s&release_type=ga' % (
+query_args = 'identifier=%s&version=%s&arch=%s' % (
     prod_identifier, version, arch)
+user, password = utils.get_credentials(
+    utils.get_credentials_file(registration_target)
+)
+auth_creds = HTTPBasicAuth(user, password)
 res = requests.get(
-    'https://%s/connect/subscriptions/products?%s' % (
+    'https://%s/connect/systems/products?%s' % (
         registration_target.get_FQDN(), query_args
     ),
+    auth=auth_creds,
     headers=headers
 )
 if res.status_code != 200:
@@ -424,7 +430,7 @@ if res.status_code != 200:
     sys.exit(1)
 
 prod_data = json.loads(res.text)
-extensions = prod_data[0].get('extensions')
+extensions = prod_data.get('extensions')
 register_modules(extensions, products)
 
 if os.path.exists(instance_data_filepath):
