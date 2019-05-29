@@ -651,6 +651,7 @@ def has_repos(smt_server_name):
             if url:
                 if (
                         smt_server_name in url or
+                        'plugin:/susecloud' in url or
                         'plugin:susecloud' in url
                 ):
                     return True
@@ -912,6 +913,7 @@ def __get_referenced_credentials(smt_server_name):
                 if (
                         (
                             smt_server_name in url or
+                            'plugin:/susecloud' in url or
                             'plugin:susecloud' in url
                         ) and 'credentials=' in url
                 ):
@@ -981,6 +983,7 @@ def __remove_repos(smt_server_name):
             if url:
                 if (
                         smt_server_name in url or
+                        'plugin:/susecloud' in url or
                         'plugin:susecloud' in url
                 ):
                     logging.info(
@@ -1003,6 +1006,7 @@ def __remove_service(smt_server_name):
             if url:
                 if (
                         smt_server_name in url or
+                        'plugin:/susecloud' in url or
                         'plugin:susecloud' in url
                 ):
                     logging.info('Removing service: %s'
