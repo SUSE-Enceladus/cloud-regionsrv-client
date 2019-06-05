@@ -45,10 +45,16 @@ class SUSECloudPlugin(Plugin):
             credentials = headers.get('credentials')
             if credentials:
                 repo_url += '?credentials=' + credentials
-            instance_data = bytes(
-                utils.get_instance_data(utils.get_config()),
-                'utf-8'
-            )
+            instance_data = b''
+            try:
+                instance_data = bytes(
+                    utils.get_instance_data(utils.get_config()),
+                    'utf-8'
+                )
+            except TypeError:
+                logging.warning(
+                    '[URL-Resolver] Unable to retrieve instance data'
+                )
             # zypper wants a string or bad things happen on the other side
             inst_data_bin_str = base64.b64encode(instance_data).decode('utf-8')
         else:

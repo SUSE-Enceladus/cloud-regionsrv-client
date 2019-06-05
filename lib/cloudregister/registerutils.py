@@ -290,7 +290,11 @@ def get_activations():
 
     auth_creds = HTTPBasicAuth(user, password)
 
-    instance_data = bytes(get_instance_data(get_config()), 'utf-8')
+    instance_data = None
+    try:
+        instance_data = bytes(get_instance_data(get_config()), 'utf-8')
+    except TypeError:
+        logging.warning('Unable to retrieve instance metadata')
     headers = {}
     if instance_data:
         headers['X-Instance-Data'] = base64.b64encode(instance_data)
@@ -470,6 +474,7 @@ def get_instance_data(config):
                         close_fds=True
                     )
                     instance_data, errors = p.communicate()
+                    instance_data = instance_data.decode()
                 except OSError:
                     errMsg = 'Error collecting instance data with "%s"'
                     logging.error(errMsg % instance_data_cmd)
@@ -481,8 +486,7 @@ def get_instance_data(config):
     if instance_data:
         # Marker for the server to not return https:// formated
         # service and repo information
-        instance_data += b'<repoformat>plugin:susecloud</repoformat>\n'
-        return instance_data.decode()
+        instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
 
     return instance_data
 
