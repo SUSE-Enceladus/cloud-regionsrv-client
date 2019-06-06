@@ -102,9 +102,7 @@ user, password = utils.get_credentials(
 )
 auth_creds = HTTPBasicAuth(user, password)
 instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
-headers = {}
-if instance_data:
-    headers['X-Instance-Data'] = base64.b64encode(instance_data)
+headers = {'X-Instance-Data': base64.b64encode(instance_data)}
 res = requests.get(
     'https://%s/repo/repoindex.xml' % update_server.get_FQDN(),
     auth=auth_creds,
