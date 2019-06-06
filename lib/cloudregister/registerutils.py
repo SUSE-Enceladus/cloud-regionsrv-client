@@ -995,7 +995,6 @@ def __remove_repos(smt_server_name):
 def __remove_service(smt_server_name):
     """Remove the services pointing to the update infrastructure"""
     service_files = glob.glob('/etc/zypp/services.d/*')
-    service_files += glob.glob('/usr/lib/zypp/plugins/services/*')
     for service_file in service_files:
         service_cfg = get_config(service_file)
         for section in service_cfg.sections():
