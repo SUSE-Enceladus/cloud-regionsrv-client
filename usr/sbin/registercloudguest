@@ -36,6 +36,7 @@ import subprocess
 import sys
 import time
 import urllib.parse
+import urllib3
 import uuid
 
 import cloudregister.registerutils as utils
@@ -46,6 +47,10 @@ from requests.auth import HTTPBasicAuth
 
 error_exp = re.compile('^error', re.IGNORECASE)
 
+# Disable the urllib warnings
+# We have server certs that have no subject alt names
+# We have to check the server state API without certificate validation
+urllib3.disable_warnings()
 
 # ----------------------------------------------------------------------------
 def get_products():
@@ -166,6 +171,7 @@ utils.start_logging()
 if not os.path.isdir(utils.REGISTRATION_DATA_DIR):
     os.makedirs(utils.REGISTRATION_DATA_DIR)
 
+utils.set_new_registration_flag()
 if force_new_registration:
     logging.info('Forced new registration')
 
@@ -399,6 +405,7 @@ while not base_registered:
             break
     else:
         base_registered = True
+        utils.clear_new_registration_flag()
 
 base_prod_xml = open('/etc/products.d/baseproduct').read()
 prod_def_start = base_prod_xml.index('<product')

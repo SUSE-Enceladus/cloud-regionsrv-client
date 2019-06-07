@@ -33,6 +33,7 @@ from requests.auth import HTTPBasicAuth
 
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 HOSTSFILE_PATH = '/etc/hosts'
+NEW_REGISTRATION_MARKER = 'newregistration'
 REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 
@@ -90,7 +91,7 @@ def check_registration(smt_server_name):
     # service is not sufficient. Therefore we check for the repos here.
     # If the repos do not exist that implies they were removed by the
     # service.
-    if has_repos(smt_server_name) and __has_credentials(smt_server_name):
+    if has_services(smt_server_name) and __has_credentials(smt_server_name):
         return 1
 
     return None
@@ -123,6 +124,12 @@ def clean_smt_cache():
     smt_data = glob.glob(REGISTRATION_DATA_DIR + '*SMTInfo*')
     for cache_entry in smt_data:
         os.unlink(cache_entry)
+
+
+# ----------------------------------------------------------------------------
+def clear_new_registration_flag():
+    """Clear the new registration marker"""
+    os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
 
 
 # ----------------------------------------------------------------------------
@@ -638,20 +645,22 @@ def has_nvidia_support():
 
 
 # ----------------------------------------------------------------------------
-def has_repos(smt_server_name):
+def has_services(smt_server_name):
     """Check if repositories exist."""
-    repo_files = glob.glob('/etc/zypp/repos.d/*')
-    for repo_file in repo_files:
-        repo_cfg = get_config(repo_file)
-        for section in repo_cfg.sections():
-            url = repo_cfg.get(section, 'baseurl')
-            if url:
+    service_files = glob.glob('/etc/zypp/services.d/*.service')
+    for service_file in service_files:
+        content = open(service_file).readlines()
+        for entry in content:
+            if entry.startswith('url'):
                 if (
-                        smt_server_name in url or
-                        'plugin:/susecloud' in url or
-                        'plugin:susecloud' in url
+                        smt_server_name in entry or
+                        'plugin:/susecloud' in entry or
+                        'plugin:susecloud' in entry
                 ):
                     return True
+    service_plugins = __get_service_plugins()
+    if service_plugins:
+        return True
 
     return False
 
@@ -679,6 +688,14 @@ def import_smt_cert(smt):
         return None
 
     return 1
+
+
+# ----------------------------------------------------------------------------
+def is_new_registration():
+    """Indicate whether a new registration is in process based on the
+       marker file. Note it is the responsibility of the process to properly
+       manage the marker file"""
+    return os.path.exists(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
 
 
 # ----------------------------------------------------------------------------
@@ -739,6 +756,12 @@ def set_proxy():
     os.environ['https_proxy'] = https_proxy
 
     return True
+
+
+# ----------------------------------------------------------------------------
+def set_new_registration_flag():
+    """Set a marker that this is the beginning of the registration process"""
+    Path(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER).touch()
 
 
 # ----------------------------------------------------------------------------
@@ -936,9 +959,8 @@ def __get_service_plugins():
     plugin_link_names = []
     service_plugins = glob.glob('/usr/lib/zypp/plugins/services/*')
     for service_plugin in service_plugins:
-        if os.path.islink(service_plugin):
-            target = Path(service_plugin).resolve()
-            if os.path.basename(str(target)) == 'cloudguest-repo-service':
+        if os.path.basename(
+                Path(service_plugin).resolve()) == 'cloudguest-repo-service':
                 plugin_link_names.append(service_plugin)
 
     return plugin_link_names
@@ -950,6 +972,8 @@ def __has_credentials(smt_server_name):
     referenced_credentials = __get_referenced_credentials(smt_server_name)
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
     for system_credential in system_credentials:
+        if os.path.basename(system_credential) == 'SCCcredentials':
+            return True
         if os.path.basename(system_credential) in referenced_credentials:
             return True
 
