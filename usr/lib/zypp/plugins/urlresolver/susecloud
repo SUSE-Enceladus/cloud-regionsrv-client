@@ -32,6 +32,7 @@ class SUSECloudPlugin(Plugin):
     def RESOLVEURL(self, headers, body):
         """Convert the URL for the repo"""
         repo_url = None
+        inst_data_bin_str = b''
         if not utils.is_new_registration():
             update_server = utils.get_smt()
             server_name = ''

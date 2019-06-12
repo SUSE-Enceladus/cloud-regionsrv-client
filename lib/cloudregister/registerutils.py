@@ -87,10 +87,7 @@ def add_region_server_args_to_URL(api, cfg):
 # ----------------------------------------------------------------------------
 def check_registration(smt_server_name):
     """Check if the instance is already registerd"""
-    # For a "valid" registration the repos must exist, just having the
-    # service is not sufficient. Therefore we check for the repos here.
-    # If the repos do not exist that implies they were removed by the
-    # service.
+    # For a "valid" registration we need to have credentials and a service
     if has_services(smt_server_name) and __has_credentials(smt_server_name):
         return 1
 
