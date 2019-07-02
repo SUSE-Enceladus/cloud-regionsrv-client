@@ -31,8 +31,11 @@ from lxml import etree
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
 
+from cloudregister import smt
+
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 HOSTSFILE_PATH = '/etc/hosts'
+NEW_REGISTRATION_MARKER = 'newregistration'
 REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 
@@ -86,11 +89,8 @@ def add_region_server_args_to_URL(api, cfg):
 # ----------------------------------------------------------------------------
 def check_registration(smt_server_name):
     """Check if the instance is already registerd"""
-    # For a "valid" registration the repos must exist, just having the
-    # service is not sufficient. Therefore we check for the repos here.
-    # If the repos do not exist that implies they were removed by the
-    # service.
-    if has_repos(smt_server_name) and __has_credentials(smt_server_name):
+    # For a "valid" registration we need to have credentials and a service
+    if has_services(smt_server_name) and __has_credentials(smt_server_name):
         return 1
 
     return None
@@ -123,6 +123,12 @@ def clean_smt_cache():
     smt_data = glob.glob(REGISTRATION_DATA_DIR + '*SMTInfo*')
     for cache_entry in smt_data:
         os.unlink(cache_entry)
+
+
+# ----------------------------------------------------------------------------
+def clear_new_registration_flag():
+    """Clear the new registration marker"""
+    os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
 
 
 # ----------------------------------------------------------------------------
@@ -244,15 +250,18 @@ def fetch_smt_data(cfg, proxies):
 def find_equivalent_smt_server(configured_smt, known_smt_servers):
     """Find an SMT server that is equivalent to the currently configured
        SMT server, only consider responsive servers"""
-    for smt in known_smt_servers:
+    for update_server in known_smt_servers:
         # Take a shortcut and only compare the IPv4 address to
         # skip the same server in the list. If the IPv4 addresses of
         # a given object are the same and other data is different we have
         # a really big problem.
-        if smt.get_ipv4() == configured_smt.get_ipv4():
+        if update_server.get_ipv4() == configured_smt.get_ipv4():
             continue
-        if smt.is_equivalent(configured_smt) and smt.is_responsive():
-            return smt
+        if (
+                update_server.is_equivalent(configured_smt) and
+                update_server.is_responsive()
+        ):
+            return update_server
 
     return None
 
@@ -498,7 +507,7 @@ def get_repo_url(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def get_smt():
+def get_smt(cache_refreshed=None):
     """Returns an update server that is reachable."""
 
     available_servers = get_available_smt_servers()
@@ -543,6 +552,12 @@ def get_smt():
                 replace_hosts_entry(current_smt, server)
                 set_as_current_smt(server)
                 return server
+
+    # No server was found update the cache of known servers and try again
+    if not cache_refreshed:
+        clean_smt_cache()
+        __populate_srv_cache()
+        return get_smt(True)
 
 
 # ----------------------------------------------------------------------------
@@ -638,20 +653,22 @@ def has_nvidia_support():
 
 
 # ----------------------------------------------------------------------------
-def has_repos(smt_server_name):
+def has_services(smt_server_name):
     """Check if repositories exist."""
-    repo_files = glob.glob('/etc/zypp/repos.d/*')
-    for repo_file in repo_files:
-        repo_cfg = get_config(repo_file)
-        for section in repo_cfg.sections():
-            url = repo_cfg.get(section, 'baseurl')
-            if url:
+    service_files = glob.glob('/etc/zypp/services.d/*.service')
+    for service_file in service_files:
+        content = open(service_file).readlines()
+        for entry in content:
+            if entry.startswith('url'):
                 if (
-                        smt_server_name in url or
-                        'plugin:/susecloud' in url or
-                        'plugin:susecloud' in url
+                        smt_server_name in entry or
+                        'plugin:/susecloud' in entry or
+                        'plugin:susecloud' in entry
                 ):
                     return True
+    service_plugins = __get_service_plugins()
+    if service_plugins:
+        return True
 
     return False
 
@@ -679,6 +696,14 @@ def import_smt_cert(smt):
         return None
 
     return 1
+
+
+# ----------------------------------------------------------------------------
+def is_new_registration():
+    """Indicate whether a new registration is in process based on the
+       marker file. Note it is the responsibility of the process to properly
+       manage the marker file"""
+    return os.path.exists(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
 
 
 # ----------------------------------------------------------------------------
@@ -739,6 +764,12 @@ def set_proxy():
     os.environ['https_proxy'] = https_proxy
 
     return True
+
+
+# ----------------------------------------------------------------------------
+def set_new_registration_flag():
+    """Set a marker that this is the beginning of the registration process"""
+    Path(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER).touch()
 
 
 # ----------------------------------------------------------------------------
@@ -818,12 +849,16 @@ def replace_hosts_entry(current_smt, new_smt):
     known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
     new_hosts = ''
     if not current_smt:
-        logging.error(
-            'System in inconsistent state, request to replace '
-            'entry in hosts file, but no registration server '
-            'provided. Will not take any action'
+        logging.info(
+            'System in inconsistent state, no target registration server '
+            'available. Fixing entry in /etc/hosts file'
         )
-        return
+        # Assume the new server is in the same domain
+        # IF not the entry will not be cleaned up, but that will not
+        # cause any harm
+        clean_hosts_file(new_smt.get_FQDN())
+        known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
+
     current_smt_ipv4 = current_smt.get_ipv4()
     current_smt_ipv6 = current_smt.get_ipv6()
     smt_ipv6_access = has_ipv6_access(new_smt)
@@ -936,9 +971,8 @@ def __get_service_plugins():
     plugin_link_names = []
     service_plugins = glob.glob('/usr/lib/zypp/plugins/services/*')
     for service_plugin in service_plugins:
-        if os.path.islink(service_plugin):
-            target = Path(service_plugin).resolve()
-            if os.path.basename(str(target)) == 'cloudguest-repo-service':
+        if os.path.basename(
+                Path(service_plugin).resolve()) == 'cloudguest-repo-service':
                 plugin_link_names.append(service_plugin)
 
     return plugin_link_names
@@ -950,10 +984,32 @@ def __has_credentials(smt_server_name):
     referenced_credentials = __get_referenced_credentials(smt_server_name)
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
     for system_credential in system_credentials:
+        if os.path.basename(system_credential) == 'SCCcredentials':
+            return True
         if os.path.basename(system_credential) in referenced_credentials:
             return True
 
     return False
+
+
+# ----------------------------------------------------------------------------
+def __populate_srv_cache():
+    """Populate the registration server cache"""
+    proxies = None
+    if set_proxy():
+        proxies = {
+            'http_proxy': os.environ.get('http_proxy'),
+            'https_proxy': os.environ.get('https_proxy')
+        }
+    cfg = get_config()
+    region_smt_data = fetch_smt_data(cfg, proxies)
+    cnt = 1
+    for child in region_smt_data:
+        update_server = smt.SMT(child)
+        server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+        store_smt_data(
+            REGISTRATION_DATA_DIR + server_cache_file_name, update_server
+        )
 
 
 # ----------------------------------------------------------------------------

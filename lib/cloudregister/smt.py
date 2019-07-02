@@ -88,7 +88,7 @@ class SMT:
         """Return the IP address"""
         # Before handling ipv6 the IP address was stored in the _ip
         # member. When the SMT object is restored from an old pickeled
-        # file the _ip member gets created while th e-ipv4 member does
+        # file the _ip member gets created while the _ipv4 member does
         # not exist. Handle this transition properly.
         if hasattr(self, '_ip'):
             self._ipv4 = self._ip
@@ -120,26 +120,34 @@ class SMT:
     # --------------------------------------------------------------------
     def is_responsive(self):
         """Check if the SMT server is responsive"""
-        if self._cert:
-            try:
-                response = requests.get(
-                    'https://%s/api/health/status' % self.get_FQDN(),
-                    timeout=2
-                )
-            except Exception:
-                # Pointing at an SMT server just fall through to the SMT
-                # server response testing
-                pass
-            if response and response.status_code == 200:
+        ip = self.get_ipv6()
+        if not ip:
+            ip = self.get_ipv4()
+        response = None
+        # We cannot know if the server cert has been imported into the
+        # system cert hierarchy, nor do we know if the hostname is resolvable
+        # or if the IP address is built into the cert. Since we only want
+        # to know if the system is responsive we ignore cert validation
+        # Using the IP address protects us from hostname spoofing
+        try:
+            response = requests.get(
+                'https://%s/api/health/status' % ip,
+                timeout=2,
+                verify=False
+            )
+            if response.status_code == 200:
                 status = response.json()
                 return status.get('state') == 'online'
-
-        response = self.__request_cert()
-        if response and response.status_code == 200:
-            if self.__is_cert_valid(response.text):
-                return True
-            msg = 'Cert verify failed during access test, notify administrator'
-            logging.error(msg)
+            elif response.status_code == 404:
+                # We are pointing to an SMT server, the health status API
+                # is not available. Download the cert to at least make sure
+                # Apache is responsive
+                cert_response = requests.get('http://%s/smt.crt' % ip)
+                if cert_response and cert_response.status_code == 200:
+                    return True
+        except Exception:
+            # Something is wrong with the server
+            pass
 
         return False
 
@@ -160,15 +168,14 @@ class SMT:
             '/registration_server_%s.pem' % cert_id
         )
         try:
-            smt_ca_file = open(ca_file_path, 'w')
-            smt_ca_file.write(self.get_cert())
-            smt_ca_file.close()
+            with open(ca_file_path, 'w') as smt_ca_file:
+                smt_ca_file.write(self.get_cert())
         except IOError:
             errMsg = 'Could not store SMT certificate'
             logging.error(errMsg)
             return 0
 
-        return 1
+        return ca_file_path
 
     # Private
     # --------------------------------------------------------------------
