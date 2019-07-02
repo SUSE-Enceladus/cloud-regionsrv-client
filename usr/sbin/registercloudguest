@@ -235,7 +235,9 @@ for child in region_smt_data:
     else:
         region_smt_servers['new'].append(smt_server)
 
-# If we have extra SMT data check if the extra data clean up the entire cache
+# If we have extra SMT data check if the extra server is the registration
+# target if yes clean up the registration. Clean up the entire update
+# server cache
 if cached_smt_servers:
     logging.info('Have extra cached SMT data, clearing cache')
     for smt_srv in cached_smt_servers:

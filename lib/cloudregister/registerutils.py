@@ -31,6 +31,8 @@ from lxml import etree
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
 
+from cloudregister import smt
+
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
@@ -248,15 +250,18 @@ def fetch_smt_data(cfg, proxies):
 def find_equivalent_smt_server(configured_smt, known_smt_servers):
     """Find an SMT server that is equivalent to the currently configured
        SMT server, only consider responsive servers"""
-    for smt in known_smt_servers:
+    for update_server in known_smt_servers:
         # Take a shortcut and only compare the IPv4 address to
         # skip the same server in the list. If the IPv4 addresses of
         # a given object are the same and other data is different we have
         # a really big problem.
-        if smt.get_ipv4() == configured_smt.get_ipv4():
+        if update_server.get_ipv4() == configured_smt.get_ipv4():
             continue
-        if smt.is_equivalent(configured_smt) and smt.is_responsive():
-            return smt
+        if (
+                update_server.is_equivalent(configured_smt) and
+                update_server.is_responsive()
+        ):
+            return update_server
 
     return None
 
@@ -502,7 +507,7 @@ def get_repo_url(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def get_smt():
+def get_smt(cache_refreshed=None):
     """Returns an update server that is reachable."""
 
     available_servers = get_available_smt_servers()
@@ -547,6 +552,12 @@ def get_smt():
                 replace_hosts_entry(current_smt, server)
                 set_as_current_smt(server)
                 return server
+
+    # No server was found update the cache of known servers and try again
+    if not cache_refreshed:
+        clean_smt_cache()
+        __populate_srv_cache()
+        return get_smt(True)
 
 
 # ----------------------------------------------------------------------------
@@ -838,12 +849,16 @@ def replace_hosts_entry(current_smt, new_smt):
     known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
     new_hosts = ''
     if not current_smt:
-        logging.error(
-            'System in inconsistent state, request to replace '
-            'entry in hosts file, but no registration server '
-            'provided. Will not take any action'
+        logging.info(
+            'System in inconsistent state, no target registration server '
+            'available. Fixing entry in /etc/hosts file'
         )
-        return
+        # Assume the new server is in the same domain
+        # IF not the entry will not be cleaned up, but that will not
+        # cause any harm
+        clean_hosts_file(new_smt.get_FQDN())
+        known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
+
     current_smt_ipv4 = current_smt.get_ipv4()
     current_smt_ipv6 = current_smt.get_ipv6()
     smt_ipv6_access = has_ipv6_access(new_smt)
@@ -975,6 +990,26 @@ def __has_credentials(smt_server_name):
             return True
 
     return False
+
+
+# ----------------------------------------------------------------------------
+def __populate_srv_cache():
+    """Populate the registration server cache"""
+    proxies = None
+    if set_proxy():
+        proxies = {
+            'http_proxy': os.environ.get('http_proxy'),
+            'https_proxy': os.environ.get('https_proxy')
+        }
+    cfg = get_config()
+    region_smt_data = fetch_smt_data(cfg, proxies)
+    cnt = 1
+    for child in region_smt_data:
+        update_server = smt.SMT(child)
+        server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+        store_smt_data(
+            REGISTRATION_DATA_DIR + server_cache_file_name, update_server
+        )
 
 
 # ----------------------------------------------------------------------------
