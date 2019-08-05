@@ -19,8 +19,11 @@
 
 import base64
 import logging
+import requests
 
 import cloudregister.registerutils as utils
+
+from requests.auth import HTTPBasicAuth
 
 from zypp_plugin import Plugin
 
@@ -33,7 +36,19 @@ class SUSECloudPlugin(Plugin):
         """Convert the URL for the repo"""
         repo_url = None
         inst_data_bin_str = b''
+        verify_credentials = False
         if not utils.is_new_registration():
+            zypper_pid = utils.get_zypper_pid()
+            prev_zypper_pid = utils.get_zypper_pid_cache()
+            if zypper_pid != prev_zypper_pid:
+                verify_credentials = True
+            # Note this logic breaks when FATE#320882 gets implemented
+            if verify_credentials and not utils.credentials_files_are_equal():
+                self.error(
+                    {'CREDENTIAL_ERROR': 'INCONSISTENT'},
+                    'Not all credentials files are eqivalent'
+                )
+                return
             update_server = utils.get_smt()
             server_name = ''
             if not update_server:
@@ -48,6 +63,39 @@ class SUSECloudPlugin(Plugin):
                 credentials = headers.get('credentials')
                 if credentials:
                     repo_url += '?credentials=' + credentials
+                    if verify_credentials:
+                        credentials_file_path = (
+                            '/etc/zypp/credentials.d/%s' % credentials
+                        )
+                        user, password = utils.get_credentials(
+                            credentials_file_path
+                        )
+                        if not user or not password:
+                            self.error(
+                                {'CREDENTIAL_ERROR': 'NOCREDENTIALS'},
+                                ('Credentials required for "%s" but not found '
+                                 'in "%s"' % (repo_url, credentials_file_path))
+                            )
+                            return
+                        # Verify access to the server withthe credentials
+                        auth_creds = HTTPBasicAuth(user, password)
+                        api = 'https://%s/connect/systems/products/migrations'
+                        res = requests.post(
+                            api % server_name,
+                            auth=auth_creds,
+                            json={}
+                        )
+                        # Anything else bubbles to the top
+                        if res.reason == 'Unauthorized':
+                            self.error(
+                                {'CREDENTIAL_ERROR': 'INVALID'},
+                                ('Credentials are invalid. For details see '
+                                 '"/var/log/cloudregister". Re-register the '
+                                 'system with '
+                                 '"registercloudguest --force-new"')
+                            )
+                            return
+                        utils.refresh_zypper_pid_cache()
                 instance_data = b''
                 try:
                     instance_data = bytes(

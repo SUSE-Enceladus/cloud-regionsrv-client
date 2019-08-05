@@ -15,6 +15,7 @@
 
 import base64
 import configparser
+import filecmp
 import glob
 import json
 import logging
@@ -129,6 +130,20 @@ def clean_smt_cache():
 def clear_new_registration_flag():
     """Clear the new registration marker"""
     os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
+
+
+# ----------------------------------------------------------------------------
+def credentials_files_are_equal():
+    """Compare all the credentials files and make sure they have the same
+       values."""
+    credentials_files = glob.glob('/etc/zypp/credentials.d/*')
+    if credentials_files:
+        base = credentials_files[0]
+        for credential_file in credentials_files[1:]:
+            if not filecmp.cmp(base, credential_file):
+                return False
+
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -614,6 +629,15 @@ def get_zypper_pid():
 
 
 # ----------------------------------------------------------------------------
+def get_zypper_pid_cache():
+    """Return the PID for zypper stored in cache"""
+    zypper_pid = 0
+    if not os.path.exists(REGISTRATION_DATA_DIR + 'zypper_pid'):
+        return zypper_pid
+    return open(REGISTRATION_DATA_DIR + 'zypper_pid').read()
+
+
+# ----------------------------------------------------------------------------
 def has_ipv6_access(smt):
     """IPv6 access is possible if we have an SMT server that has an IPv6
        address and it can be accessed over IPv6"""
@@ -724,6 +748,14 @@ def is_zypper_running():
         return True
 
     return False
+
+
+# ----------------------------------------------------------------------------
+def refresh_zypper_pid_cache():
+    """Write the current zypper pid to the cacche file"""
+    zypper_pid = get_zypper_pid()
+    with open(REGISTRATION_DATA_DIR + 'zypper_pid', 'w') as cache_file:
+        cache_file.write(zypper_pid)
 
 
 # ----------------------------------------------------------------------------
