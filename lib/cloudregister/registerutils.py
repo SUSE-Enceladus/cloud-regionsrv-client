@@ -1004,7 +1004,8 @@ def __get_service_plugins():
     service_plugins = glob.glob('/usr/lib/zypp/plugins/services/*')
     for service_plugin in service_plugins:
         if os.path.basename(
-                Path(service_plugin).resolve()) == 'cloudguest-repo-service':
+                str(Path(service_plugin).resolve())
+        ) == 'cloudguest-repo-service':
                 plugin_link_names.append(service_plugin)
 
     return plugin_link_names
