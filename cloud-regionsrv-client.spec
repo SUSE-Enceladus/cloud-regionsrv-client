@@ -16,7 +16,7 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
-%define base_version 9.0.2
+%define base_version 9.0.3
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -33,6 +33,7 @@ Requires:       python3
 Requires:       python3-lxml
 Requires:       python3-M2Crypto
 Requires:       python3-requests
+Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
 Requires:       SUSEConnect

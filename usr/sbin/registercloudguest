@@ -183,6 +183,11 @@ if user_smt_ip:
     logging.info(msg)
 
 cached_smt_servers = utils.get_available_smt_servers()
+if cached_smt_servers:
+    # If we have an update server cache the system is registered in
+    # some way shape or form
+    utils.clear_new_registration_flag()
+
 # Forced registration or user specified SMT, clear existing registration
 # data
 if (force_new_registration and cached_smt_servers) or user_smt_ip:
@@ -195,6 +200,7 @@ if (force_new_registration and cached_smt_servers) or user_smt_ip:
         sys.exit(1)
     utils.remove_registration_data()
     utils.clean_smt_cache()
+    utils.set_new_registration_flag()
     cached_smt_servers = []
 
 # Proxy setup
