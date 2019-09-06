@@ -593,11 +593,12 @@ def get_smt_from_store(smt_store_file_path):
 
 
 # ----------------------------------------------------------------------------
-def get_update_server_name_from_hosts():
+def get_update_server_name_from_hosts(ignore_inconsistent=False):
     """Try and extract the update server name from the /etc/hosts file"""
-    logging.warning('The system is in an inconsistent state repositories '
-                    'definitions, cached update server data, and credentials '
-                    'file do not match')
+    if not ignore_inconsistent:
+        logging.warning('The system is in an inconsistent state repositories '
+                        'definitions, cached update server data, and '
+                        'credentials file do not match')
     servers = get_available_smt_servers()
     hosts_content = open(HOSTSFILE_PATH).read()
     for server in servers:
