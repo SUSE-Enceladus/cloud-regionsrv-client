@@ -34,81 +34,89 @@ utils.set_proxy()
 class SUSECloudPlugin(Plugin):
     def RESOLVEURL(self, headers, body):
         """Convert the URL for the repo"""
-        repo_url = None
+        repo_url = ''
         inst_data_bin_str = b''
         verify_credentials = False
-        if not utils.is_new_registration():
-            zypper_pid = utils.get_zypper_pid()
-            prev_zypper_pid = utils.get_zypper_pid_cache()
-            if zypper_pid != prev_zypper_pid:
-                verify_credentials = True
-            # Note this logic breaks when FATE#320882/PM-1251 gets implemented
-            if verify_credentials and not utils.credentials_files_are_equal():
-                self.error(
-                    {'CREDENTIAL_ERROR': 'INCONSISTENT'},
-                    'Not all credentials files are eqivalent'
-                )
-                return
+        zypper_pid = utils.get_zypper_pid()
+        prev_zypper_pid = utils.get_zypper_pid_cache()
+        if zypper_pid != prev_zypper_pid:
+            verify_credentials = True
+        # Note this logic breaks when FATE#320882/PM-1251 gets implemented
+        if verify_credentials and not utils.credentials_files_are_equal():
+            self.error(
+                {'CREDENTIAL_ERROR': 'INCONSISTENT'},
+                'Not all credentials files are eqivalent'
+            )
+            return
+        server_name = ''
+        if utils.is_new_registration():
+            server_name = utils.get_update_server_name_from_hosts(True)
+        else:
             update_server = utils.get_smt()
-            server_name = ''
             if not update_server:
                 # Something went seriously wrong, however try the name from
                 # the hosts file
                 server_name = utils.get_update_server_name_from_hosts()
             else:
                 server_name = update_server.get_FQDN()
-            if server_name:
-                srv_url = 'https://%s' % server_name
-                repo_url = srv_url + headers.get('path')
-                credentials = headers.get('credentials')
-                if credentials:
-                    repo_url += '?credentials=' + credentials
-                    if verify_credentials:
-                        credentials_file_path = (
-                            '/etc/zypp/credentials.d/%s' % credentials
-                        )
-                        user, password = utils.get_credentials(
-                            credentials_file_path
-                        )
-                        if not user or not password:
-                            self.error(
-                                {'CREDENTIAL_ERROR': 'NOCREDENTIALS'},
-                                ('Credentials required for "%s" but not found '
-                                 'in "%s"' % (repo_url, credentials_file_path))
-                            )
-                            return
-                        # Verify access to the server withthe credentials
-                        auth_creds = HTTPBasicAuth(user, password)
-                        api = 'https://%s/connect/systems/products/migrations'
-                        res = requests.post(
-                            api % server_name,
-                            auth=auth_creds,
-                            json={}
-                        )
-                        # Anything else bubbles to the top
-                        if res.reason == 'Unauthorized':
-                            self.error(
-                                {'CREDENTIAL_ERROR': 'INVALID'},
-                                ('Credentials are invalid. For details see '
-                                 '"/var/log/cloudregister". Re-register the '
-                                 'system with '
-                                 '"registercloudguest --force-new"')
-                            )
-                            return
-                        utils.refresh_zypper_pid_cache()
-                instance_data = b''
-                try:
-                    instance_data = bytes(
-                        utils.get_instance_data(utils.get_config()),
-                        'utf-8'
+        if server_name:
+            srv_url = 'https://%s' % server_name
+            repo_url = srv_url + headers.get('path')
+            credentials = headers.get('credentials')
+            if credentials:
+                repo_url += '?credentials=' + credentials
+                if verify_credentials:
+                    credentials_file_path = (
+                        '/etc/zypp/credentials.d/%s' % credentials
                     )
-                except TypeError:
-                    logging.warning(
-                        '[URL-Resolver] Unable to retrieve instance data'
+                    user, password = utils.get_credentials(
+                        credentials_file_path
                     )
-                # zypper wants a string or bad things happen on the other side
-                inst_data_bin_str = base64.b64encode(
-                    instance_data).decode('utf-8')
+                    if not user or not password:
+                        self.error(
+                            {'CREDENTIAL_ERROR': 'NOCREDENTIALS'},
+                            ('Credentials required for "%s" but not found '
+                             'in "%s"' % (repo_url, credentials_file_path))
+                        )
+                        return
+                    # Verify access to the server withthe credentials
+                    auth_creds = HTTPBasicAuth(user, password)
+                    api = 'https://%s/connect/systems/products/migrations'
+                    res = requests.post(
+                        api % server_name,
+                        auth=auth_creds,
+                        json={}
+                    )
+                    # Anything else bubbles to the top
+                    if res.reason == 'Unauthorized':
+                        self.error(
+                            {'CREDENTIAL_ERROR': 'INVALID'},
+                            ('Credentials are invalid. For details see '
+                             '"/var/log/cloudregister". Re-register the '
+                             'system with '
+                             '"registercloudguest --force-new"')
+                        )
+                        return
+                    utils.refresh_zypper_pid_cache()
+            instance_data = b''
+            try:
+                instance_data = bytes(
+                    utils.get_instance_data(utils.get_config()),
+                    'utf-8'
+                )
+            except TypeError:
+                logging.warning(
+                    '[URL-Resolver] Unable to retrieve instance data'
+                )
+            # zypper wants a string or bad things happen on the other side
+            inst_data_bin_str = base64.b64encode(
+                instance_data).decode('utf-8')
+        else:
+            self.error(
+                {'NO_TARGET_ERROR': 'NOTFOUND'},
+                'Could not determine the FQDN of the update server'
+            )
+            return
 
         self.answer(
             'RESOLVEDURL',
