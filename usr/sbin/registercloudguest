@@ -439,7 +439,7 @@ if res.status_code != 200:
     err_msg = 'Unable to obtain product information from server "%s"\n'
     err_msg += '\t%s\nUnable to register modules, exiting.'
     ips = '%s,%s' % (
-        registration_target.get_ipv4, registration_target.get_ipv6
+        registration_target.get_ipv4(), registration_target.get_ipv6()
     )
     logging.error(err_msg % (ips, res.reason))
     sys.exit(1)

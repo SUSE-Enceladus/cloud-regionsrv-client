@@ -16,7 +16,7 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
-%define base_version 9.0.4
+%define base_version 9.0.5
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
