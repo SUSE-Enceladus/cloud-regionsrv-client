@@ -129,7 +129,10 @@ def clean_smt_cache():
 # ----------------------------------------------------------------------------
 def clear_new_registration_flag():
     """Clear the new registration marker"""
-    os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
+    try:
+        os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
+    except FileNotFoundError:
+        pass
 
 
 # ----------------------------------------------------------------------------
