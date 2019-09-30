@@ -33,6 +33,7 @@ Requires:       python3
 Requires:       python3-lxml
 Requires:       python3-M2Crypto
 Requires:       python3-requests
+Requires:       python3-six
 Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
@@ -162,5 +163,3 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %{python3_sitelib}/cloudregister/msft*
 
 %changelog
-
-
