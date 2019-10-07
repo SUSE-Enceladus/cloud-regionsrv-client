@@ -126,7 +126,8 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 
 %files
 %defattr(-,root,root,-)
-%doc README LICENSE
+%doc README
+%license LICENSE
 %dir %{_usr}/lib/zypp
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
