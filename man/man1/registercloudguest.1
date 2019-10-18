@@ -1,0 +1,58 @@
+.\" Process this file with
+.\" groff -man -Tascii registercloudguest.1
+.\"
+.TH registercloudguest.1
+.SH NAME
+registercloudguest \- Register a SUSE Linux Enterprise on-demand instance
+.SH SYNOPSIS
+.B registercloudguest [option]
+.SH DESCRIPTION
+.B registercloudguest
+Register a SUSE Linux Enterprise on-demand instance with the closest, in most
+cases region local SUSE operated update infrastructure. The client will reach
+out to a so called region server to obtain information about the region local
+update servers. The information about how to find any one of the region
+servers running in a given cloud framework is built into the image that
+contains the registercloudguest executable. The information of the update
+servers is cached to aid in HA fail-over if one of the update servers is
+unreachable. The system is registered with the first responsive update server.
+
+None of the region and update servers are resolvable via DNS and the update
+server name resolution is enforced via an entry in /etc/hosts.
+
+For on-demand instances users should not modify the default repository
+configuration. It is highly likely that something on the system will break
+if repositories are removed using SUSEConnect functionality. The addition
+of other repositories is supported. However, adding other repositories may
+cause problems when the migration path for a new service pack or distribution
+upgrade is calculated. Additional repos may have to be removed prior to
+migration.
+
+The command line tool should only be used in exceptional circumstances.
+
+.SH OPTIONS
+.IP "--clean"
+Clean the running instance of any data related to repository setup and
+instance registration. Use this option when creating new images from
+running instances before taking the snapshot of the root volume.
+.IP "-d --delay"
+Delay the process by the given number of seconds.
+.IP "-f --config-file"
+Specify the location of the configuration file. By default the configuration
+file "/etc/regionserverclnt.cfg" is expected and used.
+.IP "--force-new"
+Force a new registration. This causes the previous registration data to be
+discarded and the system to get re-registered as if it had never been
+registered previously. This is an "emergency" switch and should be used only
+in exceptional circumstances. This option and "--clean" are mutually exclusive.
+.IP "--smt-fp"
+Specify the fingerprint of the update server certificate. This option must be
+used in conjunction with "--smt-fqdn" and "--smt-ip".
+.IP "--smt-fqdn"
+Specify the update server fully qualified domain name. This option must be used
+in conjunction with "--smt-fp" and "--smt-ip".
+.IP "--smt-ip"
+Specify the update server IP address. This option must be used
+in conjunction with "--smt-fp" and "--smt-fqdn".
+.SH AUTHOR
+SUSE Public Cloud Team (public-cloud-dev@susecloud.net)

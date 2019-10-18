@@ -1053,6 +1053,8 @@ def __populate_srv_cache():
 def __remove_credentials(smt_server_name):
     """Remove the server generated credentials"""
     referenced_credentials = __get_referenced_credentials(smt_server_name)
+    # Special files thta may exist but may not be referenced
+    referenced_credentials += ['SCCcredentials', 'NCCcredentials']
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
     for system_credential in system_credentials:
         if os.path.basename(system_credential) in referenced_credentials:
