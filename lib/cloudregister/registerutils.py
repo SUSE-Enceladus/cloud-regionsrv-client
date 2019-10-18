@@ -136,12 +136,12 @@ def clear_new_registration_flag():
 
 
 # ----------------------------------------------------------------------------
-def credentials_files_are_equal(in_credential):
+def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make sure they have the same
        values."""
     credentials_location = '/etc/zypp/credentials.d/'
     credentials_base     = credentials_location + 'SCCcredentials'
-    credentials_header   = credentials_location + in_credential
+    credentials_header   = credentials_location + repo_credentials
     if not filecmp.cmp(credentials_base, credentials_header):
         return False
 
