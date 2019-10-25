@@ -27,6 +27,7 @@ import requests
 import stat
 import subprocess
 import sys
+import time
 
 from lxml import etree
 from pathlib import Path
@@ -69,6 +70,7 @@ def add_region_server_args_to_URL(api, cfg):
        generateRegionSrvArgs() function.
     """
 
+    retry_cnt = 0
     if cfg.has_section('instance'):
         module = None
         if cfg.has_option('instance', 'instanceArgs'):
@@ -76,13 +78,20 @@ def add_region_server_args_to_URL(api, cfg):
         if module and module != 'none':
             try:
                 mod = __import__('cloudregister.%s' % module, fromlist=[''])
-                regionSrvArgs = '?' + mod.generateRegionSrvArgs()
-                logging.info('Region server arguments: %s' % regionSrvArgs)
-                api += regionSrvArgs
             except Exception:
                 msg = 'Configured instanceArgs module could not be loaded. '
                 msg += 'Continuing without additional arguments.'
                 logging.warning(msg)
+                return api
+            while retry_cnt < 5:
+                regionSrvArgs = mod.generateRegionSrvArgs()
+                if not regionSrvArgs:
+                    retry_cnt += 1
+                    time.sleep(1)
+                    continue
+                logging.info('Region server arguments: ?%s' % regionSrvArgs)
+                api += '?' + regionSrvArgs
+                break
 
     return api
 
