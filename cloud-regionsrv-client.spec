@@ -16,7 +16,7 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
-%define base_version 9.0.5
+%define base_version 9.0.6
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -33,7 +33,6 @@ Requires:       python3
 Requires:       python3-lxml
 Requires:       python3-M2Crypto
 Requires:       python3-requests
-Requires:       python3-six
 Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
@@ -110,6 +109,9 @@ cp -r usr %{buildroot}
 python3 setup.py install --prefix=%{_prefix}  --root=%{buildroot}
 mkdir -p %{buildroot}/var/lib/regionService/certs
 mkdir -p %{buildroot}/var/lib/cloudregister
+install -d -m 755 %{buildroot}/%{_mandir}/man1
+install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
+gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
 %service_add_pre guestregister.service
@@ -132,6 +134,7 @@ mkdir -p %{buildroot}/var/lib/cloudregister
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/lib/cloudregister
+%{_mandir}/man*/*
 %{_sbindir}/cloudguest-repo-service
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest

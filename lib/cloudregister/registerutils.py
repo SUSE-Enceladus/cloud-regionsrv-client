@@ -27,6 +27,7 @@ import requests
 import stat
 import subprocess
 import sys
+import time
 
 from lxml import etree
 from pathlib import Path
@@ -69,6 +70,7 @@ def add_region_server_args_to_URL(api, cfg):
        generateRegionSrvArgs() function.
     """
 
+    retry_cnt = 0
     if cfg.has_section('instance'):
         module = None
         if cfg.has_option('instance', 'instanceArgs'):
@@ -76,13 +78,20 @@ def add_region_server_args_to_URL(api, cfg):
         if module and module != 'none':
             try:
                 mod = __import__('cloudregister.%s' % module, fromlist=[''])
-                regionSrvArgs = '?' + mod.generateRegionSrvArgs()
-                logging.info('Region server arguments: %s' % regionSrvArgs)
-                api += regionSrvArgs
             except Exception:
                 msg = 'Configured instanceArgs module could not be loaded. '
                 msg += 'Continuing without additional arguments.'
                 logging.warning(msg)
+                return api
+            while retry_cnt < 5:
+                regionSrvArgs = mod.generateRegionSrvArgs()
+                if not regionSrvArgs:
+                    retry_cnt += 1
+                    time.sleep(1)
+                    continue
+                logging.info('Region server arguments: ?%s' % regionSrvArgs)
+                api += '?' + regionSrvArgs
+                break
 
     return api
 
@@ -1052,6 +1061,8 @@ def __populate_srv_cache():
 def __remove_credentials(smt_server_name):
     """Remove the server generated credentials"""
     referenced_credentials = __get_referenced_credentials(smt_server_name)
+    # Special files thta may exist but may not be referenced
+    referenced_credentials += ['SCCcredentials', 'NCCcredentials']
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
     for system_credential in system_credentials:
         if os.path.basename(system_credential) in referenced_credentials:

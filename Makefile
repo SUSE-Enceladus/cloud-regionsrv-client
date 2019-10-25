@@ -1,7 +1,6 @@
-
 DESTDIR=
 PREFIX=
-dirs = etc usr
+dirs = etc man usr
 files = Makefile README LICENSE setup.py
 
 nv = $(shell rpm -q --specfile --qf '%{NAME}-%{VERSION}|' *.spec | cut -d'|' -f1)
@@ -19,4 +18,5 @@ tar:
 
 install:
 	cp -r $(dirs) "$(DESTDIR)/"
-	python setup.py install --prefix="$(PREFIX)" --root="$(DESTDIR)"
+	python3 setup.py install --prefix="$(PREFIX)" --root="$(DESTDIR)"
+	gzip "$(DESTDIR)"/"$(MANDIR)"/man1/registercloudguest.1
