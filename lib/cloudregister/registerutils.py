@@ -575,7 +575,9 @@ def get_smt(cache_refreshed=None):
                     'Found alternate update server: '
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
-                replace_hosts_entry(current_smt, server)
+                # Assume the new server is in the same domain
+                clean_hosts_file(server.get_FQDN())
+                add_hosts_entry(server)
                 set_as_current_smt(server)
                 return server
 
