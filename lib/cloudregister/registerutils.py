@@ -891,39 +891,8 @@ def remove_registration_data():
 
 # ----------------------------------------------------------------------------
 def replace_hosts_entry(current_smt, new_smt):
-    """Replace the information of the SMT server in /etc/hosts"""
-    known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
-    new_hosts = ''
-    if not current_smt:
-        logging.info(
-            'System in inconsistent state, no target registration server '
-            'available. Fixing entry in /etc/hosts file'
-        )
-        # Assume the new server is in the same domain
-        # IF not the entry will not be cleaned up, but that will not
-        # cause any harm
-        clean_hosts_file(new_smt.get_FQDN())
-        known_hosts = open(HOSTSFILE_PATH, 'r').readlines()
-
-    current_smt_ipv4 = current_smt.get_ipv4()
-    current_smt_ipv6 = current_smt.get_ipv6()
-    smt_ipv6_access = has_ipv6_access(new_smt)
-    smt_ip = new_smt.get_ipv4()
-    if smt_ipv6_access:
-        smt_ip = new_smt.get_ipv6()
-    new_entry = '%s\t' + new_smt.get_FQDN() + '\t' + new_smt.get_name() + '\n'
-    for entry in known_hosts:
-        if (
-                (current_smt_ipv4 and entry.startswith(current_smt_ipv4)) or
-                (current_smt_ipv6 and entry.startswith(current_smt_ipv6))
-        ):
-            new_hosts += new_entry % smt_ip
-        else:
-            new_hosts += entry
-
-    with open(HOSTSFILE_PATH, 'w') as hosts_file:
-        hosts_file.write(new_hosts)
-
+    clean_hosts_file(current_smt.get_FQDN())
+    add_hosts_entry(new_smt)
 
 # ----------------------------------------------------------------------------
 def start_logging():
