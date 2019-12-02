@@ -120,21 +120,21 @@ class SMT:
     # --------------------------------------------------------------------
     def is_responsive(self):
         """Check if the SMT server is responsive"""
-        ip = self.get_ipv6()
-        if not ip:
-            ip = self.get_ipv4()
-        response = None
+        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+        if self.get_ipv6():
+            health_url = 'https://[%s]/api/health/status' % self.get_ipv6()
+            cert_url = 'http://[%s]/smt.crt' % self.get_ipv6()
+        else:
+            health_url = 'https://%s/api/health/status' % self.get_ipv4()
+            cert_url = 'http://%s/smt.crt'
+
         # We cannot know if the server cert has been imported into the
         # system cert hierarchy, nor do we know if the hostname is resolvable
         # or if the IP address is built into the cert. Since we only want
         # to know if the system is responsive we ignore cert validation
         # Using the IP address protects us from hostname spoofing
         try:
-            response = requests.get(
-                'https://%s/api/health/status' % ip,
-                timeout=2,
-                verify=False
-            )
+            response = requests.get(health_url, timeout=2, verify=False)
             if response.status_code == 200:
                 status = response.json()
                 return status.get('state') == 'online'
@@ -142,7 +142,7 @@ class SMT:
                 # We are pointing to an SMT server, the health status API
                 # is not available. Download the cert to at least make sure
                 # Apache is responsive
-                cert_response = requests.get('http://%s/smt.crt' % ip)
+                cert_response = requests.get(cert_url)
                 if cert_response and cert_response.status_code == 200:
                     return True
         except Exception:
