@@ -114,7 +114,8 @@ def clean_hosts_file(domain_name):
     new_hosts_content = []
     # Handle entries as bytes,
     # Yes, users put non ascii characters into /etc/hosts
-    content = open(HOSTSFILE_PATH, 'rb').readlines()
+    with open(HOSTSFILE_PATH, 'rb') as hosts_file:
+        content = hosts_file.readlines()
     smt_announce_found = None
     for entry in content:
         if b'# Added by SMT' in entry:
