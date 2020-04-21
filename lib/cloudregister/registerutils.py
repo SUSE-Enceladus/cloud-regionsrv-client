@@ -109,11 +109,16 @@ def check_registration(smt_server_name):
 # ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name):
     """Remove the smt server entry from the /etc/hosts file"""
+    if isinstance(domain_name, str):
+        domain_name = domain_name.encode()
     new_hosts_content = []
-    content = open(HOSTSFILE_PATH, 'r').readlines()
+    # Handle entries as bytes,
+    # Yes, users put non ascii characters into /etc/hosts
+    with open(HOSTSFILE_PATH, 'rb') as hosts_file:
+        content = hosts_file.readlines()
     smt_announce_found = None
     for entry in content:
-        if '# Added by SMT' in entry:
+        if b'# Added by SMT' in entry:
             smt_announce_found = True
             continue
         if smt_announce_found and domain_name in entry:
@@ -121,7 +126,7 @@ def clean_hosts_file(domain_name):
             continue
         new_hosts_content.append(entry)
 
-    with open(HOSTSFILE_PATH, 'w') as hosts_file:
+    with open(HOSTSFILE_PATH, 'wb') as hosts_file:
         for entry in new_hosts_content:
             hosts_file.write(entry)
 
@@ -452,16 +457,22 @@ def get_current_smt():
         return
     # Verify that this system is also in /etc/hosts and we are in
     # a consistent state
+    # Handle entries as bytes,
+    # Yes users put non ascii characters into /etc/hosts
     smt_ipv4 = smt.get_ipv4()
     smt_ipv6 = smt.get_ipv6()
     smt_fqdn = smt.get_FQDN()
-    hosts = open(HOSTSFILE_PATH, 'r').read()
+    # A bit cumbersome to support Python 3.4
+    ipv4_search = '%s\s' % smt_ipv4
+    ipv6_search = '%s\s' % smt_ipv6
+    fqdn_search = '\s%s\s' % smt_fqdn
+    hosts = open(HOSTSFILE_PATH, 'rb').read()
     if (
             not (
-                re.search(r'%s\s' % smt_ipv4, hosts) or
-                re.search(r'%s\s' % smt_ipv6, hosts)
+                re.search(ipv4_search.encode(), hosts) or
+                re.search(ipv6_search.encode(), hosts)
             ) or not
-            re.search(r'\s%s\s' % smt_fqdn, hosts)
+            re.search(fqdn_search.encode(), hosts)
     ):
         os.unlink(__get_registered_smt_file_path())
         return
@@ -613,11 +624,11 @@ def get_update_server_name_from_hosts(ignore_inconsistent=False):
                         'definitions, cached update server data, and '
                         'credentials file do not match')
     servers = get_available_smt_servers()
-    hosts_content = open(HOSTSFILE_PATH).read()
+    hosts_content = open(HOSTSFILE_PATH, 'rb').read()
     for server in servers:
-        name = server.get_FQDN()
+        name = server.get_FQDN().encode()
         if name in hosts_content:
-            return name
+            return name.decode()
 
 
 # ----------------------------------------------------------------------------
