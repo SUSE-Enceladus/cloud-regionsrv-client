@@ -263,8 +263,10 @@ def fetch_smt_data(cfg, proxies):
         # seconds to setup the routing
         #
         max_attempts = 3
-        attempt = 0
-        while attempt < max_attempts:
+        have_update_server_data = False
+        for attempt in range(max_attempts):
+            if have_update_server_data:
+                break
             retry_cnt = attempt + 1
             request_timeout = 15/retry_cnt
             retry_timeout = int(20/retry_cnt)
@@ -288,7 +290,7 @@ def fetch_smt_data(cfg, proxies):
                         proxies=proxies
                     )
                     if response.status_code == 200:
-                        attempt = max_attempts
+                        have_update_server_data = True
                         break
                     else:
                         logging.error('=' * 20)
@@ -299,28 +301,24 @@ def fetch_smt_data(cfg, proxies):
                         logging.error('=' * 20)
                         if srv == region_servers[-1]:
                             logging.error('\tAll servers reported an error')
-                            if retry_cnt < max_attempts:
-                                log_msg = 'Waiting %d ' % retry_timeout
-                                log_msg += 'seconds before next attempt'
-                                logging.info(log_msg )
-                                time.sleep(retry_timeout)
-                                attempt += 1
                 except requests.exceptions.RequestException:
                     logging.error('\tNo response from: %s' % srvName)
                     if srv == region_servers[-1]:
                         logging.error('\tNone of the servers responded')
-                        logging.error('\t\tAttempted: %s' % region_servers)
-                        if retry_cnt < max_attempts:
-                            log_msg = 'Waiting %d seconds before next attempt'
-                            logging.info(log_msg % retry_timeout)
-                            time.sleep(retry_timeout)
-                            attempt += 1
-        if (not response) or (not response.status_code == 200):
+                        logging.error('\tAttempted: %s' % region_servers)
+            else:
+                # No message on the last go around
+                if attempt + 1 < max_attempts:
+                    log_msg = 'Waiting %d seconds before next attempt' 
+                    logging.info(log_msg % retry_timeout)
+                    time.sleep(retry_timeout)
+        else:
             err_msg = 'Request not answered by any server '
             err_msg += 'after %d attempts' % max_attempts
             logging.error(err_msg)
             logging.error('Exiting without registration')
             sys.exit(1)
+
         smt_data_root = etree.fromstring(response.text)
 
     return smt_data_root
