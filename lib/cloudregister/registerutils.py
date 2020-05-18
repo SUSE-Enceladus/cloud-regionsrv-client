@@ -244,14 +244,14 @@ def fetch_smt_data(cfg, proxies):
         # is satisfied routing on the framework side may not be setup yet
         # and we may not be able to immediately reach the update
         # infrastructure.
-        # As time passes is mor likely that the frameowrk completes routing
+        # As time passes is more likely that the framework completes routing
         # setup for outbound traffic. Therefore we wait less time the longer
         # we are in the process of attempting to access the update
-        # infrastrcuture.
+        # infrastructure.
         # Processing delays are handled at two levels; the individual request
         # timeout and the time we wait between the retry of obtaining the
         # update server information. For each timeout the starting number
-        # 15 and 20 seconds, respectiveky is an arbitrary choice. The maximum
+        # 15 and 20 seconds, respectively is an arbitrary choice. The maximum
         # wait time is dependent on the number of region servers in the
         # framework. The maximum wait time is calculated as follows
         #
@@ -297,6 +297,14 @@ def fetch_smt_data(cfg, proxies):
                         )
                         logging.error('Server error: "%s"' % response.reason)
                         logging.error('=' * 20)
+                        if srv == region_servers[-1]:
+                            logging.error('\tAll servers reported an error')
+                            if retry_cnt < max_attempts:
+                                log_msg = 'Waiting %d ' % retry_timeout
+                                log_msg += 'seconds before next attempt'
+                                logging.info(log_msg )
+                                time.sleep(retry_timeout)
+                                attempt += 1
                 except requests.exceptions.RequestException:
                     logging.error('\tNo response from: %s' % srvName)
                     if srv == region_servers[-1]:
@@ -307,12 +315,11 @@ def fetch_smt_data(cfg, proxies):
                             logging.info(log_msg % retry_timeout)
                             time.sleep(retry_timeout)
                             attempt += 1
-                            continue
-                        else:
-                            logging.error('Exiting without registration')
-                            sys.exit(1)
         if (not response) or (not response.status_code == 200):
-            logging.error('Request not answered by any server, exiting')
+            err_msg = 'Request not answered by any server '
+            err_msg += 'after %d attempts' % max_attempts
+            logging.error(err_msg)
+            logging.error('Exiting without registration')
             sys.exit(1)
         smt_data_root = etree.fromstring(response.text)
 
