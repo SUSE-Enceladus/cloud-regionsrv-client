@@ -1,4 +1,4 @@
-# Copyright (c) 2019, SUSE LLC, All rights reserved.
+# Copyright (c) 2020, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -151,8 +151,8 @@ def clear_new_registration_flag():
 
 # ----------------------------------------------------------------------------
 def credentials_files_are_equal(repo_credentials):
-    """Compare the base credentials files the the repo header and make sure they have the same
-       values."""
+    """Compare the base credentials files the the repo header and make
+       sure they have the same values."""
     credentials_location = '/etc/zypp/credentials.d/'
     credentials_base     = credentials_location + 'SCCcredentials'
     credentials_header   = credentials_location + repo_credentials
@@ -240,35 +240,77 @@ def fetch_smt_data(cfg, proxies):
         cert_dir = cfg.get('server', 'certLocation')
         region_servers = cfg.get('server', 'regionsrv').split(',')
         random.shuffle(region_servers)
-        for srv in region_servers:
-            srvName = srv.strip()
-            logging.info('Using region server: %s' % srvName)
-            certFile = cert_dir + '/' + srvName + '.pem'
-            if not os.path.isfile(certFile):
-                logging.info('No cert found: %s skip this server' % certFile)
-                continue
-            try:
-                response = requests.get(
-                    'https://%s/%s' % (srvName, api),
-                    verify=certFile,
-                    timeout=15.0,
-                    proxies=proxies
-                )
-                if response.status_code == 200:
-                    break
-                else:
-                    logging.error('=' * 20)
-                    logging.error('Server returned: %d' % response.status_code)
-                    logging.error('Server error: "%s"' % response.reason)
-                    logging.error('=' * 20)
-            except requests.exceptions.RequestException:
-                logging.error('No response from: %s' % srvName)
-                if srv == region_servers[-1]:
-                    logging.error('None of the servers responded')
-                    logging.error('\tAttempted: %s' % region_servers)
-                    logging.error('Exiting without registration')
-                    sys.exit(1)
-                continue
+        # After the network interface is up, i.e. After=network-online
+        # is satisfied routing on the framework side may not be setup yet
+        # and we may not be able to immediately reach the update
+        # infrastructure.
+        # As time passes is mor likely that the frameowrk completes routing
+        # setup for outbound traffic. Therefore we wait less time the longer
+        # we are in the process of attempting to access the update
+        # infrastrcuture.
+        # Processing delays are handled at two levels; the individual request
+        # timeout and the time we wait between the retry of obtaining the
+        # update server information. For each timeout the starting number
+        # 15 and 20 seconds, respectiveky is an arbitrary choice. The maximum
+        # wait time is dependent on the number of region servers in the
+        # framework. The maximum wait time is calculated as follows
+        #
+        #sumof(num_regions_srvs * 15/i) + sumof(20/j)
+        # where i = 1,2,3
+        #       j = 1,2
+        #
+        # For a configuration with 3 region servers the framework has 112.5
+        # seconds to setup the routing
+        #
+        max_attempts = 3
+        attempt = 0
+        while attempt < max_attempts:
+            retry_cnt = attempt + 1
+            request_timeout = 15/retry_cnt
+            retry_timeout = int(20/retry_cnt)
+            logging.info(
+                'Getting update server information, attempt %d' % retry_cnt
+            )
+            for srv in region_servers:
+                srvName = srv.strip()
+                logging.info('\tUsing region server: %s' % srvName)
+                certFile = cert_dir + '/' + srvName + '.pem'
+                if not os.path.isfile(certFile):
+                    logging.info(
+                        '\tNo cert found: %s skip this server' % certFile
+                    )
+                    continue
+                try:
+                    response = requests.get(
+                        'https://%s/%s' % (srvName, api),
+                        verify=certFile,
+                        timeout=request_timeout,
+                        proxies=proxies
+                    )
+                    if response.status_code == 200:
+                        attempt = max_attempts
+                        break
+                    else:
+                        logging.error('=' * 20)
+                        logging.error(
+                            'Server returned: %d' % response.status_code
+                        )
+                        logging.error('Server error: "%s"' % response.reason)
+                        logging.error('=' * 20)
+                except requests.exceptions.RequestException:
+                    logging.error('\tNo response from: %s' % srvName)
+                    if srv == region_servers[-1]:
+                        logging.error('\tNone of the servers responded')
+                        logging.error('\t\tAttempted: %s' % region_servers)
+                        if retry_cnt < max_attempts:
+                            log_msg = 'Waiting %d seconds before next attempt'
+                            logging.info(log_msg % retry_timeout)
+                            time.sleep(retry_timeout)
+                            attempt += 1
+                            continue
+                        else:
+                            logging.error('Exiting without registration')
+                            sys.exit(1)
         if (not response) or (not response.status_code == 200):
             logging.error('Request not answered by any server, exiting')
             sys.exit(1)
@@ -897,7 +939,7 @@ def remove_registration_data():
         if os.path.exists('/etc/SUSEConnect'):
             os.unlink('/etc/SUSEConnect')
     else:
-        logging.info('Nothing to do no registration target')
+        logging.info('No current registration server set.')
 
 
 # ----------------------------------------------------------------------------
