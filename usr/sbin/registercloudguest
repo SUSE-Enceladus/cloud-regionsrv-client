@@ -482,11 +482,11 @@ res = requests.get(
 )
 if res.status_code != 200:
     err_msg = 'Unable to obtain product information from server "%s"\n'
-    err_msg += '\t%s\nUnable to register modules, exiting.'
+    err_msg += '\t%s\n\t%s\nUnable to register modules, exiting.'
     ips = '%s,%s' % (
         registration_target.get_ipv4(), registration_target.get_ipv6()
     )
-    logging.error(err_msg % (ips, res.reason))
+    logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
     sys.exit(1)
 
 prod_data = json.loads(res.text)
