@@ -114,17 +114,17 @@ install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
 gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
-%service_add_pre guestregister.service
+%service_add_pre guestregister.service containerbuild-regionsrv.service
 
 %post
 /usr/sbin/switchcloudguestservices
-%service_add_post guestregister.service
+%service_add_post guestregister.service containerbuild-regionsrv.service
 
 %preun
-%service_del_preun guestregister.service
+%service_del_preun guestregister.service containerbuild-regionsrv.service
 
 %postun
-%service_del_postun guestregister.service
+%service_del_postun guestregister.service containerbuild-regionsrv.service
 
 %files
 %defattr(-,root,root,-)
@@ -135,6 +135,7 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/lib/cloudregister
 %{_mandir}/man*/*
+%{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/cloudguest-repo-service
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest
@@ -144,6 +145,7 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %{python3_sitelib}/cloudregister/smt*
 %{python3_sitelib}/cloudregister/VERSION
 %{_unitdir}/guestregister.service
+%{_unitdir}/containerbuild-regionsrv.service
 %dir %{python3_sitelib}/cloudregister-%{base_version}-py%{py3_ver}.egg-info
 %dir %{python3_sitelib}/cloudregister/
 %{python3_sitelib}/cloudregister-%{base_version}-py%{py3_ver}.egg-info/*
