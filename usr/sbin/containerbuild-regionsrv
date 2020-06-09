@@ -19,7 +19,22 @@ import base64
 import os
 import socketserver
 import json
+import logging
+import urllib3
 
+# Disable the urllib warnings
+# We have server certs that have no subject alt names
+# cloudregister.registerutils() checks the server state API without
+# certificate validation
+urllib3.disable_warnings()
+
+loglevel = os.getenv("CONTAINER_BUILD_LOGLEVEL", "INFO")
+
+logging.basicConfig(level=loglevel,
+                    format='%(levelname)s: %(message)s'
+                    )
+
+LOG = logging.getLogger('containerbuild-regionsrv')
 
 class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
     """
@@ -54,8 +69,9 @@ class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
         except AttributeError as err:
             # This is the exception being raised whenever there is something
             # really off about the SMT (because of the internal implementation).
-            print(
-                "Catched exception while obtaining SMT server: {0}".format(err))
+            LOG.warn(
+                "Caught exception while obtaining SMT server: {0}".format(err)
+            )
             smt = None
 
         username, password = self.get_credentials()

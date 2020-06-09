@@ -4,6 +4,7 @@ After=network-online.target guestregister.service
 Wants=network-online.target
 
 [Service]
+EnvironmentFile=-/etc/sysconfig/containerbuild-regionsrv
 ExecStart=/usr/sbin/containerbuild-regionsrv
 Type=simple
 
