@@ -1,0 +1,12 @@
+[Unit]
+Description=Provides Cloud SMT info and credentials to container build tools
+After=network-online.target guestregister.service
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/containerbuild-regionsrv
+ExecStart=/usr/sbin/containerbuild-regionsrv
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
