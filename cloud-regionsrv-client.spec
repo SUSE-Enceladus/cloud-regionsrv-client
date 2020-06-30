@@ -1,8 +1,7 @@
 #
 # spec file for package cloud-regionsrv-client
-# this code base is under development
 #
-# Copyright (c) 2019 SUSE LLC
+# Copyright (c) 2020 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -13,39 +12,40 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
+# Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
+
 
 %define base_version 9.1.0
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
-License:        LGPL-3.0
 Summary:        Cloud Environment Guest Registration
-URL:            http://www.github.com:SUSE-Enceladus/cloud-regionsrv-client
+License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
+URL:            http://www.github.com:SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
+Requires:       SUSEConnect
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
 Requires:       pciutils
 Requires:       procps
 Requires:       python3
-Requires:       python3-lxml
 Requires:       python3-M2Crypto
+Requires:       python3-lxml
 Requires:       python3-requests
 Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
-Requires:       SUSEConnect
 Requires:       zypper
 BuildRequires:  systemd
 %{?systemd_requires}
-BuildRequires:  python3-lxml
 BuildRequires:  python3-M2Crypto
+BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
 BuildRequires:  python3-zypp-plugin
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root
+BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 BuildArch:      noarch
 
@@ -54,45 +54,45 @@ Obtain cloud SMT server information from the region server configured in
 /etc/regionserverclnt.cfg
 
 %package generic-config
-Version:      1.0.0
-License:      LGPL-3.0
-Summary:      Cloud Environment Guest Registration Configuration
-Group:        Productivity/Networking/Web/Servers
-Provides:     cloud-regionsrv-client-config
-Provides:     regionsrv-certs
-Conflicts:    otherproviders(cloud-regionsrv-client-config)
+Version:        1.0.0
+Release:        0
+Summary:        Cloud Environment Guest Registration Configuration
+Group:          Productivity/Networking/Web/Servers
+Provides:       cloud-regionsrv-client-config
+Provides:       regionsrv-certs
+Conflicts:      otherproviders(cloud-regionsrv-client-config)
 
 %description generic-config
 Generic configuration for the registration client. The configuration needs
 to be adapted for the specific cloud framework after installation.
 
 %package plugin-gce
-Version:      1.0.0
-License:      LGPL-3.0
-Summary:      Cloud Environment Guest Registration Plugin for GCE
-Group:        Productivity/Networking/Web/Servers
-Requires:     cloud-regionsrv-client >= 6.0.0
+Version:        1.0.0
+Release:        0
+Summary:        Cloud Environment Guest Registration Plugin for GCE
+Group:          Productivity/Networking/Web/Servers
+Requires:       cloud-regionsrv-client >= 6.0.0
 
 %description plugin-gce
 Guest registration plugin for images intended for Google Compute Engine
 
 %package plugin-ec2
-Version:      1.0.0
-License:      LGPL-3.0
-Summary:      Cloud Environment Guest Registration Plugin for Amazon EC2
-Group:        Productivity/Networking/Web/Servers
-Requires:     cloud-regionsrv-client >= 6.0.0
+Version:        1.0.0
+Release:        0
+Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
+Group:          Productivity/Networking/Web/Servers
+Requires:       cloud-regionsrv-client >= 6.0.0
 
 %description plugin-ec2
 Guest registration plugin for images intended for Amazon EC2
 
 %package plugin-azure
-Version:      1.0.1
-License:      LGPL-3.0
-Summary:      Cloud Environment Guest Registration Plugin for Microsoft Azure
-Group:        Productivity/Networking/Web/Servers
-Requires:     cloud-regionsrv-client >= 6.0.0
-Requires:     python3-dnspython
+Version:        1.0.1
+Release:        0
+Summary:        Cloud Environment Guest Registration Plugin for Microsoft Azure
+Group:          Productivity/Networking/Web/Servers
+Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       python3-dnspython
 
 %description plugin-azure
 Guest registration plugin for images intended for Microsoft Azure
