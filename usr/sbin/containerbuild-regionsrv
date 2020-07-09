@@ -101,8 +101,8 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
 
-    with socketserver.TCPServer((ip, port), ContainerBuildTCPServer) as server:
-        server.serve_forever()
+    server = socketserver.TCPServer((ip, port), ContainerBuildTCPServer)
+    server.serve_forever()
 
 
 if __name__ == "__main__":
