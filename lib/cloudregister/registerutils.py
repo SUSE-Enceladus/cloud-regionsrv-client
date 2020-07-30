@@ -841,9 +841,6 @@ def set_as_current_smt(smt):
 # ----------------------------------------------------------------------------
 def set_proxy():
     """Set up proxy environment if applicable"""
-    proxy_config_file = '/etc/sysconfig/proxy'
-    if not os.path.exists(proxy_config_file):
-        return False
     existing_http_proxy = os.environ.get('http_proxy')
     existing_https_proxy = os.environ.get('https_proxy')
     if (existing_http_proxy and existing_https_proxy):
@@ -853,6 +850,9 @@ def set_proxy():
         logging.info('Using proxy settings from execution environment')
         logging.info('\thttp_proxy: %s' % existing_http_proxy)
         logging.info('\thttps_proxy: %s' % existing_https_proxy)
+        return False
+    proxy_config_file = '/etc/sysconfig/proxy'
+    if not os.path.exists(proxy_config_file):
         return False
     proxy_config = open(proxy_config_file, 'r').readlines()
     http_proxy = ''
