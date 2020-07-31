@@ -1,4 +1,4 @@
-# Copyright (c) 2020, SUSE LLC, All rights reserved.
+g# Copyright (c) 2020, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -608,8 +608,31 @@ def get_smt(cache_refreshed=None):
                 )
                 return current_smt
             else:
-                # The configured server is not responsive, let's check if
-                # we can find an equivalent server
+                # The configured server is not responsive:
+                # Especially during initial registration we have seen
+                # failover due to network instability in the early startup
+                # phases of a system. Give the network a chance to sort
+                # itself out. We make the wait time shorter for each
+                # iteration as the network has had more time to become
+                # operational.
+                for delay in [5, 3, 1]:
+                    time.sleep(delay)
+                    msg = 'Waiting for current server to show up for %d s'
+                    logging.info(msg % delay)
+                    if current_smt.is_responsive():
+                        logging.info(
+                            'No failover needed, system access recovered'
+                        )
+                        return current_smt
+                # Looks like the target server is really not reachable,
+                # let's check if we can find an equivalent server.
+                # If this happens during initial registration we need to give
+                # the target server time to share its registration data, take
+                # another break. The registration sharing timer is set to
+                # ~3 seconds
+                # We depend on a background process on the update servers
+                # to re-sync the databases.
+                time.sleep(5)
                 new_target = find_equivalent_smt_server(
                     current_smt,
                     available_servers
@@ -621,6 +644,24 @@ def get_smt(cache_refreshed=None):
                             (new_target.get_ipv4(), new_target.get_ipv6())
                         )
                     )
+                    # Verify the new target server has our credentials
+                    credentials_file_path = get_credentials_file(new_target)
+                    user, password = get_credentials(credentials_file_path)
+                    if not has_smt_access(
+                            new_target.get_FQDN(), user, password
+                    ):
+                        original_smt_ips = str(
+                            (current_smt.get_ipv4(), current_smt.get_ipv6())
+                        )
+                        new_target_ips = str(
+                            (new_target.get_ipv4(), new_target.get_ipv6())
+                        )
+                        msg = 'Sibling update server, %s, does not have '
+                        msg += 'system credentials cannot failover. Retaining '
+                        msg += 'current, %s, target update server.'
+                        msg += 'Try again later.'
+                        logging.error(msg %(new_target_ips, original_smt_ips))
+                        return current_smt
                     replace_hosts_entry(current_smt, new_target)
                     set_as_current_smt(new_target)
                     return new_target
@@ -768,6 +809,20 @@ def has_services(smt_server_name):
 
     return False
 
+
+# ----------------------------------------------------------------------------
+def has_smt_access(update_server_fqdn, user, password):
+    """Check if the given update server can be accessed with the provided
+       credentials."""
+    auth_creds = HTTPBasicAuth(user, password)
+    api = 'https://%s/connect/systems/products/migrations'
+    res = requests.post(api % update_server_fqdn, auth=auth_creds, json={})
+    # Anything else bubbles to the top
+    if res.reason == 'Unauthorized':
+        return False
+
+    return True
+             
 
 # ----------------------------------------------------------------------------
 def import_smtcert_12(smt):
