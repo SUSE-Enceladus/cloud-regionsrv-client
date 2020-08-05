@@ -19,11 +19,8 @@
 
 import base64
 import logging
-import requests
 
 import cloudregister.registerutils as utils
-
-from requests.auth import HTTPBasicAuth
 
 from zypp_plugin import Plugin
 
@@ -43,7 +40,10 @@ class SUSECloudPlugin(Plugin):
         if zypper_pid != prev_zypper_pid:
             verify_credentials = True
         # Note this logic breaks when FATE#320882/PM-1251 gets implemented
-        if verify_credentials and not utils.credentials_files_are_equal(repo_credentials):
+        if (
+                verify_credentials and not
+                utils.credentials_files_are_equal(repo_credentials)
+        ):
             self.error(
                 {'CREDENTIAL_ERROR': 'INCONSISTENT'},
                 'Not all credentials files are eqivalent: %s' % repo_credentials
@@ -79,16 +79,8 @@ class SUSECloudPlugin(Plugin):
                              'in "%s"' % (repo_url, credentials_file_path))
                         )
                         return
-                    # Verify access to the server withthe credentials
-                    auth_creds = HTTPBasicAuth(user, password)
-                    api = 'https://%s/connect/systems/products/migrations'
-                    res = requests.post(
-                        api % server_name,
-                        auth=auth_creds,
-                        json={}
-                    )
-                    # Anything else bubbles to the top
-                    if res.reason == 'Unauthorized':
+                    # Verify access to the server with the credentials
+                    if not utils.has_smt_access(server_name, user, password):
                         self.error(
                             {'CREDENTIAL_ERROR': 'INVALID'},
                             ('Credentials are invalid. For details see '
