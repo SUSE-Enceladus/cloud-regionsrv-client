@@ -15,6 +15,7 @@ import inspect
 import logging
 import os
 import pytest
+import requests
 import sys
 
 from mock import patch
@@ -34,11 +35,13 @@ class Response():
 
 
 # ----------------------------------------------------------------------------
+@patch('amazonec2.requests.put')
 @patch('amazonec2.requests.get')
 @patch('amazonec2.logging')
-def test_request_fail(mock_logging, mock_request):
+def test_request_fail(mock_logging, mock_request_get, mock_request_put):
     """Test proper exception handling when request to metadata server fails"""
-    mock_request.side_effect = Exception
+    mock_request_get.side_effect = requests.exceptions.RequestException
+    mock_request_put.side_effect = requests.exceptions.RequestException
     result = ec2.generateRegionSrvArgs()
     assert result == None
     assert mock_logging.warning.called
@@ -50,11 +53,14 @@ def test_request_fail(mock_logging, mock_request):
 
 
 # ----------------------------------------------------------------------------
+@patch('amazonec2.requests.put')
 @patch('amazonec2.requests.get')
 @patch('amazonec2.logging')
-def test_request_fail_response_error(mock_logging, mock_request):
+def test_request_fail_response_error(
+        mock_logging, mock_request_get, mock_request_put
+):
     """Test unexpected return value"""
-    mock_request.return_value = _get_error_response()
+    mock_request_get.return_value = _get_error_response()
     result = ec2.generateRegionSrvArgs()
     assert result == None
     assert mock_logging.warning.called
@@ -63,10 +69,11 @@ def test_request_fail_response_error(mock_logging, mock_request):
 
 
 # ----------------------------------------------------------------------------
+@patch('amazonec2.requests.put')
 @patch('amazonec2.requests.get')
-def test_request_succeed(mock_request):
+def test_request_succeed(mock_request_get, mock_request_put):
     """Test behavior with expected return value"""
-    mock_request.return_value = _get_expected_response()
+    mock_request_get.return_value = _get_expected_response()
     result = ec2.generateRegionSrvArgs()
     assert 'regionHint=us-east-1' == result
 

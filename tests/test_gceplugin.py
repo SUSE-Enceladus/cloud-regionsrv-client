@@ -15,6 +15,7 @@ import inspect
 import logging
 import os
 import pytest
+import requests
 import sys
 
 from mock import patch
@@ -38,7 +39,7 @@ class Response():
 @patch('googlece.logging')
 def test_request_fail(mock_logging, mock_request):
     """Test proper exception handling when request to metadata server fails"""
-    mock_request.side_effect = Exception
+    mock_request.side_effect = requests.exceptions.RequestException
     result = gce.generateRegionSrvArgs()
     assert result == None
     assert mock_logging.warning.called
