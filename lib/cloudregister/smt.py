@@ -1,4 +1,4 @@
-# Copyright (c) 2019, SUSE LLC, All rights reserved.
+# Copyright (c) 2020, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -22,7 +22,7 @@ from M2Crypto import X509
 
 class SMT:
     """Store smt information"""
-    def __init__(self, smtXMLNode):
+    def __init__(self, smtXMLNode, https_only=False):
         self._ipv4 = None
         try:
             self._ipv4 = smtXMLNode.attrib['SMTserverIP']
@@ -36,6 +36,9 @@ class SMT:
         self._fqdn = smtXMLNode.attrib['SMTserverName']
         self._fingerprint = smtXMLNode.attrib['fingerprint']
         self._cert = None
+        self._protocol = 'http'
+        if https_only:
+            self._protocol = 'https'
 
     # --------------------------------------------------------------------
     def __eq__(self, other_smt):
@@ -123,10 +126,10 @@ class SMT:
         # Per rfc3986 IPv6 addresses in a URI are enclosed in []
         if self.get_ipv6():
             health_url = 'https://[%s]/api/health/status' % self.get_ipv6()
-            cert_url = 'http://[%s]/smt.crt' % self.get_ipv6()
+            cert_url = '%s://[%s]/smt.crt' % (self._protocol, self.get_ipv6())
         else:
             health_url = 'https://%s/api/health/status' % self.get_ipv4()
-            cert_url = 'http://%s/smt.crt'
+            cert_url = '%s://%s/smt.crt' % (self._protocol, self.get_ipv4())
 
         # We cannot know if the server cert has been imported into the
         # system cert hierarchy, nor do we know if the hostname is resolvable
@@ -142,7 +145,7 @@ class SMT:
                 # We are pointing to an SMT server, the health status API
                 # is not available. Download the cert to at least make sure
                 # Apache is responsive
-                cert_response = requests.get(cert_url)
+                cert_response = requests.get(cert_url, verify=False)
                 if cert_response and cert_response.status_code == 200:
                     return True
         except Exception:
@@ -150,6 +153,18 @@ class SMT:
             pass
 
         return False
+
+    # --------------------------------------------------------------------
+    def set_protocol(self, protocol):
+        """Method to set the protocol to use for certain queries.
+           http and https are allowed. This is used to update
+           cached server data to provide an upgrade path for systems
+           that want to switch to https only."""
+
+        if protocol not in ('http', 'https'):
+            return
+
+        self._protocol = protocol
 
     # --------------------------------------------------------------------
     def write_cert(self, target_dir):
@@ -213,13 +228,17 @@ class SMT:
                             # Per rfc3986 IPv6 addresses in a URI are
                             # enclosed in []
                             cert_res = requests.get(
-                                'http://[%s]/%s' % (self.get_ipv6(), cert_name)
+                                '%s://[%s]/%s' % (
+                                    self._protocol, self.get_ipv6(), cert_name
+                                ),
+                                verify=False
                             )
                         except Exception:
                             pass
                     else:
                         cert_res = requests.get(
-                            'http://%s/%s' % (ip, cert_name)
+                            '%s://%s/%s' % (self._protocol, ip, cert_name),
+                            verify=False
                         )
                 except Exception:
                     # No response from server
