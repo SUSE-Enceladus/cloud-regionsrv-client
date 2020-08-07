@@ -1,4 +1,4 @@
-g# Copyright (c) 2020, SUSE LLC, All rights reserved.
+# Copyright (c) 2020, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -757,11 +757,15 @@ def has_ipv6_access(smt):
     if not smt.get_ipv6():
         return False
     logging.info('Attempt to access update server over IPv6')
+    protocol = 'http' # Default for backward compatibility
+    if https_only(get_config()):
+        protocol = 'https'
     try:
         # Per rfc3986 IPv6 addresses in a URI are enclosed in []
         cert_res = requests.get(
-            'http://[%s]/smt.crt' % smt.get_ipv6(),
-            timeout=3
+            '%s://[%s]/smt.crt' % (protocol, smt.get_ipv6()),
+            timeout=3,
+            verify=False
         )
     except Exception:
         logging.info('Update server not reachable over IPv6')
@@ -823,6 +827,20 @@ def has_smt_access(update_server_fqdn, user, password):
 
     return True
              
+
+# ----------------------------------------------------------------------------
+def https_only(config):
+    """Return true if the configuration has httpsOnly set to true"""
+    if (
+            config.has_section('instance') and
+            config.has_option('instance', 'httpsOnly')
+    ):
+        https_setting = config.get('instance', 'httpsOnly')
+        if https_setting == 'true':
+            return True
+
+    return False
+
 
 # ----------------------------------------------------------------------------
 def import_smtcert_12(smt):

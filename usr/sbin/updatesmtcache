@@ -1,0 +1,29 @@
+#!/usr/bin/python3
+
+# Copyright (c) 2020, SUSE LLC, All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library.
+
+"""Update the cached SMT server objects to set the configured protocol"""
+
+import glob
+
+import cloudregister.registerutils as utils
+
+cached_server_files = glob.glob('%s/*SMT*' % utils.REGISTRATION_DATA_DIR)
+
+for cached_server_file in cached_server_files:
+    smt = utils.get_smt_from_store(cached_server_file)
+    if hasattr(smt, 'set_protocol'):
+        if utils.https_only(utils.get_config()):
+            smt.set_protocol('https')
+            utils.store_smt_data(cached_server_file, smt)

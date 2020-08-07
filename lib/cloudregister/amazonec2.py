@@ -19,11 +19,26 @@ def generateRegionSrvArgs():
     """
     Generate arguments to be sent to the region server.
     """
+    token_url = 'http://169.254.169.254/latest/api/token'
+    token_header = {'X-aws-ec2-metadata-token-ttl-seconds': '21600'}
+
+    zone_req_header = {}
+    
+    try:
+        tokenResp = requests.put(token_url, headers=token_header)
+        if tokenResp.status_code == 200:
+            zone_req_header = {'X-aws-ec2-metadata-token': tokenResp.text}
+    except requests.exceptions.RequestException:
+        msg = 'Unable to retrieve IMDSv2 token falling back to IMDSv1'
+        logging.warning(msg)
+    
     metaDataUrl = 'http://169.254.169.254/latest/meta-data/'
     zoneInfo = 'placement/availability-zone'
 
     try:
-        zoneResp = requests.get(metaDataUrl + zoneInfo)
+        zoneResp = requests.get(
+            metaDataUrl + zoneInfo, headers=zone_req_header
+        )
     except requests.exceptions.RequestException:
         msg = 'Unable to determine instance placement from "%s"'
         logging.warning(msg % (metaDataUrl + zoneInfo))

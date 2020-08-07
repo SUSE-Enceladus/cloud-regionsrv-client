@@ -15,6 +15,7 @@ import inspect
 import logging
 import os
 import pytest
+import requests
 import sys
 
 from mock import patch
@@ -44,13 +45,14 @@ class Resolver():
 @patch('msftazure.logging')
 def test_metadata_request_fail(mock_logging, mock_request, mock_resolver):
     """Test proper exception handling when request to metadata server fails"""
-    mock_request.side_effect = Exception
+    mock_request.side_effect = requests.exceptions.RequestException
     mock_resolver.return_value = _get_no_nameservers_resolver()
     result = azure.generateRegionSrvArgs()
     assert result == None
     assert mock_logging.warning.called
     expected = 'Unable to determine instance placement from metadata '
-    expected += 'server "http://169.254.169.254/metadata/instance/location"'
+    expected += 'server "http://169.254.169.254/metadata/'
+    expected += 'instance/compute/location"'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
     assert actual == expected
 
@@ -94,7 +96,7 @@ def test_wire_request_goal_state_request_fail(
         mock_resolver
 ):
     """Test behavior goal state access triggering exception"""
-    mock_request.side_effect = [None, Exception]
+    mock_request.side_effect = [None, requests.exceptions.RequestException]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
     assert result == None
@@ -157,7 +159,7 @@ def test_wire_request_extension_request_fail(
     mock_request.side_effect = [
         None,
         _get_proper_goal_state_response(),
-        Exception
+        requests.exceptions.RequestException
     ]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
