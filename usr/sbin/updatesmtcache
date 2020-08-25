@@ -24,6 +24,7 @@ cached_server_files = glob.glob('%s/*SMT*' % utils.REGISTRATION_DATA_DIR)
 for cached_server_file in cached_server_files:
     smt = utils.get_smt_from_store(cached_server_file)
     if hasattr(smt, 'set_protocol'):
+        smt.set_protocol('http')
         if utils.https_only(utils.get_config()):
             smt.set_protocol('https')
-            utils.store_smt_data(cached_server_file, smt)
+    utils.store_smt_data(cached_server_file, smt)
