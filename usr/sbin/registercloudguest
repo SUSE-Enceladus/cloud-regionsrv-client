@@ -31,7 +31,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import requests
 import subprocess
 import sys
@@ -45,8 +44,6 @@ import cloudregister.registerutils as utils
 from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
-
-error_exp = re.compile('^error', re.IGNORECASE)
 
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
@@ -118,11 +115,9 @@ def register_modules(extensions, products, registered=[]):
                 stderr=subprocess.PIPE
             )
             res = p.communicate()
-
-            for item in res:
-                entry = item.decode()
-                if 'Error:' in entry:
-                    logging.error('\tRegistration failed: %s' % entry)
+            if p.returncode != 0:
+                error_message = res[0].decode()
+                logging.error('\tRegistration failed: %s' % error_message)
 
         register_modules(
             extension.get('extensions'), products, registered
@@ -427,36 +422,35 @@ while not base_registered:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     res = p.communicate()
-    for item in res:
-        entry = item.decode()
-        if error_exp.match(entry):
-            failed_smts.append(registration_target.get_ipv4())
-            if len(failed_smts) == len(region_smt_servers):
-                logging.error('Baseproduct registration failed')
-                logging.error('\t%s' % entry)
-                sys.exit(1)
-            for smt_srv in region_smt_servers:
-                target_smt_ipv4 = registration_target.get_ipv4()
-                target_smt_ipv6 = registration_target.get_ipv6()
-                new_smt_ipv4 = smt_srv.get_ipv4()
-                new_smt_ipv6 = smt_srv.get_ipv6()
-                if (
-                        smt_srv.get_ipv4() != \
-                        registration_target.get_ipv4() and
-                        smt_srv.get_ipv4() not in failed_smts
-                ):
-                    error_msg = 'Registration with %s failed. Trying %s'
-                    logging.error(
-                        error_msg % (
-                            str((target_smt_ipv4, target_smt_ipv6)),
-                            str((new_smt_ipv4, new_smt_ipv6))
-                        )
+    if p.returncode != 0:
+        # Even on error SUSEConnect writes messages to stdout, go figure
+        error_message = res[0].decode()
+        failed_smts.append(registration_target.get_ipv4())
+        if len(failed_smts) == len(region_smt_servers):
+            logging.error('Baseproduct registration failed')
+            logging.error('\t%s' % error_message)
+            sys.exit(1)
+        for smt_srv in region_smt_servers:
+            target_smt_ipv4 = registration_target.get_ipv4()
+            target_smt_ipv6 = registration_target.get_ipv6()
+            new_smt_ipv4 = smt_srv.get_ipv4()
+            new_smt_ipv6 = smt_srv.get_ipv6()
+            if (
+                    smt_srv.get_ipv4() != \
+                    registration_target.get_ipv4() and
+                    smt_srv.get_ipv4() not in failed_smts
+            ):
+                error_msg = 'Registration with %s failed. Trying %s'
+                logging.error(
+                    error_msg % (
+                        str((target_smt_ipv4, target_smt_ipv6)),
+                        str((new_smt_ipv4, new_smt_ipv6))
                     )
-                    utils.remove_registration_data()
-                    utils.add_hosts_entry(smt_srv)
-                    registration_target = smt_srv
-                    break
-            break
+                )
+                utils.remove_registration_data()
+                utils.add_hosts_entry(smt_srv)
+                registration_target = smt_srv
+                break
     else:
         base_registered = True
         utils.clear_new_registration_flag()
