@@ -243,8 +243,10 @@ proxy = utils.set_proxy()
 if proxy:
     http_proxy = os.environ.get('http_proxy')
     https_proxy = os.environ.get('https_proxy')
+    no_proxy = os.environ.get('no_proxy')
     proxies = {'http_proxy': http_proxy,
-               'https_proxy': https_proxy}
+               'https_proxy': https_proxy,
+               'no_proxy': no_proxy}
     logging.info('Using proxy settings: %s' % proxies)
 
 if args.user_smt_ip:
