@@ -937,8 +937,11 @@ def set_proxy():
             http_proxy = entry.split('"')[1]
         if 'HTTPS_PROXY' in entry:
             https_proxy = entry.split('"')[1]
+        if 'NO_PROXY' in entry:
+            no_proxy = entry.split('"')[1]
     os.environ['http_proxy'] = http_proxy
     os.environ['https_proxy'] = https_proxy
+    os.environ['no_proxy'] = no_proxy
 
     return True
 
