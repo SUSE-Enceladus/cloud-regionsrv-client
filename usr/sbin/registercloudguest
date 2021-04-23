@@ -52,16 +52,35 @@ urllib3.disable_warnings()
 
 # ----------------------------------------------------------------------------
 def get_products():
+    """Get a list of the installed products"""
+    
     products = []
+    # It is possible for users to force a zypper process before we had
+    # a chance to set up the repos. We'll wait for the lock for a little while
+    for wait_cnt in range(4):
+        if utils.is_zypper_running():
+            time.sleep(5 * wait_cnt)
+        else:
+            break
+    else:
+        errMsg = 'Wait time expired could not acquire zypper lock file'
+        logging.error(errMsg)
+        return products
+    
     try:
         cmd = subprocess.Popen(
             ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
         )
         product_xml = cmd.communicate()
+        # Just in case something else started zypper again
+        if cmd.returncode != 0:
+            errMsg = 'zypper product query returned with zypper code %d'
+            logging.error(errMsg % cmd.returncode)
+            return products
     except OSError:
         errMsg = 'Could not get product list %s' % cmd[1]
         logging.error(errMsg)
-        return
+        return products
 
     # Detrmine the base product
     baseProdSet = '/etc/products.d/baseproduct'
@@ -72,7 +91,7 @@ def get_products():
     else:
         errMsg = 'No baseproduct installed system cannot be registerd'
         logging.error(errMsg)
-        return
+        return products
 
     product_tree = etree.fromstring(product_xml[0].decode())
     for child in product_tree.find("product-list"):
