@@ -25,6 +25,7 @@ import pickle
 import random
 import re
 import requests
+import socket
 import stat
 import subprocess
 import sys
@@ -193,7 +194,6 @@ def exec_subprocess(cmd, return_output=False):
     except OSError:
         return -1
 
-
 # ----------------------------------------------------------------------------
 def fetch_smt_data(cfg, proxies):
     """Retrieve the data for the region SMT servers from a remote host"""
@@ -241,7 +241,7 @@ def fetch_smt_data(cfg, proxies):
         cert_dir = cfg.get('server', 'certLocation')
         region_servers = cfg.get('server', 'regionsrv').split(',')
         # sort into ipv4 & ipv6 buckets, randomize, then make a best-effort by
-        # trying IPv6 first.
+        # trying IPv6 first, if available.
         region_servers_ipv4 = []
         region_servers_ipv6 = []
         for srv in region_servers:
@@ -252,7 +252,10 @@ def fetch_smt_data(cfg, proxies):
                 region_servers_ipv4.append(ip_addr)
         random.shuffle(region_servers_ipv4)
         random.shuffle(region_servers_ipv6)
-        region_servers = region_servers_ipv6 + region_servers_ipv4
+        if socket.has_ipv6:
+            region_servers = region_servers_ipv6 + region_servers_ipv4
+        else:
+            region_servers = region_servers_ipv4
         # After the network interface is up, i.e. After=network-online
         # is satisfied routing on the framework side may not be setup yet
         # and we may not be able to immediately reach the update
