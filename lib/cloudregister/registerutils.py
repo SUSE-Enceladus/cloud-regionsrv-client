@@ -287,7 +287,8 @@ def fetch_smt_data(cfg, proxies):
                 'Getting update server information, attempt %d' % retry_cnt
             )
             for srv in region_servers:
-                logging.info('\tUsing region server: %s' % srv)
+                srvName = str(srv)
+                logging.info('\tUsing region server: %s' % srvName)
                 certFile = cert_dir + '/' + srvName + '.pem'
                 if not os.path.isfile(certFile):
                     logging.info(
@@ -297,7 +298,7 @@ def fetch_smt_data(cfg, proxies):
                 try:
                     url = 'https://%s/%s' % (srvName, api)
                     # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-                    if isinstance(ip_addr, ipaddress.IPv6Address):
+                    if isinstance(srv, ipaddress.IPv6Address):
                         url = 'https://[%s]/%s' % (srvName, api)
                     response = requests.get(
                         url,
