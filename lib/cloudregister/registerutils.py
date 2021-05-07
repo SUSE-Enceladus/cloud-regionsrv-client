@@ -17,6 +17,7 @@ import base64
 import configparser
 import filecmp
 import glob
+import ipaddress
 import json
 import logging
 import os
@@ -24,6 +25,7 @@ import pickle
 import random
 import re
 import requests
+import socket
 import stat
 import subprocess
 import sys
@@ -192,7 +194,6 @@ def exec_subprocess(cmd, return_output=False):
     except OSError:
         return -1
 
-
 # ----------------------------------------------------------------------------
 def fetch_smt_data(cfg, proxies):
     """Retrieve the data for the region SMT servers from a remote host"""
@@ -239,7 +240,22 @@ def fetch_smt_data(cfg, proxies):
         # Get the location of the cert files for the region servers
         cert_dir = cfg.get('server', 'certLocation')
         region_servers = cfg.get('server', 'regionsrv').split(',')
-        random.shuffle(region_servers)
+        # sort into ipv4 & ipv6 buckets, randomize, then make a best-effort by
+        # trying IPv6 first, if available.
+        region_servers_ipv4 = []
+        region_servers_ipv6 = []
+        for srv in region_servers:
+            ip_addr = ipaddress.ip_address(srv.strip())
+            if isinstance(ip_addr, ipaddress.IPv6Address):
+                region_servers_ipv6.append(ip_addr)
+            else:
+                region_servers_ipv4.append(ip_addr)
+        random.shuffle(region_servers_ipv4)
+        random.shuffle(region_servers_ipv6)
+        if socket.has_ipv6:
+            region_servers = region_servers_ipv6 + region_servers_ipv4
+        else:
+            region_servers = region_servers_ipv4
         # After the network interface is up, i.e. After=network-online
         # is satisfied routing on the framework side may not be setup yet
         # and we may not be able to immediately reach the update
@@ -274,7 +290,7 @@ def fetch_smt_data(cfg, proxies):
                 'Getting update server information, attempt %d' % retry_cnt
             )
             for srv in region_servers:
-                srvName = srv.strip()
+                srvName = str(srv)
                 logging.info('\tUsing region server: %s' % srvName)
                 certFile = cert_dir + '/' + srvName + '.pem'
                 if not os.path.isfile(certFile):
@@ -283,8 +299,12 @@ def fetch_smt_data(cfg, proxies):
                     )
                     continue
                 try:
+                    url = 'https://%s/%s' % (srvName, api)
+                    # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+                    if isinstance(srv, ipaddress.IPv6Address):
+                        url = 'https://[%s]/%s' % (srvName, api)
                     response = requests.get(
-                        'https://%s/%s' % (srvName, api),
+                        url,
                         verify=certFile,
                         timeout=request_timeout,
                         proxies=proxies
@@ -309,7 +329,7 @@ def fetch_smt_data(cfg, proxies):
             else:
                 # No message on the last go around
                 if attempt + 1 < max_attempts:
-                    log_msg = 'Waiting %d seconds before next attempt' 
+                    log_msg = 'Waiting %d seconds before next attempt'
                     logging.info(log_msg % retry_timeout)
                     time.sleep(retry_timeout)
         else:
@@ -826,7 +846,7 @@ def has_smt_access(update_server_fqdn, user, password):
         return False
 
     return True
-             
+
 
 # ----------------------------------------------------------------------------
 def https_only(config):
