@@ -23,7 +23,7 @@ Release:        0
 Summary:        Cloud Environment Guest Registration
 License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
-URL:            http://www.github.com:SUSE-Enceladus/cloud-regionsrv-client
+URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
 Requires:       SUSEConnect
 Requires:       ca-certificates
