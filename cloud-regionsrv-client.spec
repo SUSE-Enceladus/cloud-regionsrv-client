@@ -97,6 +97,17 @@ Requires:       python3-dnspython
 %description plugin-azure
 Guest registration plugin for images intended for Microsoft Azure
 
+%package addon-azure
+Version:	0.0.1
+Release:	0
+Summary:	Enable/Disable Guest Registration for Microsoft Azure
+Group:		Productivity/Networking/Web/Servers
+Requires:	cloud-regionsrv-client >= 9.0.0
+Requires:	cloud-regionsrv-client-plugin-azure
+
+%description addon-azure
+Enable/Disable Guest Registration for Microsoft Azure
+
 %prep
 %setup -q
 
@@ -111,21 +122,35 @@ mkdir -p %{buildroot}/var/lib/regionService/certs
 mkdir -p %{buildroot}/var/lib/cloudregister
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
+install -m 644 usr/lib/systemd/system/regionsrv-enabler.service %{buildroot}%{_unitdir}
+install -m 644 usr/lib/systemd/system/regionsrv-enabler.timer %{buildroot}%{_unitdir}
 gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
 %service_add_pre guestregister.service containerbuild-regionsrv.service
+
+%pre addon-azure
+%service_add_pre regionsrv-enabler.timer
 
 %post
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/updatesmtcache
 %service_add_post guestregister.service containerbuild-regionsrv.service
 
+%post addon-azure
+%service_add_post regionsrv-enabler.timer
+
 %preun
 %service_del_preun guestregister.service containerbuild-regionsrv.service
 
+%preun addon-azure
+%service_del_preun regionsrv-enabler.timer
+
 %postun
 %service_del_postun guestregister.service containerbuild-regionsrv.service
+
+%postun addon-azure
+%service_del_postun regionsrv-enabler.timer
 
 %files
 %defattr(-,root,root,-)
@@ -169,5 +194,12 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %files plugin-azure
 %defattr(-,root,root,-)
 %{python3_sitelib}/cloudregister/msft*
+
+%files addon-azure
+%defattr(-,root,root,-)
+%{_unitdir}/regionsrv-enabler.service
+%{_unitdir}/regionsrv-enabler.timer
+%attr(744, root, root) %{_sbindir}/regionsrv-enabler
+
 
 %changelog
