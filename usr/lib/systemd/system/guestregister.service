@@ -1,7 +1,7 @@
 [Unit]
-Description=Obtain Cloud SMT info and register with the SMT server
-After=network-online.target
-Before=cloud-final.service waagent.service google-startup-scripts.service
+Description=Obtain Cloud update server info and register with the server
+After=ca-certificates.service network-online.target
+Before=cloud-final.service google-startup-scripts.service waagent.service
 Wants=network-online.target
 
 [Service]
