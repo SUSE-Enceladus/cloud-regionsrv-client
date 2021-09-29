@@ -1092,12 +1092,16 @@ def switch_smt_service(smt):
 def update_ca_chain(cmd_w_args_lst):
     """Update the CA chain using the given command with arguments"""
     logging.info('Updating CA certificates: %s' % cmd_w_args_lst[0])
-    if exec_subprocess(cmd_w_args_lst):
-        errMsg = 'Certificate update failed'
-        logging.error(errMsg)
-        return 0
+    retry_attempts = 3
+    for attempt in range(retry_attempts):
+        if exec_subprocess(cmd_w_args_lst):
+            errMsg = 'Certificate update failed attempt %d' % (attempt +1)
+            logging.error(errMsg)
+            time.sleep(5)
+        else:
+            return 1
 
-    return 1
+    return 0
 
 
 # Private
