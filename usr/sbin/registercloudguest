@@ -411,6 +411,11 @@ if instance_data:
     inst_data_out.write(instance_data)
     inst_data_out.close()
 
+# Check if registration is supported
+if not utils.is_registration_supported(cfg):
+    sys.exit(0)
+
+# Check SUSE/SLES registration command to be present
 register_cmd = '/usr/sbin/SUSEConnect'
 if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
     logging.error('No registration executable found')
