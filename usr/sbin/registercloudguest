@@ -53,7 +53,7 @@ urllib3.disable_warnings()
 # ----------------------------------------------------------------------------
 def get_products():
     """Get a list of the installed products"""
-    
+
     products = []
     # It is possible for users to force a zypper process before we had
     # a chance to set up the repos. We'll wait for the lock for a little while
@@ -66,7 +66,7 @@ def get_products():
         errMsg = 'Wait time expired could not acquire zypper lock file'
         logging.error(errMsg)
         return products
-    
+
     try:
         cmd = subprocess.Popen(
             ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
@@ -123,9 +123,15 @@ def register_modules(extensions, products, registered=[]):
                 '--product',
                 triplet
             ]
-            if os.path.exists(instance_data_filepath):
+            if os.path.exists(instance_data_filepath) and not args.reg_code:
                 cmd.append('--instance-data')
                 cmd.append(instance_data_filepath)
+
+            if args.email and args.reg_code:
+                cmd.append('--email')
+                cmd.append(args.email)
+                cmd.append('--regcode')
+                cmd.append(args.reg_code)
 
             logging.info('Registration: %s' % ' '.join(cmd))
             p = subprocess.Popen(
@@ -193,6 +199,18 @@ argparse.add_argument(
     dest='user_smt_ip',
     help=help_msg
 )
+help_msg='Email address for product registration'
+argparse.add_argument(
+    '-e', '--email',
+    dest='email',
+    help=help_msg
+)
+help_msg='The registration code'
+argparse.add_argument(
+    '-r', '--regcode',
+    dest='reg_code',
+    help=help_msg
+)
 
 args = argparse.parse_args()
 
@@ -204,6 +222,11 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
 
 if args.clean_up and args.force_new_registration:
     msg = '--clean and --force-new are incompatible, use one or the other'
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+if (args.email and not args.reg_code) or (not args.email and args.reg_code):
+    msg = '--email and --regcode must be used together'
     print(msg, file=sys.stderr)
     sys.exit(1)
 
@@ -435,9 +458,14 @@ while not base_registered:
         '--url',
         'https://%s' % registration_target.get_FQDN()
     ]
-    if os.path.exists(instance_data_filepath):
+    if os.path.exists(instance_data_filepath) and not args.reg_code:
         cmd.append('--instance-data')
         cmd.append(instance_data_filepath)
+    if args.email and args.reg_code:
+        cmd.append('--email')
+        cmd.append(args.email)
+        cmd.append('--regcode')
+        cmd.append(args.reg_code)
     p = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
