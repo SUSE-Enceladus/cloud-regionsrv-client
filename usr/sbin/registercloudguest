@@ -123,7 +123,7 @@ def register_modules(extensions, products, registered=[]):
                 '--product',
                 triplet
             ]
-            if os.path.exists(instance_data_filepath) and not args.reg_code:
+            if os.path.exists(instance_data_filepath):
                 cmd.append('--instance-data')
                 cmd.append(instance_data_filepath)
 
