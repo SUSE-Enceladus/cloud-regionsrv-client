@@ -458,7 +458,7 @@ while not base_registered:
         '--url',
         'https://%s' % registration_target.get_FQDN()
     ]
-    if os.path.exists(instance_data_filepath) and not args.reg_code:
+    if os.path.exists(instance_data_filepath):
         cmd.append('--instance-data')
         cmd.append(instance_data_filepath)
     if args.email and args.reg_code:
