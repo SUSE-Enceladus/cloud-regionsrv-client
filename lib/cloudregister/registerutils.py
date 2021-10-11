@@ -1120,7 +1120,11 @@ def remove_registration_data():
         if response.status_code == 204:
             logging.info('System sucessfully removed from SCC')
         else:
-            logging.info('System is not known to SCC')
+            scc_check_msg = 'System not found in SCC. The system may still '
+            scc_check_msg += 'be tracked against your subscription. It is '
+            scc_check_msg += 'recommended to investigate the issue. '
+            scc_check_msg += 'Local changes applied.'
+            logging.info(scc_check_msg)
         __remove_repo_artifacts('suse.com')
     else:
         logging.info('No current registration server set.')
