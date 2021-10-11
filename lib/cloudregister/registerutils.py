@@ -1118,7 +1118,7 @@ def is_registration_supported(cfg):
       Indicates a product of the RHEL family for which we do not
       provide subscription management.
     """
-    package_backend = cfg.get('service', 'supportsPackageBackend')
+    package_backend = cfg.get('service', 'packageBackend')
     registration_supported = True
     if package_backend == 'dnf':
         logging.info('Registration for RHEL product family requested')

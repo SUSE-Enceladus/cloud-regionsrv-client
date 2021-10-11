@@ -30,10 +30,10 @@ cfg = get_config('../etc/regionserverclnt.cfg')
 
 
 def test_is_registration_supported_SUSE_Family():
-    cfg.set('service', 'supportsPackageBackend', 'zypper')
+    cfg.set('service', 'packageBackend', 'zypper')
     assert is_registration_supported(cfg) is True
 
 
 def test_is_registration_supported_RHEL_Family():
-    cfg.set('service', 'supportsPackageBackend', 'dnf')
+    cfg.set('service', 'packageBackend', 'dnf')
     assert is_registration_supported(cfg) is False
