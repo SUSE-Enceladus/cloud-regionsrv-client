@@ -1104,6 +1104,30 @@ def update_ca_chain(cmd_w_args_lst):
     return 0
 
 
+# ----------------------------------------------------------------------------
+def is_registration_supported(cfg):
+    """
+    Check if a registration process is available
+    based on the supported package manager backend
+
+    zypper:
+      Indicates a SUSE/SLES system including the registration
+      process based on SUSEConnect and /etc/products.d/baseproduct
+
+    dnf:
+      Indicates a product of the RHEL family for which we do not
+      provide subscription management.
+    """
+    package_backend = cfg.get('service', 'packageBackend')
+    registration_supported = True
+    if package_backend == 'dnf':
+        logging.info('Registration for RHEL product family requested')
+        logging.info('Exit after repository server hosts entry setup')
+        registration_supported = False
+
+    return registration_supported
+
+
 # Private
 # ----------------------------------------------------------------------------
 def __get_referenced_credentials(smt_server_name):
