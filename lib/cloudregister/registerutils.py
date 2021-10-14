@@ -598,6 +598,63 @@ def get_instance_data(config):
 
 
 # ----------------------------------------------------------------------------
+def get_installed_products():
+    """Get a list of the installed products"""
+    
+    products = []
+    # It is possible for users to force a zypper process before we had
+    # a chance to set up the repos. We'll wait for the lock for a little while
+    for wait_cnt in range(4):
+        if is_zypper_running():
+            time.sleep(5 * wait_cnt)
+        else:
+            break
+    else:
+        errMsg = 'Wait time expired could not acquire zypper lock file'
+        logging.error(errMsg)
+        return products
+    
+    try:
+        cmd = subprocess.Popen(
+            ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
+        )
+        product_xml = cmd.communicate()
+        # Just in case something else started zypper again
+        if cmd.returncode != 0:
+            errMsg = 'zypper product query returned with zypper code %d'
+            logging.error(errMsg % cmd.returncode)
+            return products
+    except OSError:
+        errMsg = 'Could not get product list %s' % cmd[1]
+        logging.error(errMsg)
+        return products
+
+    # Detrmine the base product
+    baseProdSet = '/etc/products.d/baseproduct'
+    baseprodName = None
+    if os.path.islink(baseProdSet):
+        baseprod = os.path.realpath(baseProdSet)
+        baseprodName = baseprod.split(os.sep)[-1].split('.')[0]
+    else:
+        errMsg = 'No baseproduct installed system cannot be registerd'
+        logging.error(errMsg)
+        return products
+
+    product_tree = etree.fromstring(product_xml[0].decode())
+    for child in product_tree.find("product-list"):
+        name = child.attrib['name']
+        if name == baseprodName:
+            continue
+        vers = child.attrib['version']
+        arch = child.attrib['arch']
+        prod = name + "/" + vers + "/" + arch
+        if prod not in products:
+            products.append(prod)
+
+    return products
+
+
+# ----------------------------------------------------------------------------
 def get_repo_url(repo_name):
     """Return the url for the given repository"""
     repos = glob.glob('/etc/zypp/repos.d/*.repo')
@@ -905,6 +962,22 @@ def is_registered(smt):
 
 
 # ----------------------------------------------------------------------------
+def is_scc_connected():
+    """If any repo url points to suse.com then at least some of the
+       repositories come from SCC and the SCCcredentials file is
+       expected to have the system credentials for SCC access."""
+
+    repo_files = glob.glob('/etc/zypp/repos.d/*.repo')
+    for repo in repo_files:
+        repo_cfg = get_config(repo)
+        for section in repo_cfg.sections():
+            url = repo_cfg.get(section, 'baseurl')
+            if url and 'suse.com' in url:
+                return True
+
+    return False
+
+# ----------------------------------------------------------------------------
 def is_zypper_running():
     """Check if zypper is running"""
     # Zypper doesn't remove it's pid file, need to consult the process table
@@ -1033,12 +1106,26 @@ def remove_registration_data():
         server_name = smt.get_FQDN()
         domain_name = smt.get_domain_name()
         clean_hosts_file(domain_name)
-        __remove_credentials(server_name)
-        __remove_repos(server_name)
-        __remove_service(server_name)
+        __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
-        if os.path.exists('/etc/SUSEConnect'):
-            os.unlink('/etc/SUSEConnect')
+    elif is_scc_connected():
+        logging.info('Removing system from SCC')
+        user, password = get_credentials(
+            '/etc/zypp/credentials.d/SCCcredentials'
+        )
+        auth_creds = HTTPBasicAuth(user, password)
+        response = requests.delete(
+            'https://scc.suse.com/connect/systems', auth=auth_creds
+        )
+        if response.status_code == 204:
+            logging.info('System sucessfully removed from SCC')
+        else:
+            scc_check_msg = 'System not found in SCC. The system may still '
+            scc_check_msg += 'be tracked against your subscription. It is '
+            scc_check_msg += 'recommended to investigate the issue. '
+            scc_check_msg += 'Local changes applied.'
+            logging.info(scc_check_msg)
+        __remove_repo_artifacts('suse.com')
     else:
         logging.info('No current registration server set.')
 
@@ -1223,6 +1310,18 @@ def __remove_credentials(smt_server_name):
             os.unlink(system_credential)
 
     return 1
+
+
+# ----------------------------------------------------------------------------
+def __remove_repo_artifacts(repo_server_name):
+    """Remove the artifacts related to repository handling for a registration"""
+
+    __remove_credentials(repo_server_name)
+    __remove_repos(repo_server_name)
+    __remove_service(repo_server_name)
+
+    if os.path.exists('/etc/SUSEConnect'):
+            os.unlink('/etc/SUSEConnect')
 
 
 # ----------------------------------------------------------------------------
