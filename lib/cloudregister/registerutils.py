@@ -629,7 +629,7 @@ def get_installed_products():
         logging.error(errMsg)
         return products
 
-    # Detrmine the base product
+    # Determine the base product
     baseProdSet = '/etc/products.d/baseproduct'
     baseprodName = None
     if os.path.islink(baseProdSet):
@@ -1099,21 +1099,30 @@ def switch_services_to_plugin():
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
     smt_data_file = __get_registered_smt_file_path()
+    user, password = get_credentials('/etc/zypp/credentials.d/SCCcredentials')
+    auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
         smt_ips = (smt.get_ipv4(), smt.get_ipv6())
         logging.info('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
         domain_name = smt.get_domain_name()
+        response = requests.delete(
+            'https://%s/connect/systems' % server_name, auth=auth_creds
+        )
+        if response.status_code == 204:
+            logging.info(
+                'System sucessfully removed from update infrastructure'
+            )
+        else:
+            rmt_check_msg = 'System unknown to update infrastructure, '
+            rmt_check_msg += 'continue with local changes'
+            logging.info(rmt_check_msg)
         clean_hosts_file(domain_name)
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     elif is_scc_connected():
         logging.info('Removing system from SCC')
-        user, password = get_credentials(
-            '/etc/zypp/credentials.d/SCCcredentials'
-        )
-        auth_creds = HTTPBasicAuth(user, password)
         response = requests.delete(
             'https://scc.suse.com/connect/systems', auth=auth_creds
         )
