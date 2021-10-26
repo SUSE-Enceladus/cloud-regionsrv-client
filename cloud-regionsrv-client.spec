@@ -25,7 +25,7 @@ License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
 URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
-Requires:       SUSEConnect
+Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
 Requires:       pciutils
