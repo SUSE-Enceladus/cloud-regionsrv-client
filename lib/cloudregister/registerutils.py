@@ -42,6 +42,7 @@ HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
 REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
+RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 
 
 # ----------------------------------------------------------------------------
@@ -147,6 +148,15 @@ def clear_new_registration_flag():
     """Clear the new registration marker"""
     try:
         os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
+    except FileNotFoundError:
+        pass
+
+
+# ----------------------------------------------------------------------------
+def clear_rmt_as_scc_proxy_flag():
+    """Clear the marker that indicates that RMT is used as SCC proxy"""
+    try:
+        os.unlink(REGISTRATION_DATA_DIR + RMT_AS_SCC_PROXY_MARKER)
     except FileNotFoundError:
         pass
 
@@ -962,6 +972,30 @@ def is_registered(smt):
 
 
 # ----------------------------------------------------------------------------
+def is_registration_supported(cfg):
+    """
+    Check if a registration process is available
+    based on the supported package manager backend
+
+    zypper:
+      Indicates a SUSE/SLES system including the registration
+      process based on SUSEConnect and /etc/products.d/baseproduct
+
+    dnf:
+      Indicates a product of the RHEL family for which we do not
+      provide subscription management.
+    """
+    package_backend = cfg.get('service', 'packageBackend')
+    registration_supported = True
+    if package_backend == 'dnf':
+        logging.info('Registration for RHEL product family requested')
+        logging.info('Exit after repository server hosts entry setup')
+        registration_supported = False
+
+    return registration_supported
+
+
+# ----------------------------------------------------------------------------
 def is_scc_connected():
     """If any repo url points to suse.com then at least some of the
        repositories come from SCC and the SCCcredentials file is
@@ -976,6 +1010,7 @@ def is_scc_connected():
                 return True
 
     return False
+
 
 # ----------------------------------------------------------------------------
 def is_zypper_running():
@@ -1046,6 +1081,12 @@ def set_new_registration_flag():
 
 
 # ----------------------------------------------------------------------------
+def set_rmt_as_scc_proxy_flag():
+    """Set a marker that the RMT registration is a proxy for SCC"""
+    Path(REGISTRATION_DATA_DIR + RMT_AS_SCC_PROXY_MARKER).touch()
+
+
+# ----------------------------------------------------------------------------
 def switch_services_to_plugin():
     """Switches a .service based RIS service that points to the update
        infrastructure to the service plugin"""
@@ -1098,6 +1139,7 @@ def switch_services_to_plugin():
 # ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
+    clear_rmt_as_scc_proxy_flag()
     smt_data_file = __get_registered_smt_file_path()
     user, password = get_credentials('/etc/zypp/credentials.d/SCCcredentials')
     auth_creds = HTTPBasicAuth(user, password)
@@ -1201,27 +1243,10 @@ def update_ca_chain(cmd_w_args_lst):
 
 
 # ----------------------------------------------------------------------------
-def is_registration_supported(cfg):
-    """
-    Check if a registration process is available
-    based on the supported package manager backend
+def uses_rmt_as_scc_proxy():
+    """Check if the RMT registration is used as an SCC proxy"""
 
-    zypper:
-      Indicates a SUSE/SLES system including the registration
-      process based on SUSEConnect and /etc/products.d/baseproduct
-
-    dnf:
-      Indicates a product of the RHEL family for which we do not
-      provide subscription management.
-    """
-    package_backend = cfg.get('service', 'packageBackend')
-    registration_supported = True
-    if package_backend == 'dnf':
-        logging.info('Registration for RHEL product family requested')
-        logging.info('Exit after repository server hosts entry setup')
-        registration_supported = False
-
-    return registration_supported
+    return os.path.isfile(REGISTRATION_DATA_DIR + RMT_AS_SCC_PROXY_MARKER)
 
 
 # Private

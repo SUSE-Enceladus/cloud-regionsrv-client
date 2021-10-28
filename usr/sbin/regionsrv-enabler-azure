@@ -18,19 +18,7 @@ import requests
 import subprocess
 import sys
 
-
-def start_logging():
-    log_filename = '/var/log/cloudaccess'
-    try:
-        logging.basicConfig(
-            filename=log_filename,
-            level=logging.INFO,
-            format='%(asctime)s %(levelname)s:%(message)s'
-        )
-    except IOError:
-        print('Could not open log file "{}" for writing.'.format(log_filename))
-        sys.exit(1)
-
+import cloudregister.registerutils as utils
 
 def get_license_type():
     proxies = {
@@ -55,7 +43,7 @@ def get_license_type():
 
     return res.text
 
-
+# TODO use utils.exec_subprocess()
 def run_command(command):
     logging.info('Calling {}'.format(command))
     try:
@@ -86,22 +74,19 @@ def run_command(command):
     return output
 
 
-start_logging()
+utils.start_logging()
 service_name = 'guestregister'
 license_type = get_license_type()
 
-if 'BYOS' in license_type:
-    if run_command(['systemctl', 'is-enabled', service_name]) == 'enabled':
-        run_command(
-            ['registercloudguest', '--clean']
-        )
-        run_command(
-            ['systemctl', 'disable', service_name]
-        )
-elif run_command(['systemctl', 'is-enabled', service_name]) == 'disabled':
-    run_command(
-        ['registercloudguest', '--force-new']
-    )
-    run_command(
-        ['systemctl', 'enable', service_name]
-    )
+if 'BYOS' in license_type and not utils.uses_rmt_as_scc_proxy():
+    run_command(['registercloudguest', '--clean'])
+    run_command(['systemctl', 'disable', service_name])
+else:
+    update_server = utils.get_smt()
+    if update_server:
+        if utils.is_registered(update_server):
+            sys.exit(0)
+        update_server = None
+    if not update_server:
+        run_command(['registercloudguest', '--force-new'])
+        run_command(['systemctl', 'enable', service_name])

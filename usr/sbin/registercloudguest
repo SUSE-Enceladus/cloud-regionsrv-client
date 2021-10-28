@@ -71,12 +71,6 @@ def register_modules(extensions, products, registered=[]):
                 cmd.append('--instance-data')
                 cmd.append(instance_data_filepath)
 
-            if args.email and args.reg_code:
-                cmd.append('--email')
-                cmd.append(args.email)
-                cmd.append('--regcode')
-                cmd.append(args.reg_code)
-
             logging.info('Registration: %s' % ' '.join(cmd))
             p = subprocess.Popen(
                 cmd,
@@ -169,7 +163,8 @@ if args.clean_up and args.force_new_registration:
     print(msg, file=sys.stderr)
     sys.exit(1)
 
-if (args.email and not args.reg_code) or (not args.email and args.reg_code):
+    # Specifying reg code only works, but an e-mail requires a reg code
+if (args.email and not args.reg_code):
     msg = '--email and --regcode must be used together'
     print(msg, file=sys.stderr)
     sys.exit(1)
@@ -410,9 +405,10 @@ while not base_registered:
     if os.path.exists(instance_data_filepath):
         cmd.append('--instance-data')
         cmd.append(instance_data_filepath)
-    if args.email and args.reg_code:
+    if args.email:
         cmd.append('--email')
         cmd.append(args.email)
+    if args.reg_code:
         cmd.append('--regcode')
         cmd.append(args.reg_code)
     p = subprocess.Popen(
@@ -452,6 +448,8 @@ while not base_registered:
     else:
         base_registered = True
         utils.clear_new_registration_flag()
+        if args.email or args.reg_code:
+            utils.set_rmt_as_scc_proxy_flag()
 
 base_prod_xml = open('/etc/products.d/baseproduct').read()
 prod_def_start = base_prod_xml.index('<product')
