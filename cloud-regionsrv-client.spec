@@ -98,7 +98,7 @@ Requires:       python3-dnspython
 Guest registration plugin for images intended for Microsoft Azure
 
 %package addon-azure
-Version:	0.0.1
+Version:	1.0.0
 Release:	0
 Summary:	Enable/Disable Guest Registration for Microsoft Azure
 Group:		Productivity/Networking/Web/Servers
@@ -144,13 +144,13 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %service_del_preun guestregister.service containerbuild-regionsrv.service
 
 %preun addon-azure
-%service_del_preun regionsrv-enabler.timer
+%service_del_preun regionsrv-enabler-azure.timer
 
 %postun
 %service_del_postun guestregister.service containerbuild-regionsrv.service
 
 %postun addon-azure
-%service_del_postun regionsrv-enabler.timer
+%service_del_postun regionsrv-enabler-azure.timer
 
 %files
 %defattr(-,root,root,-)
@@ -197,9 +197,9 @@ gzip %{buildroot}/%{_mandir}/man1/*
 
 %files addon-azure
 %defattr(-,root,root,-)
-%{_unitdir}/regionsrv-enabler.service
-%{_unitdir}/regionsrv-enabler.timer
-%attr(744, root, root) %{_sbindir}/regionsrv-enabler
+%{_unitdir}/regionsrv-enabler-azure.service
+%{_unitdir}/regionsrv-enabler-azure.timer
+%attr(744, root, root) %{_sbindir}/regionsrv-enabler-azure
 
 
 %changelog

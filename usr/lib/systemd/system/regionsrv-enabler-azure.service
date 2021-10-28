@@ -6,7 +6,7 @@ StartLimitIntervalSec=500
 StartLimitBurst=5
 
 [Service]
-ExecStart=/usr/sbin/regionsrv-enabler
+ExecStart=/usr/sbin/regionsrv-enabler-azure
 Type=simple
 Restart=on-failure
 RestartSec=5s
