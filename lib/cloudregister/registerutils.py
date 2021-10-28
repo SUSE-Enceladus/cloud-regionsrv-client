@@ -610,7 +610,7 @@ def get_instance_data(config):
 # ----------------------------------------------------------------------------
 def get_installed_products():
     """Get a list of the installed products"""
-    
+
     products = []
     # It is possible for users to force a zypper process before we had
     # a chance to set up the repos. We'll wait for the lock for a little while
@@ -623,7 +623,7 @@ def get_installed_products():
         errMsg = 'Wait time expired could not acquire zypper lock file'
         logging.error(errMsg)
         return products
-    
+
     try:
         cmd = subprocess.Popen(
             ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
@@ -985,15 +985,21 @@ def is_registration_supported(cfg):
       Indicates a product of the RHEL family for which we do not
       provide subscription management.
     """
-    package_backend = cfg.get('service', 'packageBackend')
     registration_supported = True
-    if package_backend == 'dnf':
-        logging.info('Registration for RHEL product family requested')
-        logging.info('Exit after repository server hosts entry setup')
-        registration_supported = False
+    try:
+        package_backend = cfg.get('service', 'packageBackend')
+        if package_backend == 'dnf':
+            logging.info('Registration for RHEL product family requested')
+            logging.info('Exit after repository server hosts entry setup')
+            registration_supported = False
+
+        return registration_supported
+    except configparser.NoSectionError as e:
+        if 'server' not in cfg.sections():
+            logging.error('Error accessing the config file: {}'.format(e))
+            return False
 
     return registration_supported
-
 
 # ----------------------------------------------------------------------------
 def is_scc_connected():
