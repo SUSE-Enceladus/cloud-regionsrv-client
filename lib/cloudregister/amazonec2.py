@@ -45,9 +45,18 @@ def generateRegionSrvArgs():
         return
 
     if zoneResp.status_code == 200:
-        # Remove the trailing availability zone letter identifier to get the
-        # region
-        region = zoneResp.text[:-1]
+        # For local zones the format is geo-loc-regionid-metro-regionidaz
+        # For example us-east-1-iah-1a
+        # For regions the format is geo-loc-regionidaz
+        # For example us-east-1f
+        # What we need is geo-loc-regionid, i.e. us-east-1 as the region hint
+        region_data = zoneResp.text.split('-',3)
+        region_id_az = region_data[2]
+        region_id = ''
+        for c in region_id_az:
+            if c.isdigit():
+                region_id += c
+        region = '-'.join(region_data[:2] + [region_id])
     else:
         logging.warning('Unable to get availability zone metadata')
         logging.warning('\tReturn code: %d' % zoneResp.status_code)
