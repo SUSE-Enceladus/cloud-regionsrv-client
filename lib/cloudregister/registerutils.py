@@ -254,8 +254,13 @@ def fetch_smt_data(cfg, proxies):
         # trying IPv6 first, if available.
         region_servers_ipv4 = []
         region_servers_ipv6 = []
+        region_servers_dns = []
         for srv in region_servers:
-            ip_addr = ipaddress.ip_address(srv.strip())
+            srv_id = srv.strip()
+            try:
+                ip_addr = ipaddress.ip_address(srv_id)
+            except ValueError:
+                region_servers_dns.append(srv_id)
             if isinstance(ip_addr, ipaddress.IPv6Address):
                 region_servers_ipv6.append(ip_addr)
             else:
@@ -266,6 +271,7 @@ def fetch_smt_data(cfg, proxies):
             region_servers = region_servers_ipv6 + region_servers_ipv4
         else:
             region_servers = region_servers_ipv4
+        region_servers += random.shuffle(region_servers_dns)
         # After the network interface is up, i.e. After=network-online
         # is satisfied routing on the framework side may not be setup yet
         # and we may not be able to immediately reach the update
