@@ -272,7 +272,8 @@ def fetch_smt_data(cfg, proxies):
             region_servers = region_servers_ipv6 + region_servers_ipv4
         else:
             region_servers = region_servers_ipv4
-        region_servers += random.shuffle(region_servers_dns)
+        random.shuffle(region_servers_dns)
+        region_servers += region_servers_dns
         # After the network interface is up, i.e. After=network-online
         # is satisfied routing on the framework side may not be setup yet
         # and we may not be able to immediately reach the update
