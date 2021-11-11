@@ -255,6 +255,7 @@ def fetch_smt_data(cfg, proxies):
         region_servers_ipv4 = []
         region_servers_ipv6 = []
         region_servers_dns = []
+        ip_addr = None
         for srv in region_servers:
             srv_id = srv.strip()
             try:
