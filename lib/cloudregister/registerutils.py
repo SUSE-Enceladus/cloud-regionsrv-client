@@ -481,7 +481,10 @@ def get_credentials(credentials_file):
     username = None
     password = None
     if not os.path.exists(credentials_file):
-        logging.error('Credentials file not found: "%s"' % credentials_file)
+        if not is_new_registration():
+            logging.error(
+                'Credentials file not found: "%s"' % credentials_file
+            )
         return (username, password)
     credentials = open(credentials_file).readlines()
     for entry in credentials:
