@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 9.2.1
+%define base_version 9.3.0
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -77,7 +77,7 @@ Requires:       cloud-regionsrv-client >= 6.0.0
 Guest registration plugin for images intended for Google Compute Engine
 
 %package plugin-ec2
-Version:        1.0.1
+Version:        1.0.2
 Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
 Group:          Productivity/Networking/Web/Servers
@@ -122,8 +122,8 @@ mkdir -p %{buildroot}/var/lib/regionService/certs
 mkdir -p %{buildroot}/var/lib/cloudregister
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
-install -m 644 usr/lib/systemd/system/regionsrv-enabler.service %{buildroot}%{_unitdir}
-install -m 644 usr/lib/systemd/system/regionsrv-enabler.timer %{buildroot}%{_unitdir}
+install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.service %{buildroot}%{_unitdir}
+install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.timer %{buildroot}%{_unitdir}
 gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
