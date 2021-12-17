@@ -6,7 +6,7 @@ Requires=network-online.target guestregister.service
 [Timer]
 OnCalendar=*:0/1
 AccuracySec=1
-Unit=regionsrv-enabler.service
+Unit=regionsrv-enabler-azure.service
 
 [Install]
 WantedBy=multi-user.target
