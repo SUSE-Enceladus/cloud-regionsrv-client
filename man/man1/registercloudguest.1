@@ -3,18 +3,18 @@
 .\"
 .TH registercloudguest.1
 .SH NAME
-registercloudguest \- Register a SUSE Linux Enterprise on-demand instance
+registercloudguest \- Register a SUSE Linux Enterprise instance
 .SH SYNOPSIS
 .B registercloudguest [option]
 .SH DESCRIPTION
 .B registercloudguest
-Register a SUSE Linux Enterprise on-demand instance with the closest, in most
-cases region local SUSE operated update infrastructure. The client will reach
-out to a so called region server to obtain information about the region local
+Register a SUSE Linux Enterprise instance with the closest, in most
+cases region local, SUSE operated update infrastructure. The client will reach
+out to a so called region server to obtain information about the closest
 update servers. The information about how to find any one of the region
 servers running in a given cloud framework is built into the image that
 contains the registercloudguest executable. The information of the update
-servers is cached to aid in HA fail-over if one of the update servers is
+servers is cached to aid with HA fail-over if one of the update servers is
 unreachable. The system is registered with the first responsive update server.
 
 None of the region and update servers are resolvable via DNS and the update
@@ -25,18 +25,33 @@ configuration. It is highly likely that something on the system will break
 if repositories are removed using SUSEConnect functionality. The addition
 of other repositories is supported. However, adding other repositories may
 cause problems when the migration path for a new service pack or distribution
-upgrade is calculated. Additional repos may have to be removed prior to
-migration.
+upgrade is calculated. Additional repositories may have to be removed prior to
+migration. The command line tool should only be used in exceptional
+circumstances.
 
-The command line tool should only be used in exceptional circumstances.
+For BYOS instances the initial registration has to be completed using the
+registercloudguest command. Registering additional products (repositories) is
+done using the SUSEConnect command as it would be used in a data center
+installation of a SUSE Linux Enterprise system. BYOS instances registered
+against the update infrastructure are counted in the SUSE Customer Center
+(SCC) in the subscription associated with the provided registration code.
+The instance is visible in the SCC UI. The command line tool should only be
+used for the initial registration of the system and for de-registration of
+the system.
+
 
 .SH OPTIONS
 .IP "--clean"
 Clean the running instance of any data related to repository setup and
 instance registration. Use this option when creating new images from
-running instances before taking the snapshot of the root volume.
+running instances before taking the snapshot of the root volume. For BYOS
+instances registered against the update infrastructure the system will be
+removed from SCC.
 .IP "-d --delay"
 Delay the process by the given number of seconds.
+.IP "-e --email"
+The e-mail address associated with a subscription in SCC. Only use this option
+for BYOS instances and in conjuction with "--regcode" option.
 .IP "-f --config-file"
 Specify the location of the configuration file. By default the configuration
 file "/etc/regionserverclnt.cfg" is expected and used.
@@ -45,6 +60,14 @@ Force a new registration. This causes the previous registration data to be
 discarded and the system to get re-registered as if it had never been
 registered previously. This is an "emergency" switch and should be used only
 in exceptional circumstances. This option and "--clean" are mutually exclusive.
+This option does not work for BYOS instances that use the update
+infrastructure and will result in a registration failure if used with BYOS
+instances.
+.IP "-r --regcode"
+The registration code associated with a known SUSE subscription. Only use
+this option for BYOS instances. The registration code is validated with SCC
+and the system will be associated with the SCC subscription that is associated
+with this registration code.
 .IP "--smt-fp"
 Specify the fingerprint of the update server certificate. This option must be
 used in conjunction with "--smt-fqdn" and "--smt-ip".
