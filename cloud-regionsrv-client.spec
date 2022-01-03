@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 9.3.0
+%define base_version 9.3.1
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -40,6 +40,7 @@ Requires:       regionsrv-certs
 Requires:       zypper
 BuildRequires:  systemd
 %{?systemd_requires}
+BuildRequires:  python-rpm-macros
 BuildRequires:  python3-M2Crypto
 BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
