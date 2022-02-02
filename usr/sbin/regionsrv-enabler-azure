@@ -81,7 +81,9 @@ license_type = get_license_type()
 if 'BYOS' in license_type and not utils.uses_rmt_as_scc_proxy():
     run_command(['registercloudguest', '--clean'])
     run_command(['systemctl', 'disable', service_name])
-else:
+elif license_type and 'BYOS' not in license_type:
+    # if no license type, system could be a BYOS without AHB
+    # or PAYG without AHB
     update_server = utils.get_smt()
     if update_server:
         if utils.is_registered(update_server):
