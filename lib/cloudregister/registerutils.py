@@ -100,16 +100,6 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
-def check_registration(smt_server_name):
-    """Check if the instance is already registerd"""
-    # For a "valid" registration we need to have credentials and a service
-    if has_services(smt_server_name) and __has_credentials(smt_server_name):
-        return 1
-
-    return None
-
-
-# ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name):
     """Remove the smt server entry from the /etc/hosts file"""
     if isinstance(domain_name, str):
@@ -564,7 +554,7 @@ def get_current_smt():
     ):
         os.unlink(__get_registered_smt_file_path())
         return
-    if not check_registration(smt_fqdn):
+    if not is_registered(smt_fqdn):
         return
 
     return smt
@@ -695,7 +685,7 @@ def get_smt(cache_refreshed=None):
     available_servers = get_available_smt_servers()
     current_smt = get_current_smt()
     if current_smt:
-        if is_registered(current_smt):
+        if is_registered(current_smt.get_FQDN()):
             alive = current_smt.is_responsive()
             if alive:
                 logging.info(
@@ -974,13 +964,10 @@ def is_new_registration():
 
 
 # ----------------------------------------------------------------------------
-def is_registered(smt):
-    """Figure out if any of the servers is known"""
-    if check_registration(smt.get_FQDN()):
-        return 1
-
-    return None
-
+def is_registered(smt_server_name):
+    """Check if the instance is already registerd"""
+    # For a "valid" registration we need to have credentials and a service
+    return has_services(smt_server_name) and __has_credentials(smt_server_name)
 
 # ----------------------------------------------------------------------------
 def is_registration_supported(cfg):
