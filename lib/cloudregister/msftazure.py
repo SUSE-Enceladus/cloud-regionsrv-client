@@ -54,7 +54,7 @@ def generateRegionSrvArgs():
 
     if zone_response:
         if zone_response.status_code == 200:
-            return 'regionHint=' + zone_response.text
+            return 'regionHint=' + zone_response.text.lower()
         else:
             logging.warning('Unable to get availability zone metadata')
             logging.warning('\tReturn code: %d' % zone_response.status_code)
@@ -109,7 +109,7 @@ def generateRegionSrvArgs():
                 continue
             location = match.groups()[0]
 
-            return 'regionHint=' + location
+            return 'regionHint=' + location.lower()
 
         msg = 'Could not determine location from any of the endpoints: "%s"'
         logging.warning(msg % resolver.nameservers)
