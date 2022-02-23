@@ -554,7 +554,7 @@ def get_current_smt():
     ):
         os.unlink(__get_registered_smt_file_path())
         return
-    if not is_registered(smt_fqdn):
+    if not is_registered(smt):
         return
 
     return smt
@@ -685,7 +685,7 @@ def get_smt(cache_refreshed=None):
     available_servers = get_available_smt_servers()
     current_smt = get_current_smt()
     if current_smt:
-        if is_registered(current_smt.get_FQDN()):
+        if is_registered(current_smt):
             alive = current_smt.is_responsive()
             if alive:
                 logging.info(
@@ -964,12 +964,10 @@ def is_new_registration():
 
 
 # ----------------------------------------------------------------------------
-def is_registered(smt_server_name):
+def is_registered(smt):
     """Check if the instance is already registerd"""
     # For a "valid" registration we need to have credentials and a service
-    if isinstance(smt_server_name, smt.SMT):
-        smt_server_name = smt_server_name.get_FQDN()
-    return has_services(smt_server_name) and __has_credentials(smt_server_name)
+    return has_services(smt.get_FQDN()) and __has_credentials(smt.get_FQDN())
 
 # ----------------------------------------------------------------------------
 def is_registration_supported(cfg):
