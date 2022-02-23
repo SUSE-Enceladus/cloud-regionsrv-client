@@ -12,6 +12,7 @@
 # License along with this library.
 
 import dns.resolver
+import html
 import logging
 import requests
 import re
@@ -85,9 +86,8 @@ def generateRegionSrvArgs():
             if not match:
                 logging.warning('No "<ExtensionsConfig>" in goal state XML')
                 continue
-            h = HTMLParser()
             extensionsURI = urllib.parse.unquote(
-                h.unescape(match.groups()[0])
+                html.unescape(match.groups()[0])
             )
             try:
                 extensionsResp = requests.get(

@@ -18,6 +18,7 @@ import sys
 test_path = os.path.abspath(
     os.path.dirname(inspect.getfile(inspect.currentframe())))
 code_path = os.path.abspath('%s/../lib' % test_path)
+config_path = os.path.abspath('%s/../etc' % test_path)
 
 sys.path.insert(0, code_path)
 
@@ -26,7 +27,7 @@ from cloudregister.registerutils import (
     is_registration_supported
 )
 
-cfg = get_config('../etc/regionserverclnt.cfg')
+cfg = get_config(config_path + '/regionserverclnt.cfg')
 
 
 def test_is_registration_supported_SUSE_Family():
