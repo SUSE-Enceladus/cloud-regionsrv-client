@@ -967,6 +967,8 @@ def is_new_registration():
 def is_registered(smt_server_name):
     """Check if the instance is already registerd"""
     # For a "valid" registration we need to have credentials and a service
+    if isinstance(smt_server_name, smt.SMT):
+        smt_server_name = smt_server_name.get_FQDN()
     return has_services(smt_server_name) and __has_credentials(smt_server_name)
 
 # ----------------------------------------------------------------------------
