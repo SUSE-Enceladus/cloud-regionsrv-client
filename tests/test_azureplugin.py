@@ -85,6 +85,12 @@ def test_metadata_request_success(mock_request):
     result = azure.generateRegionSrvArgs()
     assert result == 'regionHint=useast'
 
+    mock_request.reset()
+    mock_request.return_value = _get_expected_response_metadata(True)
+    result = azure.generateRegionSrvArgs()
+    assert result == 'regionHint=useast'
+
+
 
 # ----------------------------------------------------------------------------
 @patch('msftazure.dns.resolver.get_default_resolver')
@@ -223,7 +229,7 @@ def test_wire_request_extension_request_success_no_match(
 @patch('msftazure.dns.resolver.get_default_resolver')
 @patch('msftazure.requests.get')
 @patch('msftazure.logging')
-def test_wire_request_sucess(mock_logging, mock_request, mock_resolver):
+def test_wire_request_success(mock_logging, mock_request, mock_resolver):
     """Test success for info on the wire server"""
     mock_request.side_effect = [
         None,
@@ -233,6 +239,18 @@ def test_wire_request_sucess(mock_logging, mock_request, mock_resolver):
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
     assert result == 'regionHint=useast'
+
+    mock_resolver.reset()
+    mock_request.reset()
+    mock_request.side_effect = [
+        None,
+        _get_proper_goal_state_response(),
+        _get_proper_extensions_response(True)
+    ]
+    mock_resolver.return_value = _get_nameserver_resolver()
+    result = azure.generateRegionSrvArgs()
+    assert result == 'regionHint=useast'
+
 
 
 # ----------------------------------------------------------------------------
@@ -245,11 +263,14 @@ def _get_error_response():
 
 
 # ----------------------------------------------------------------------------
-def _get_expected_response_metadata():
+def _get_expected_response_metadata(upper = False):
     """Return an object mocking a expected response"""
     response = Response()
     response.status_code = 200
     response.text = 'useast'
+    if upper:
+        response.text = response.text.upper()
+
     return response
 
 
@@ -277,12 +298,16 @@ def _get_no_nameservers_resolver():
 
 
 # ----------------------------------------------------------------------------
-def _get_proper_extensions_response():
+def _get_proper_extensions_response(upper = False):
     """Return a response that matches extensions config"""
     response = Response()
+    region = 'useast'
+    if upper:
+        # test region hint from MSFT are treated in lowercase
+        region = region.upper()
     response.status_code = 200
     data = 'the_doc '
-    data += '<Location>useast</Location>'
+    data += f"<Location>{region}</Location>"
     data += 'last'
     response.text = data
     return response
