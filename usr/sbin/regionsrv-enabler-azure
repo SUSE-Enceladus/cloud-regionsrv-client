@@ -86,7 +86,7 @@ elif license_type and 'BYOS' not in license_type:
     # or PAYG without AHB
     update_server = utils.get_smt()
     if update_server:
-        if utils.is_registered(update_server):
+        if utils.is_registered(update_server.get_FQDN()):
             sys.exit(0)
         update_server = None
     if not update_server:
