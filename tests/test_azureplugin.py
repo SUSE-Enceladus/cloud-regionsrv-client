@@ -307,7 +307,7 @@ def _get_proper_extensions_response(upper = False):
         region = region.upper()
     response.status_code = 200
     data = 'the_doc '
-    data += f"<Location>{region}</Location>"
+    data += '<Location>{0}</Location>'.format(region)
     data += 'last'
     response.text = data
     return response
