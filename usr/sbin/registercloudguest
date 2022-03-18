@@ -49,6 +49,7 @@ from requests.auth import HTTPBasicAuth
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
 urllib3.disable_warnings()
+registration_returncode = 0
 
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[]):
@@ -79,6 +80,7 @@ def register_modules(extensions, products, registered=[]):
             )
             res = p.communicate()
             if p.returncode != 0:
+                registration_returncode = p.returncode
                 error_message = res[0].decode()
                 logging.error('\tRegistration failed: %s' % error_message)
 
@@ -396,6 +398,7 @@ if not utils.import_smt_cert(registration_target):
 # Register the base product first
 base_registered = False
 failed_smts = []
+
 while not base_registered:
     cmd = [
         register_cmd,
@@ -417,6 +420,7 @@ while not base_registered:
         stderr=subprocess.PIPE)
     res = p.communicate()
     if p.returncode != 0:
+        registration_returncode = p.returncode
         # Even on error SUSEConnect writes messages to stdout, go figure
         error_message = res[0].decode()
         failed_smts.append(registration_target.get_ipv4())
@@ -483,6 +487,14 @@ if res.status_code != 200:
 prod_data = json.loads(res.text)
 extensions = prod_data.get('extensions')
 register_modules(extensions, products)
+
+if registration_returncode != 0:
+    print(
+        'Registration failed, see /var/log/guestregister for details',
+        file=sys.stderr
+    )
+else:
+    print('Registration succeeded')
 
 if os.path.exists(instance_data_filepath):
     os.unlink(instance_data_filepath)
