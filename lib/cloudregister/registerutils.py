@@ -600,6 +600,11 @@ def get_instance_data(config):
                     errMsg = 'Data collected from stderr for instance '
                     errMsg += 'data collection "%s"' % errors
                     logging.error(errMsg)
+                if not instance_data:
+                    warn_msg = 'Possible issue accessing the metadata service.'
+                    warn_msg += ' Metadata is empty, may result in '
+                    warn_msg += 'registration failure.'
+                    logging.warning(warn_msg)
 
     # Marker for the server to not return https:// formated
     # service and repo information
