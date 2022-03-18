@@ -54,6 +54,7 @@ registration_returncode = 0
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[]):
     """Register modules obeying dependencies"""
+    global registration_returncode
     for extension in extensions:
         arch = extension.get('arch')
         identifier = extension.get('identifier')
@@ -87,6 +88,13 @@ def register_modules(extensions, products, registered=[]):
         register_modules(
             extension.get('extensions'), products, registered
         )
+
+def cleanup():
+    """Remove any registration artifacts"""
+    utils.remove_registration_data()
+    utils.clean_smt_cache()
+    utils.clear_new_registration_flag()
+
 
 # ----------------------------------------------------------------------------
 argparse = argparse.ArgumentParser(description='Register on-demand instance')
@@ -174,9 +182,7 @@ if (args.email and not args.reg_code):
 time.sleep(int(args.delay_time))
 
 if args.clean_up:
-    utils.remove_registration_data()
-    utils.clean_smt_cache()
-    utils.clear_new_registration_flag()
+    cleanup()
     sys.exit(0)
 
 config_file = args.config_file
@@ -357,9 +363,6 @@ if not registration_target:
     logging.error('No response from: %s' % str(tested_smt_servers))
     sys.exit(1)
 
-# Add the target SMT server to the hosts file
-utils.add_hosts_entry(registration_target)
-
 # Create location to store data if it does not exist
 if not os.path.exists(utils.REGISTRATION_DATA_DIR):
     os.system('mkdir -p %s' % utils.REGISTRATION_DATA_DIR)
@@ -446,12 +449,12 @@ while not base_registered:
                     )
                 )
                 utils.remove_registration_data()
-                utils.add_hosts_entry(smt_srv)
                 registration_target = smt_srv
                 break
     else:
         base_registered = True
         utils.clear_new_registration_flag()
+        utils.add_hosts_entry(registration_target)
         if args.email or args.reg_code:
             utils.set_rmt_as_scc_proxy_flag()
 
@@ -489,8 +492,9 @@ extensions = prod_data.get('extensions')
 register_modules(extensions, products)
 
 if registration_returncode != 0:
+    cleanup()
     print(
-        'Registration failed, see /var/log/guestregister for details',
+        'Registration failed, see /var/log/cloudregister for details',
         file=sys.stderr
     )
 else:
