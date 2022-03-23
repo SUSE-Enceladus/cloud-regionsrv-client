@@ -221,8 +221,7 @@ if (args.force_new_registration and cached_smt_servers) or args.user_smt_ip:
         msg += 'has completed'
         print(msg)
         sys.exit(1)
-    utils.remove_registration_data()
-    utils.clean_smt_cache()
+    cleanup()
     utils.set_new_registration_flag()
     cached_smt_servers = []
 
@@ -403,6 +402,7 @@ base_registered = False
 failed_smts = []
 
 while not base_registered:
+    utils.add_hosts_entry(registration_target)
     cmd = [
         register_cmd,
         '--url',
@@ -454,7 +454,6 @@ while not base_registered:
     else:
         base_registered = True
         utils.clear_new_registration_flag()
-        utils.add_hosts_entry(registration_target)
         if args.email or args.reg_code:
             utils.set_rmt_as_scc_proxy_flag()
 

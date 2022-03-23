@@ -471,10 +471,6 @@ def get_credentials(credentials_file):
     username = None
     password = None
     if not os.path.exists(credentials_file):
-        if not is_new_registration():
-            logging.error(
-                'Credentials file not found: "%s"' % credentials_file
-            )
         return (username, password)
     credentials = open(credentials_file).readlines()
     for entry in credentials:
@@ -1151,6 +1147,9 @@ def remove_registration_data():
     clear_rmt_as_scc_proxy_flag()
     smt_data_file = __get_registered_smt_file_path()
     user, password = get_credentials('/etc/zypp/credentials.d/SCCcredentials')
+    if not user:
+        logging.info('No credentials, nothing to do server side')
+        return
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
