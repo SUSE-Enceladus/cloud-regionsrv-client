@@ -54,7 +54,12 @@ registration_returncode = 0
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[]):
     """Register modules obeying dependencies"""
+    global registration_returncode
     for extension in extensions:
+        # If the extension is recommended it gets installed with the
+        # baseproduct registration. No need to run another registration
+        if extension.get('recommended'):
+            continue
         arch = extension.get('arch')
         identifier = extension.get('identifier')
         version = extension.get('version')
@@ -87,6 +92,13 @@ def register_modules(extensions, products, registered=[]):
         register_modules(
             extension.get('extensions'), products, registered
         )
+
+def cleanup():
+    """Remove any registration artifacts"""
+    utils.remove_registration_data()
+    utils.clean_smt_cache()
+    utils.clear_new_registration_flag()
+
 
 # ----------------------------------------------------------------------------
 argparse = argparse.ArgumentParser(description='Register on-demand instance')
@@ -174,9 +186,7 @@ if (args.email and not args.reg_code):
 time.sleep(int(args.delay_time))
 
 if args.clean_up:
-    utils.remove_registration_data()
-    utils.clean_smt_cache()
-    utils.clear_new_registration_flag()
+    cleanup()
     sys.exit(0)
 
 config_file = args.config_file
@@ -215,8 +225,7 @@ if (args.force_new_registration and cached_smt_servers) or args.user_smt_ip:
         msg += 'has completed'
         print(msg)
         sys.exit(1)
-    utils.remove_registration_data()
-    utils.clean_smt_cache()
+    cleanup()
     utils.set_new_registration_flag()
     cached_smt_servers = []
 
@@ -357,9 +366,6 @@ if not registration_target:
     logging.error('No response from: %s' % str(tested_smt_servers))
     sys.exit(1)
 
-# Add the target SMT server to the hosts file
-utils.add_hosts_entry(registration_target)
-
 # Create location to store data if it does not exist
 if not os.path.exists(utils.REGISTRATION_DATA_DIR):
     os.system('mkdir -p %s' % utils.REGISTRATION_DATA_DIR)
@@ -400,6 +406,7 @@ base_registered = False
 failed_smts = []
 
 while not base_registered:
+    utils.add_hosts_entry(registration_target)
     cmd = [
         register_cmd,
         '--url',
@@ -446,7 +453,6 @@ while not base_registered:
                     )
                 )
                 utils.remove_registration_data()
-                utils.add_hosts_entry(smt_srv)
                 registration_target = smt_srv
                 break
     else:
@@ -489,8 +495,9 @@ extensions = prod_data.get('extensions')
 register_modules(extensions, products)
 
 if registration_returncode != 0:
+    cleanup()
     print(
-        'Registration failed, see /var/log/guestregister for details',
+        'Registration failed, see /var/log/cloudregister for details',
         file=sys.stderr
     )
 else:

@@ -1,0 +1,55 @@
+Test matrix cloud-regionsrv-client
+
+on-demand
+- Initial boot
+  + registration success
+    - check log
+  + zypper lr has repos
+- registercloudguest --clean
+  + no error no message
+  + zypper lr has no repos
+  + nothing in /etc/zypp/credentials.d
+- registercloudguest
+  + no error
+  + sucees message on stdout
+  + $? is 0
+  + zypper lr has repos
+- registercloudguest --force-new
+  + no error
+  + sucees message on stdout
+  + $? is 0
+  + zypper lr has repos
+
+byos - test on SLES4SAP instance
+- Initial boot
+  + no registration
+  + on Azure regionsrv-enabler-azure.timer is enabled
+  + guestregister.service is not enabled and not running
+  + /var/log/cloudregister is empty
+  + zypper lr has no repos
+- SUSEConnect -d
+  + produce error message
+- registercloudguest --clean
+  + no error no message
+  + zypper lr has no repos
+- SUSEConnect -r XXX
+  + registartion successful
+- SUSEConnect -p sle-module-public-cloud/$VERSION/x86_64
+  + registartion successful
+- SUSEConnect -d -p sle-module-public-cloud/$VERSION/x86_64
+  + module deletion successful
+  + Requires SUSEConnect > 0.3.32
+- registercloudguest --clean
+  + no error no message
+  + zypper lr has no repos
+  + nothing in /etc/zypp/credentials.d
+- registercloudguest -r XXX
+  + no error
+  + sucees message on stdout
+  + $? is 0
+  + repos include HA
+registercloudguest --force-new -r XXX
+  + no error
+  + sucees message on stdout
+  + $? is 0
+  + repos include HA
