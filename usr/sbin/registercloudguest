@@ -56,6 +56,10 @@ def register_modules(extensions, products, registered=[]):
     """Register modules obeying dependencies"""
     global registration_returncode
     for extension in extensions:
+        # If the extension is recommended it gets installed with the
+        # baseproduct registration. No need to run another registration
+        if extension.get('recommended'):
+            continue
         arch = extension.get('arch')
         identifier = extension.get('identifier')
         version = extension.get('version')
