@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.0.3
+%define base_version 10.0.2
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -99,7 +99,7 @@ Requires:       python3-dnspython
 Guest registration plugin for images intended for Microsoft Azure
 
 %package addon-azure
-Version:	1.0.3
+Version:	1.0.4
 Release:	0
 Summary:	Enable/Disable Guest Registration for Microsoft Azure
 Group:		Productivity/Networking/Web/Servers
