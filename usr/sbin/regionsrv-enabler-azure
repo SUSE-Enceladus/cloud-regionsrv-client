@@ -20,19 +20,19 @@ import sys
 
 import cloudregister.registerutils as utils
 
+CACHE_LICENSE_PATH = '/tmp/cached_license'
+
 
 def update_license_cache(license_type):
     """Update the cache to track the license type"""
-    cached_license_path = '/tmp/cached_license'
-    with open(cached_license_path, 'w+') as cached_license:
+    with open(CACHE_LICENSE_PATH, 'w+') as cached_license:
         cached_license.write(license_type)
 
 
 def has_license_changed(license_type):
     """Check license type changes against metadata info"""
-    cached_license_path = '/tmp/cached_license'
     try:
-        with open(cached_license_path, 'r') as cached_license:
+        with open(CACHE_LICENSE_PATH, 'r') as cached_license:
             old_license = cached_license.read()
             return license_type != old_license
     except FileNotFoundError:
