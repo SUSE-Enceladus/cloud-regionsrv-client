@@ -20,6 +20,25 @@ import sys
 
 import cloudregister.registerutils as utils
 
+CACHE_LICENSE_PATH = utils.get_state_dir() + 'cached_license'
+
+
+def update_license_cache(license_type):
+    """Update the cache to track the license type"""
+    with open(CACHE_LICENSE_PATH, 'w+') as cached_license:
+        cached_license.write(license_type)
+
+
+def has_license_changed(license_type):
+    """Check license type changes against metadata info"""
+    try:
+        with open(CACHE_LICENSE_PATH, 'r') as cached_license:
+            old_license = cached_license.read()
+            return license_type != old_license
+    except FileNotFoundError:
+        return True
+
+
 def get_license_type():
     proxies = {
         'http': None,
@@ -78,7 +97,8 @@ utils.start_logging()
 service_name = 'guestregister'
 license_type = get_license_type()
 
-if 'BYOS' in license_type and not utils.uses_rmt_as_scc_proxy():
+if ('BYOS' in license_type and has_license_changed(license_type) and
+    not utils.uses_rmt_as_scc_proxy()):
     run_command(['registercloudguest', '--clean'])
     run_command(['systemctl', 'disable', service_name])
 elif license_type and 'BYOS' not in license_type:
@@ -86,8 +106,10 @@ elif license_type and 'BYOS' not in license_type:
     # or PAYG without AHB
     update_server = utils.get_smt()
     if update_server:
-        if utils.is_registered(update_server.get_FQDN()):
+        if (not has_license_changed(license_type) and
+            utils.is_registered(update_server.get_FQDN())):
             sys.exit(0)
+        update_license_cache(license_type)
         update_server = None
     if not update_server:
         run_command(['registercloudguest', '--force-new'])
