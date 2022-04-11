@@ -59,6 +59,9 @@ def register_modules(extensions, products, registered=[]):
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
         if extension.get('recommended'):
+            register_modules(
+                extension.get('extensions'), products, registered
+            )
             continue
         arch = extension.get('arch')
         identifier = extension.get('identifier')
