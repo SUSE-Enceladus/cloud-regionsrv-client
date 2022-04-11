@@ -128,7 +128,7 @@ def clean_hosts_file(domain_name):
 def clean_smt_cache():
     """Clean the disk cache for SMT data"""
 
-    smt_data = glob.glob(REGISTRATION_DATA_DIR + '*SMTInfo*')
+    smt_data = glob.glob(get_state_dir() + '*SMTInfo*')
     for cache_entry in smt_data:
         os.unlink(cache_entry)
 
@@ -137,7 +137,7 @@ def clean_smt_cache():
 def clear_new_registration_flag():
     """Clear the new registration marker"""
     try:
-        os.unlink(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
+        os.unlink(get_state_dir() + NEW_REGISTRATION_MARKER)
     except FileNotFoundError:
         pass
 
@@ -146,7 +146,7 @@ def clear_new_registration_flag():
 def clear_rmt_as_scc_proxy_flag():
     """Clear the marker that indicates that RMT is used as SCC proxy"""
     try:
-        os.unlink(REGISTRATION_DATA_DIR + RMT_AS_SCC_PROXY_MARKER)
+        os.unlink(get_state_dir() + RMT_AS_SCC_PROXY_MARKER)
     except FileNotFoundError:
         pass
 
@@ -432,10 +432,10 @@ def get_activations():
 def get_available_smt_servers():
     """Return a list of available SMT servers"""
     availabe_smt_servers = []
-    if not os.path.exists(REGISTRATION_DATA_DIR):
+    if not os.path.exists(get_state_dir()):
         return availabe_smt_servers
     smt_data_files = glob.glob(
-        REGISTRATION_DATA_DIR + AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
+        get_state_dir() + AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
     )
     for smt_data in smt_data_files:
         availabe_smt_servers.append(get_smt_from_store(smt_data))
@@ -834,9 +834,9 @@ def get_zypper_pid():
 def get_zypper_pid_cache():
     """Return the PID for zypper stored in cache"""
     zypper_pid = 0
-    if not os.path.exists(REGISTRATION_DATA_DIR + 'zypper_pid'):
+    if not os.path.exists(get_state_dir() + 'zypper_pid'):
         return zypper_pid
-    return open(REGISTRATION_DATA_DIR + 'zypper_pid').read()
+    return open(get_state_dir() + 'zypper_pid').read()
 
 
 # ----------------------------------------------------------------------------
@@ -961,7 +961,7 @@ def is_new_registration():
     """Indicate whether a new registration is in process based on the
        marker file. Note it is the responsibility of the process to properly
        manage the marker file"""
-    return os.path.exists(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER)
+    return os.path.exists(get_state_dir() + NEW_REGISTRATION_MARKER)
 
 
 # ----------------------------------------------------------------------------
@@ -1032,15 +1032,15 @@ def is_zypper_running():
 def refresh_zypper_pid_cache():
     """Write the current zypper pid to the cacche file"""
     zypper_pid = get_zypper_pid()
-    with open(REGISTRATION_DATA_DIR + 'zypper_pid', 'w') as cache_file:
+    with open(get_state_dir() + 'zypper_pid', 'w') as cache_file:
         cache_file.write(zypper_pid)
 
 
 # ----------------------------------------------------------------------------
 def set_as_current_smt(smt):
     """Store the given SMT as the current SMT server."""
-    if not os.path.exists(REGISTRATION_DATA_DIR):
-        os.system('mkdir -p %s' % REGISTRATION_DATA_DIR)
+    if not os.path.exists(get_state_dir()):
+        os.system('mkdir -p %s' % get_state_dir())
     store_smt_data(__get_registered_smt_file_path(), smt)
 
 
@@ -1082,13 +1082,13 @@ def set_proxy():
 # ----------------------------------------------------------------------------
 def set_new_registration_flag():
     """Set a marker that this is the beginning of the registration process"""
-    Path(REGISTRATION_DATA_DIR + NEW_REGISTRATION_MARKER).touch()
+    Path(get_state_dir() + NEW_REGISTRATION_MARKER).touch()
 
 
 # ----------------------------------------------------------------------------
 def set_rmt_as_scc_proxy_flag():
     """Set a marker that the RMT registration is a proxy for SCC"""
-    Path(REGISTRATION_DATA_DIR + RMT_AS_SCC_PROXY_MARKER).touch()
+    Path(get_state_dir() + RMT_AS_SCC_PROXY_MARKER).touch()
 
 
 # ----------------------------------------------------------------------------
@@ -1255,8 +1255,10 @@ def update_ca_chain(cmd_w_args_lst):
 def uses_rmt_as_scc_proxy():
     """Check if the RMT registration is used as an SCC proxy"""
 
-    return os.path.isfile(REGISTRATION_DATA_DIR + RMT_AS_SCC_PROXY_MARKER)
+    return os.path.isfile(get_state_dir() + RMT_AS_SCC_PROXY_MARKER)
 
+def get_state_dir():
+    return REGISTRATION_DATA_DIR
 
 # Private
 # ----------------------------------------------------------------------------
@@ -1289,7 +1291,7 @@ def __get_referenced_credentials(smt_server_name):
 def __get_registered_smt_file_path():
     """Return the file path for the SMT infor stored for the registered
        server"""
-    return REGISTRATION_DATA_DIR + REGISTERED_SMT_SERVER_DATA_FILE_NAME
+    return get_state_dir() + REGISTERED_SMT_SERVER_DATA_FILE_NAME
 
 
 # ----------------------------------------------------------------------------
@@ -1336,7 +1338,7 @@ def __populate_srv_cache():
         update_server = smt.SMT(child)
         server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
         store_smt_data(
-            REGISTRATION_DATA_DIR + server_cache_file_name, update_server
+            get_state_dir() + server_cache_file_name, update_server
         )
 
 

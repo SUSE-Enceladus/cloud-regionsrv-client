@@ -20,7 +20,7 @@ import sys
 
 import cloudregister.registerutils as utils
 
-CACHE_LICENSE_PATH = utils.REGISTRATION_DATA_DIR + 'cached_license'
+CACHE_LICENSE_PATH = utils.get_state_dir() + 'cached_license'
 
 
 def update_license_cache(license_type):
