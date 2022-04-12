@@ -198,8 +198,8 @@ if config_file:
 cfg = utils.get_config(config_file)
 utils.start_logging()
 
-if not os.path.isdir(utils.REGISTRATION_DATA_DIR):
-    os.makedirs(utils.REGISTRATION_DATA_DIR)
+if not os.path.isdir(utils.get_state_dir()):
+    os.makedirs(utils.get_state_dir())
 
 utils.set_new_registration_flag()
 if args.force_new_registration:
@@ -295,7 +295,7 @@ if region_smt_servers['new']:
     smt_count = len(region_smt_servers['cached']) + 1
     for smt_server in region_smt_servers['new']:
         store_file_name = (
-            utils.REGISTRATION_DATA_DIR +
+            utils.get_state_dir() +
             utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % smt_count
         )
         utils.store_smt_data(store_file_name, smt_server)
@@ -314,7 +314,7 @@ region_smt_servers = region_smt_servers['cached'] + region_smt_servers['new']
 # find a server that is alive in this region
 if registration_smt:
     registration_smt_cache_file_name = (
-            utils.REGISTRATION_DATA_DIR +
+            utils.get_state_dir() +
             utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
         )
     alive = registration_smt.is_responsive()
@@ -370,14 +370,14 @@ if not registration_target:
     sys.exit(1)
 
 # Create location to store data if it does not exist
-if not os.path.exists(utils.REGISTRATION_DATA_DIR):
-    os.system('mkdir -p %s' % utils.REGISTRATION_DATA_DIR)
+if not os.path.exists(utils.get_state_dir()):
+    os.system('mkdir -p %s' % utils.get_state_dir())
 
 # Write the data of the current target server
 utils.set_as_current_smt(registration_target)
 
 # Check if we need to send along any instance data
-instance_data_filepath = utils.REGISTRATION_DATA_DIR + str(uuid.uuid4())
+instance_data_filepath = utils.get_state_dir() + str(uuid.uuid4())
 instance_data = utils.get_instance_data(cfg)
 if instance_data:
     inst_data_out = open(instance_data_filepath, 'w')
