@@ -1366,7 +1366,7 @@ def __remove_repo_artifacts(repo_server_name):
     __remove_service(repo_server_name)
 
     if os.path.exists('/etc/SUSEConnect'):
-            os.unlink('/etc/SUSEConnect')
+        os.unlink('/etc/SUSEConnect')
 
 
 # ----------------------------------------------------------------------------
