@@ -459,6 +459,7 @@ while not base_registered:
                 registration_target = smt_srv
                 break
     else:
+        logging.info('Baseproduct registration complete')
         base_registered = True
         utils.clear_new_registration_flag()
         if args.email or args.reg_code:
