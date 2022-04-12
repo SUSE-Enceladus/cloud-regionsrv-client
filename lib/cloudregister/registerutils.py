@@ -1272,17 +1272,13 @@ def __get_referenced_credentials(smt_server_name):
             url = repo_cfg.get(section, 'baseurl')
             if url:
                 if (
-                        (
-                            smt_server_name in url or
-                            'plugin:/susecloud' in url or
-                            'plugin:susecloud' in url
-                        ) and 'credentials=' in url
+                        smt_server_name in url or
+                        'plugin:/susecloud' in url or
+                        'plugin:susecloud' in url
                 ):
-                    line_parts = url.split('?credentials=')
-                    if len(line_parts) > 1:
-                        credentials_name = line_parts[-1].split('&')[0]
-                        if credentials_name not in referenced_credentials:
-                            referenced_credentials.append(credentials_name)
+                    credentials_name = repo_cfg.get(section, 'service')
+                    if credentials_name not in referenced_credentials:
+                        referenced_credentials.append(credentials_name)
 
     return referenced_credentials
 
