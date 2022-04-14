@@ -40,6 +40,7 @@ byos - test on SLES4SAP instance
   + module deletion successful
   + Requires SUSEConnect > 0.3.32
 - registercloudguest --clean
+  + $? is 0
   + no error no message
   + zypper lr has no repos
   + nothing in /etc/zypp/credentials.d
@@ -48,8 +49,12 @@ byos - test on SLES4SAP instance
   + sucees message on stdout
   + $? is 0
   + repos include HA
-registercloudguest --force-new -r XXX
+- registercloudguest --force-new -r XXX
   + no error
   + sucees message on stdout
   + $? is 0
   + repos include HA
+- SUSEConnect -p sle-module-public-cloud/$VERSION/x86_64
+  + registartion successful
+  + Cloud based RMT server is the target
+- registercloudguest --clean
