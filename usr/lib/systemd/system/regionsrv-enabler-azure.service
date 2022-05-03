@@ -2,7 +2,7 @@
 Description=Enable/Disable Guest Registration for Microsoft Azure
 After=network-online.target
 Wants=network-online.target
-StartLimitBurst=0
+StartLimitIntervalSec=0
 
 [Service]
 ExecStart=/usr/sbin/regionsrv-enabler-azure
