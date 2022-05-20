@@ -40,7 +40,8 @@ from cloudregister import smt
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
-REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
+OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
+REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 
@@ -934,7 +935,7 @@ def https_only(config):
 # ----------------------------------------------------------------------------
 def import_smtcert_12(smt):
     """Import the SMT certificate on SLES 12"""
-    key_chain = '/usr/share/pki/trust/anchors'
+    key_chain = '/etc/pki/trust/anchors'
     if not smt.write_cert(key_chain):
         return 0
     if not update_ca_chain(['update-ca-certificates']):
@@ -1257,8 +1258,11 @@ def uses_rmt_as_scc_proxy():
 
     return os.path.isfile(get_state_dir() + RMT_AS_SCC_PROXY_MARKER)
 
+
+# ----------------------------------------------------------------------------
 def get_state_dir():
     return REGISTRATION_DATA_DIR
+
 
 # Private
 # ----------------------------------------------------------------------------
