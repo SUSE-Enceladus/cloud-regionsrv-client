@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (c) 2020, SUSE LLC, All rights reserved.
+# Copyright (c) 2022, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -16,8 +16,21 @@
 """Update the cached SMT server objects to set the configured protocol"""
 
 import glob
+import os
 
 import cloudregister.registerutils as utils
+
+if os.path.exists(utils.OLD_REGISTRATION_DATA_DIR):
+    # The case where both new and old location exist cannot happen. This
+    # code runs on package update and as such moves the directory.
+    #
+    # The hard coded path ends in '/' thus producing an empty entry in the
+    # split(). We want to make sure we do not create nested dirs.
+    os.system(
+        'mv %s %s' % (utils.OLD_REGISTRATION_DATA_DIR,
+                os.sep.join(utils.REGISTRATION_DATA_DIR.split(os.sep)[:-2])
+        )
+    )
 
 cached_server_files = glob.glob('%s/*SMT*' % utils.REGISTRATION_DATA_DIR)
 
