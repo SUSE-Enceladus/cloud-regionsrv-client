@@ -36,7 +36,7 @@ def has_license_changed(license_type):
             old_license = cached_license.read()
             return license_type != old_license
     except FileNotFoundError:
-        return True
+        update_license_cache(license_type)
 
 
 def get_license_type():
