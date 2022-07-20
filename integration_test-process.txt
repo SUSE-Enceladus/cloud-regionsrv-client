@@ -16,7 +16,13 @@ on-demand
   + zypper lr has repos
 - registercloudguest --force-new
   + no error
-  + sucees message on stdout
+  + success message on stdout
+  + $? is 0
+  + zypper lr has repos
+- rm /usr/share/pki/trust/anchors/registration_server_*.pem
+  + update-ca-certificates
+  + registercloudguest --force-new
+  + success message on stdout
   + $? is 0
   + zypper lr has repos
 
