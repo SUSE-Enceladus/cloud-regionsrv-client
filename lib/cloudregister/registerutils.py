@@ -1159,33 +1159,49 @@ def remove_registration_data():
         logging.info('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
         domain_name = smt.get_domain_name()
-        response = requests.delete(
-            'https://%s/connect/systems' % server_name, auth=auth_creds
-        )
-        if response.status_code == 204:
-            logging.info(
-                'System sucessfully removed from update infrastructure'
+        try:
+            response = requests.delete(
+                'https://%s/connect/systems' % server_name, auth=auth_creds
             )
-        else:
-            rmt_check_msg = 'System unknown to update infrastructure, '
-            rmt_check_msg += 'continue with local changes'
-            logging.info(rmt_check_msg)
+            if response.status_code == 204:
+                logging.info(
+                    'System sucessfully removed from update infrastructure'
+                )
+            else:
+                rmt_check_msg = 'System unknown to update infrastructure, '
+                rmt_check_msg += 'continue with local changes'
+                logging.info(rmt_check_msg)
+        except requests.exceptions.RequestException as e:
+            logging.warning('Unable to remove client registration from server')
+            logging.warning(e)
+            logging.info('Continue with local artifact removal')
         clean_hosts_file(domain_name)
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     elif is_scc_connected():
         logging.info('Removing system from SCC')
-        response = requests.delete(
-            'https://scc.suse.com/connect/systems', auth=auth_creds
-        )
-        if response.status_code == 204:
-            logging.info('System sucessfully removed from SCC')
-        else:
-            scc_check_msg = 'System not found in SCC. The system may still '
-            scc_check_msg += 'be tracked against your subscription. It is '
-            scc_check_msg += 'recommended to investigate the issue. '
-            scc_check_msg += 'Local changes applied.'
-            logging.info(scc_check_msg)
+        try:
+            response = requests.delete(
+                'https://scc.suse.com/connect/systems', auth=auth_creds
+            )
+            if response.status_code == 204:
+                logging.info('System sucessfully removed from SCC')
+            else:
+                scc_check_msg = 'System not found in SCC. The system may still '
+                scc_check_msg += 'be tracked against your subscription. It is '
+                scc_check_msg += 'recommended to investigate the issue. '
+                scc_check_msg += 'System user name: "%s". '
+                scc_check_msg += 'Local registration artifacts removed.'
+                logging.info(scc_check_msg % user)
+        except requests.exceptions.RequestException as e:
+            scc_except_msg = 'Unable to remove client registration from SCC. '
+            scc_except_msg += 'The system is most likely still tracked againt '
+            scc_except_msg += 'your subscription. Please infomr your SCC '
+            scc_except_msg += 'administrator that the system with "%s" user '
+            scc_except_msg += 'should be removed from SCC. Registration '
+            scc_except_msg += 'artifacts removed locally.'
+            logging.error(scc_except_msg % user)
+            logging.warning(e)
         __remove_repo_artifacts('suse.com')
     else:
         logging.info('No current registration server set.')
