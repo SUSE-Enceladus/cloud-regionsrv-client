@@ -97,8 +97,16 @@ utils.start_logging()
 service_name = 'guestregister'
 license_type = get_license_type()
 
-if ('BYOS' in license_type and has_license_changed(license_type) and
-    not utils.uses_rmt_as_scc_proxy()):
+license_type_not_allowed = (
+    license_type and ('SLES' not in license_type or 'None' not in license_type)
+)
+
+byos_license = (
+    'BYOS' in license_type and has_license_changed(license_type) and
+    not utils.uses_rmt_as_scc_proxy()
+)
+
+if byos_license or license_type_not_allowed:
     run_command(['registercloudguest', '--clean'])
     run_command(['systemctl', 'disable', service_name])
     update_license_cache(license_type)
