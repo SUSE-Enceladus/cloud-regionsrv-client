@@ -119,8 +119,10 @@ python3 setup.py build
 cp -r etc %{buildroot}
 cp -r usr %{buildroot}
 python3 setup.py install --prefix=%{_prefix}  --root=%{buildroot}
-mkdir -p %{buildroot}/var/lib/regionService/certs
-mkdir -p %{buildroot}/var/lib/cloudregister
+# The location of the regionserver certs
+mkdir -p %{buildroot}/usr/lib/regionService/certs
+# The directory for the cache data
+mkdir -p %{buildroot}/var/cache/cloudregister
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.service %{buildroot}%{_unitdir}
@@ -160,7 +162,7 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %dir %{_usr}/lib/zypp
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
-%dir /var/lib/cloudregister
+%dir /var/cache/cloudregister
 %{_mandir}/man*/*
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/cloudguest-repo-service
@@ -180,8 +182,8 @@ gzip %{buildroot}/%{_mandir}/man1/*
 
 %files generic-config
 %defattr(-,root,root,-)
-%dir /var/lib/regionService
-%dir /var/lib/regionService/certs
+%dir /usr/lib/regionService
+%dir /usr/lib/regionService/certs
 %config %{_sysconfdir}/regionserverclnt.cfg
 
 %files plugin-gce
