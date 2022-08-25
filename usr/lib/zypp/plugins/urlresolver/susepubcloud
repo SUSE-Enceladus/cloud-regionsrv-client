@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (c) 2019, SUSE LLC, All rights reserved.
+# Copyright (c) 2022, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -28,7 +28,7 @@ utils.start_logging()
 utils.set_proxy()
 
 
-class SUSECloudPlugin(Plugin):
+class SUSEPubCloudPlugin(Plugin):
     def RESOLVEURL(self, headers, body):
         """Convert the URL for the repo"""
         repo_url = ''
@@ -117,5 +117,5 @@ class SUSECloudPlugin(Plugin):
         )
 
 
-plugin = SUSECloudPlugin()
+plugin = SUSEPubCloudPlugin()
 plugin.main()

@@ -167,7 +167,7 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest
 %{_sbindir}/updatesmtcache
-%{_usr}/lib/zypp/plugins/urlresolver/susecloud
+%{_usr}/lib/zypp/plugins/urlresolver/susepubcloud
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*
 %{python3_sitelib}/cloudregister/smt*
