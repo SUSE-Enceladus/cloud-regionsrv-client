@@ -39,6 +39,7 @@ Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
 Requires:       zypper
 BuildRequires:  systemd
+Conflicts:      container-suseconnect
 %{?systemd_requires}
 BuildRequires:  python-rpm-macros
 BuildRequires:  python3-M2Crypto
