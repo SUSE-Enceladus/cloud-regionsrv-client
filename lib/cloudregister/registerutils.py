@@ -824,11 +824,16 @@ def get_zypper_command():
 # ----------------------------------------------------------------------------
 def get_zypper_pid():
     """Return the PID of zypper if it is running"""
-    zyppPIDCmd = ['ps', '-C', 'zypper', '-o', 'pid=']
-    zyppPID = subprocess.Popen(zyppPIDCmd, stdout=subprocess.PIPE)
-    pidData = zyppPID.communicate()
+    pid = ''
+    for executable_name in ['zypper', 'Zypp-main']:
+        zyppPIDCmd = ['ps', '-C', executable_name, '-o', 'pid=']
+        zyppPID = subprocess.Popen(zyppPIDCmd, stdout=subprocess.PIPE)
+        pidData = zyppPID.communicate()
+        pid = pidData[0].strip().decode()
+        if pid:
+            break
 
-    return pidData[0].strip().decode()
+    return pid
 
 
 # ----------------------------------------------------------------------------
