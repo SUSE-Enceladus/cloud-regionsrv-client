@@ -15,7 +15,6 @@
 
 import base64
 import configparser
-import filecmp
 import glob
 import ipaddress
 import json
@@ -159,7 +158,9 @@ def credentials_files_are_equal(repo_credentials):
     credentials_location = '/etc/zypp/credentials.d/'
     credentials_base     = credentials_location + 'SCCcredentials'
     credentials_header   = credentials_location + repo_credentials
-    if not filecmp.cmp(credentials_base, credentials_header):
+    ref_user, ref_pass = get_credentials(credentials_base)
+    repo_user, repo_pass = get_credentials(credentials_header)
+    if (ref_user != repo_user) or (ref_pass != repo_pass):
         return False
 
     return True
