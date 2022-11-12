@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (c) 2019, SUSE LLC, All rights reserved.
+# Copyright (c) 2022, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -39,6 +39,16 @@ class SUSECloudPlugin(Plugin):
         repo_credentials = headers.get('credentials')
         if zypper_pid != prev_zypper_pid:
             verify_credentials = True
+            # The check for the certs is overkill, but for BYOS the
+            # registration service is not enabled by default, thus pushing
+            # the check to every reboot would mizz BYOS instances that
+            # use the update infrastructure as proxy to SCC.
+            # The other option would be to have another service that runs
+            # less frequently, once every 6 months for example.
+            # Given that updates via zypper are expected to be relatively
+            # infrequent on production systems we should be OK with the
+            # check here.
+            utils.update_rmt_certs()
         # Note this logic breaks when FATE#320882/PM-1251 gets implemented
         if (
                 verify_credentials and not
