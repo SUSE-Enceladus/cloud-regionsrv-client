@@ -46,7 +46,7 @@ class SUSECloudPlugin(Plugin):
         ):
             self.error(
                 {'CREDENTIAL_ERROR': 'INCONSISTENT'},
-                'Not all credentials files are eqivalent: %s' % repo_credentials
+                'Not all credentials files are equivalent: %s' % repo_credentials
             )
             return
         server_name = ''

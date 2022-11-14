@@ -192,7 +192,7 @@ def test_get_ipv6_null():
 
 
 # ----------------------------------------------------------------------------
-def test_is_eqivalent():
+def test_is_equivalent():
     """Test two SMT servers with same name and fingerprint are treated
         as equivalent"""
     smt1 = SMT(etree.fromstring(smt_data_ipv4))
@@ -201,7 +201,7 @@ def test_is_eqivalent():
 
 
 # ----------------------------------------------------------------------------
-def test_is_eqivalent_fails():
+def test_is_equivalent_fails():
     """Test two SMT servers with same name but different fingerprint are
        treated as not equivalent"""
     smt1 = SMT(etree.fromstring(smt_data_ipv4))
