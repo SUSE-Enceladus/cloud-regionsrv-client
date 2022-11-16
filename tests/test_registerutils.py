@@ -12,9 +12,10 @@
 # License along with this library.
 
 import inspect
-import glob
 import os
 import sys
+from unittest.mock import patch
+from lxml import etree
 
 test_path = os.path.abspath(
     os.path.dirname(inspect.getfile(inspect.currentframe())))
@@ -26,15 +27,11 @@ sys.path.insert(0, code_path)
 
 import cloudregister.registerutils as utils
 
-from unittest.mock import patch
-from lxml import etree
-
-from cloudregister import smt
-
 
 cfg = utils.get_config(config_path + '/regionserverclnt.cfg')
 
 CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
+
 
 @patch('os.path.exists')
 def test_get_available_smt_servers_no_cache(path_exists):
@@ -54,8 +51,8 @@ def test_get_available_smt_servers_cache(state_dir):
 
 def test_get_credentials_no_file():
     user, passwd = utils.get_credentials(data_path + 'foo')
-    assert user == None
-    assert passwd == None
+    assert user is None
+    assert passwd is None
 
 
 def test_get_credentials():
@@ -95,7 +92,7 @@ def test_is_registration_supported_RHEL_Family():
 def test_update_rmt_certs_new_reg(new_reg):
     new_reg.return_value = True
     res = utils.update_rmt_certs()
-    assert res == None
+    assert res is None
 
 
 @patch('cloudregister.registerutils.import_smt_cert')
@@ -138,8 +135,8 @@ def test_update_rmt_certs_cert_change(
     assert cache_clean.called
     assert pop_cache.called
 
-    
-#---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Helper functions
 
 def get_servers_data():
@@ -188,4 +185,3 @@ def get_modified_servers_data():
     """
 
     return etree.fromstring(srv_xml)
-    

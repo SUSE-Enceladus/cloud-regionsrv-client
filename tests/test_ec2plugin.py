@@ -12,9 +12,7 @@
 # License along with this library.
 
 import inspect
-import logging
 import os
-import pytest
 import requests
 import sys
 
@@ -43,7 +41,7 @@ def test_request_fail(mock_logging, mock_request_get, mock_request_put):
     mock_request_get.side_effect = requests.exceptions.RequestException
     mock_request_put.side_effect = requests.exceptions.RequestException
     result = ec2.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     msg = 'Unable to determine instance placement from "'
     msg += 'http://169.254.169.254/latest/meta-data/placement/'
@@ -62,7 +60,7 @@ def test_request_fail_response_error(
     """Test unexpected return value"""
     mock_request_get.return_value = _get_error_response()
     result = ec2.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     msg = '\tMessage: Test server failure'
     mock_logging.warning.assert_called_with(msg)
@@ -98,7 +96,7 @@ def _get_expected_response():
 
 # ----------------------------------------------------------------------------
 def _get_unexpected_response():
-    """Return an unexpected response, i.e. trigget a parse error"""
+    """Return an unexpected response, i.e. triggers a parse error"""
     response = Response()
     response.status_code = 200
     response.text = ''

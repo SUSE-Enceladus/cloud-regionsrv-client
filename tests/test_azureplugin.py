@@ -12,9 +12,7 @@
 # License along with this library.
 
 import inspect
-import logging
 import os
-import pytest
 import requests
 import sys
 
@@ -48,7 +46,7 @@ def test_metadata_request_fail(mock_logging, mock_request, mock_resolver):
     mock_request.side_effect = requests.exceptions.RequestException
     mock_resolver.return_value = _get_no_nameservers_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'Unable to determine instance placement from metadata '
     expected += 'server "http://169.254.169.254/metadata/'
@@ -64,7 +62,7 @@ def test_metadata_request_fail_server_error(mock_logging, mock_request):
     """Test metadata server error code return"""
     mock_request.return_value = _get_error_response()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'Unable to get availability zone metadata'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
@@ -91,7 +89,6 @@ def test_metadata_request_success(mock_request):
     assert result == 'regionHint=useast'
 
 
-
 # ----------------------------------------------------------------------------
 @patch('msftazure.dns.resolver.get_default_resolver')
 @patch('msftazure.requests.get')
@@ -105,7 +102,7 @@ def test_wire_request_goal_state_request_fail(
     mock_request.side_effect = [None, requests.exceptions.RequestException]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'Could not retrieve goal state XML from 1.1.1.1'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
@@ -125,7 +122,7 @@ def test_wire_request_goal_state_request_fail_server_error(
     mock_request.side_effect = [None, _get_error_response()]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = '1.1.1.1 error for goal state request: 500'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
@@ -145,7 +142,7 @@ def test_wire_request_goal_state_request_success_no_match(
     mock_request.side_effect = [None, _get_unexpected_response()]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'No "<ExtensionsConfig>" in goal state XML'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
@@ -169,7 +166,7 @@ def test_wire_request_extension_request_fail(
     ]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'Could not get extensions information from "'
     expected += 'http://ola%sdme&?getit=1"'
@@ -194,7 +191,7 @@ def test_wire_request_extension_request_fail_server_error(
     ]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'Extensions request failed with: 500'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
@@ -218,7 +215,7 @@ def test_wire_request_extension_request_success_no_match(
     ]
     mock_resolver.return_value = _get_nameserver_resolver()
     result = azure.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     expected = 'No "<Location>" in extensions XML'
     actual = _get_msg(mock_logging.warning.call_args_list[0])
@@ -252,7 +249,6 @@ def test_wire_request_success(mock_logging, mock_request, mock_resolver):
     assert result == 'regionHint=useast'
 
 
-
 # ----------------------------------------------------------------------------
 def _get_error_response():
     """Return an error code as the response of the request"""
@@ -263,7 +259,7 @@ def _get_error_response():
 
 
 # ----------------------------------------------------------------------------
-def _get_expected_response_metadata(upper = False):
+def _get_expected_response_metadata(upper=False):
     """Return an object mocking a expected response"""
     response = Response()
     response.status_code = 200
@@ -298,7 +294,7 @@ def _get_no_nameservers_resolver():
 
 
 # ----------------------------------------------------------------------------
-def _get_proper_extensions_response(upper = False):
+def _get_proper_extensions_response(upper=False):
     """Return a response that matches extensions config"""
     response = Response()
     region = 'useast'
@@ -327,7 +323,7 @@ def _get_proper_goal_state_response():
 
 # ----------------------------------------------------------------------------
 def _get_unexpected_response():
-    """Return an unexpected response, i.e. trigget a parse error"""
+    """Return an unexpected response, i.e. triggers a parse error"""
     response = Response()
     response.status_code = 200
     response.text = 'This matches nothing'
