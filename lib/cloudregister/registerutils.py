@@ -156,8 +156,8 @@ def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
     credentials_location = '/etc/zypp/credentials.d/'
-    credentials_base     = credentials_location + 'SCCcredentials'
-    credentials_header   = credentials_location + repo_credentials
+    credentials_base = credentials_location + 'SCCcredentials'
+    credentials_header = credentials_location + repo_credentials
     ref_user, ref_pass = get_credentials(credentials_base)
     repo_user, repo_pass = get_credentials(credentials_header)
     if (ref_user != repo_user) or (ref_pass != repo_pass):
@@ -195,6 +195,7 @@ def exec_subprocess(cmd, return_output=False):
         return proc.returncode
     except OSError:
         return -1
+
 
 # ----------------------------------------------------------------------------
 def fetch_smt_data(cfg, proxies):
@@ -281,7 +282,7 @@ def fetch_smt_data(cfg, proxies):
         # wait time is dependent on the number of region servers in the
         # framework. The maximum wait time is calculated as follows
         #
-        #sumof(num_regions_srvs * 15/i) + sumof(20/j)
+        # sumof(num_regions_srvs * 15/i) + sumof(20/j)
         # where i = 1,2,3
         #       j = 1,2
         #
@@ -433,16 +434,16 @@ def get_activations():
 # ----------------------------------------------------------------------------
 def get_available_smt_servers():
     """Return a list of available SMT servers"""
-    availabe_smt_servers = []
+    available_smt_servers = []
     if not os.path.exists(get_state_dir()):
-        return availabe_smt_servers
+        return available_smt_servers
     smt_data_files = glob.glob(
         get_state_dir() + AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
     )
     for smt_data in smt_data_files:
-        availabe_smt_servers.append(get_smt_from_store(smt_data))
+        available_smt_servers.append(get_smt_from_store(smt_data))
 
-    return availabe_smt_servers
+    return available_smt_servers
 
 
 # ----------------------------------------------------------------------------
@@ -489,44 +490,45 @@ def get_credentials(credentials_file):
 
 # ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
-        """Return the credentials filename.
-           Credentials are stored per service. If there is a service
-           associated with a given repo use those credentials, if not
-           use the default credentials associated with the server providing
-           the service.
-           Note this is based on naming convention. This can only succeed
-           after the system is properly registered."""
-        credentials_file = ''
-        credentials_loc = '/etc/zypp/credentials.d/'
-        credential_names = [
-            '*' + update_server.get_FQDN().replace('.', '_'),
-            'SCC*'
-        ]
-        if service_name:
-            credential_names.insert(0, '*' + service_name + '*')
+    """Return the credentials filename.
+    Credentials are stored per service. If there is a service
+    associated with a given repo use those credentials, if not
+    use the default credentials associated with the server providing
+    the service.
+    Note this is based on naming convention. This can only succeed
+    after the system is properly registered.
+    """
+    credentials_file = ''
+    credentials_loc = '/etc/zypp/credentials.d/'
+    credential_names = [
+        '*' + update_server.get_FQDN().replace('.', '_'),
+        'SCC*'
+    ]
+    if service_name:
+        credential_names.insert(0, '*' + service_name + '*')
 
-        for entry in credential_names:
-            cred_files = glob.glob(credentials_loc + entry)
-            if not cred_files:
-                logging.info('No credentials entry for "%s"' % entry)
-                continue
-            if len(cred_files) > 1:
-                logging.warning(
-                    'Found multiple credentials for "%s" entry and '
-                    'hoping for the best' % service_name)
-            credentials_file = cred_files[0]
-            break
+    for entry in credential_names:
+        cred_files = glob.glob(credentials_loc + entry)
+        if not cred_files:
+            logging.info('No credentials entry for "%s"' % entry)
+            continue
+        if len(cred_files) > 1:
+            logging.warning(
+                'Found multiple credentials for "%s" entry and '
+                'hoping for the best' % service_name)
+        credentials_file = cred_files[0]
+        break
 
-        if not credentials_file:
-            logging.error('No matching credentials file found')
+    if not credentials_file:
+        logging.error('No matching credentials file found')
 
-        return credentials_file
+    return credentials_file
 
 
 # ----------------------------------------------------------------------------
 def get_current_smt():
     """Return the data for the current SMT server.
-       The current SMT server is the server aginst which this client
+       The current SMT server is the server against which this client
        is registered."""
     smt = get_smt_from_store(__get_registered_smt_file_path())
     if not smt:
@@ -604,7 +606,7 @@ def get_instance_data(config):
                     warn_msg += 'registration failure.'
                     logging.warning(warn_msg)
 
-    # Marker for the server to not return https:// formated
+    # Marker for the server to not return https:// formatted
     # service and repo information
     instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
 
@@ -650,7 +652,7 @@ def get_installed_products():
         baseprod = os.path.realpath(baseProdSet)
         baseprodName = baseprod.split(os.sep)[-1].split('.')[0]
     else:
-        errMsg = 'No baseproduct installed system cannot be registerd'
+        errMsg = 'No baseproduct installed system cannot be registered'
         logging.error(errMsg)
         return products
 
@@ -751,7 +753,7 @@ def get_smt(cache_refreshed=None):
                         msg += 'system credentials cannot failover. Retaining '
                         msg += 'current, %s, target update server.'
                         msg += 'Try again later.'
-                        logging.error(msg %(new_target_ips, original_smt_ips))
+                        logging.error(msg % (new_target_ips, original_smt_ips))
                         return current_smt
                     replace_hosts_entry(current_smt, new_target)
                     set_as_current_smt(new_target)
@@ -853,7 +855,7 @@ def has_ipv6_access(smt):
     if not smt.get_ipv6():
         return False
     logging.info('Attempt to access update server over IPv6')
-    protocol = 'http' # Default for backward compatibility
+    protocol = 'http'  # Default for backward compatibility
     if https_only(get_config()):
         protocol = 'https'
     try:
@@ -872,7 +874,7 @@ def has_ipv6_access(smt):
 
 # ----------------------------------------------------------------------------
 def has_nvidia_support():
-    """Check if the instance has Nvida capabilities"""
+    """Check if the instance has Nvidia capabilities"""
     try:
         pci_info, errors = exec_subprocess(['lspci'], True)
     except TypeError:
@@ -973,9 +975,10 @@ def is_new_registration():
 
 # ----------------------------------------------------------------------------
 def is_registered(smt_server_name):
-    """Check if the instance is already registerd"""
+    """Check if the instance is already registered"""
     # For a "valid" registration we need to have credentials and a service
     return has_services(smt_server_name) and __has_credentials(smt_server_name)
+
 
 # ----------------------------------------------------------------------------
 def is_registration_supported(cfg):
@@ -1007,6 +1010,7 @@ def is_registration_supported(cfg):
 
     return registration_supported
 
+
 # ----------------------------------------------------------------------------
 def is_scc_connected():
     """If any repo url points to suse.com then at least some of the
@@ -1037,7 +1041,7 @@ def is_zypper_running():
 
 # ----------------------------------------------------------------------------
 def refresh_zypper_pid_cache():
-    """Write the current zypper pid to the cacche file"""
+    """Write the current zypper pid to the cache file"""
     zypper_pid = get_zypper_pid()
     with open(get_state_dir() + 'zypper_pid', 'w') as cache_file:
         cache_file.write(zypper_pid)
@@ -1154,7 +1158,7 @@ def remove_registration_data():
     clear_rmt_as_scc_proxy_flag()
     smt_data_file = __get_registered_smt_file_path()
     user, password = get_credentials('/etc/zypp/credentials.d/SCCcredentials')
-    if not user :
+    if not user:
         if not is_new_registration():
             logging.info('No credentials, nothing to do server side')
         return
@@ -1171,7 +1175,7 @@ def remove_registration_data():
             )
             if response.status_code == 204:
                 logging.info(
-                    'System sucessfully removed from update infrastructure'
+                    'System successfully removed from update infrastructure'
                 )
             else:
                 rmt_check_msg = 'System unknown to update infrastructure, '
@@ -1191,18 +1195,18 @@ def remove_registration_data():
                 'https://scc.suse.com/connect/systems', auth=auth_creds
             )
             if response.status_code == 204:
-                logging.info('System sucessfully removed from SCC')
+                logging.info('System successfully removed from SCC')
             else:
-                scc_check_msg = 'System not found in SCC. The system may still '
-                scc_check_msg += 'be tracked against your subscription. It is '
-                scc_check_msg += 'recommended to investigate the issue. '
+                scc_check_msg = 'System not found in SCC. The system may still'
+                scc_check_msg += ' be tracked against your subscription. It is'
+                scc_check_msg += ' recommended to investigate the issue. '
                 scc_check_msg += 'System user name: "%s". '
                 scc_check_msg += 'Local registration artifacts removed.'
                 logging.info(scc_check_msg % user)
         except requests.exceptions.RequestException as e:
             scc_except_msg = 'Unable to remove client registration from SCC. '
-            scc_except_msg += 'The system is most likely still tracked againt '
-            scc_except_msg += 'your subscription. Please infomr your SCC '
+            scc_except_msg += 'The system is most likely still tracked against'
+            scc_except_msg += ' your subscription. Please inform your SCC '
             scc_except_msg += 'administrator that the system with "%s" user '
             scc_except_msg += 'should be removed from SCC. Registration '
             scc_except_msg += 'artifacts removed locally.'
@@ -1217,6 +1221,7 @@ def remove_registration_data():
 def replace_hosts_entry(current_smt, new_smt):
     clean_hosts_file(current_smt.get_FQDN())
     add_hosts_entry(new_smt)
+
 
 # ----------------------------------------------------------------------------
 def start_logging():
@@ -1265,7 +1270,7 @@ def update_ca_chain(cmd_w_args_lst):
     retry_attempts = 3
     for attempt in range(retry_attempts):
         if exec_subprocess(cmd_w_args_lst):
-            errMsg = 'Certificate update failed attempt %d' % (attempt +1)
+            errMsg = 'Certificate update failed attempt %d' % (attempt + 1)
             logging.error(errMsg)
             time.sleep(5)
         else:
@@ -1366,7 +1371,7 @@ def __get_service_plugins():
         if os.path.basename(
                 str(Path(service_plugin).resolve())
         ) == 'cloudguest-repo-service':
-                plugin_link_names.append(service_plugin)
+            plugin_link_names.append(service_plugin)
 
     return plugin_link_names
 
@@ -1410,7 +1415,7 @@ def __populate_srv_cache():
 def __remove_credentials(smt_server_name):
     """Remove the server generated credentials"""
     referenced_credentials = __get_referenced_credentials(smt_server_name)
-    # Special files thta may exist but may not be referenced
+    # Special files that may exist but may not be referenced
     referenced_credentials += ['SCCcredentials', 'NCCcredentials']
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
     for system_credential in system_credentials:
@@ -1423,7 +1428,8 @@ def __remove_credentials(smt_server_name):
 
 # ----------------------------------------------------------------------------
 def __remove_repo_artifacts(repo_server_name):
-    """Remove the artifacts related to repository handling for a registration"""
+    """Remove the artifacts related to repository handling for a registration
+    """
 
     __remove_credentials(repo_server_name)
     __remove_repos(repo_server_name)
