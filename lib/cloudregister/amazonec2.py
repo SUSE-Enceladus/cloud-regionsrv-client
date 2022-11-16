@@ -23,7 +23,7 @@ def generateRegionSrvArgs():
     token_header = {'X-aws-ec2-metadata-token-ttl-seconds': '21600'}
 
     zone_req_header = {}
-    
+
     try:
         token_resp = requests.put(token_url, headers=token_header)
         if token_resp.status_code == 200:
@@ -31,7 +31,7 @@ def generateRegionSrvArgs():
     except requests.exceptions.RequestException:
         msg = 'Unable to retrieve IMDSv2 token falling back to IMDSv1'
         logging.warning(msg)
-    
+
     metadata_url = 'http://169.254.169.254/latest/meta-data/'
     zone_info = 'placement/availability-zone'
 
@@ -50,7 +50,7 @@ def generateRegionSrvArgs():
         # For regions the format is geo-loc-regionidaz
         # For example us-east-1f
         # What we need is geo-loc-regionid, i.e. us-east-1 as the region hint
-        region_data = zone_resp.text.split('-',3)
+        region_data = zone_resp.text.split('-', 3)
         region_id_az = region_data[2]
         region_id = ''
         for c in region_id_az:
