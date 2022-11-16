@@ -73,28 +73,13 @@ def add_region_server_args_to_URL(api, cfg):
        generateRegionSrvArgs() function.
     """
 
-    retry_cnt = 0
-    if cfg.has_section('instance'):
-        module = None
-        if cfg.has_option('instance', 'instanceArgs'):
-            module = cfg.get('instance', 'instanceArgs')
-        if module and module != 'none':
-            try:
-                mod = __import__('cloudregister.%s' % module, fromlist=[''])
-            except Exception:
-                msg = 'Configured instanceArgs module could not be loaded. '
-                msg += 'Continuing without additional arguments.'
-                logging.warning(msg)
-                return api
-            while retry_cnt < 5:
-                regionSrvArgs = mod.generateRegionSrvArgs()
-                if not regionSrvArgs:
-                    retry_cnt += 1
-                    time.sleep(1)
-                    continue
-                logging.info('Region server arguments: ?%s' % regionSrvArgs)
-                api += '?' + regionSrvArgs
-                break
+    mod = __get_framework_plugin(cfg)
+    if not mod:
+        return api
+
+    regionSrvArgs = __get_region_server_args(mod)
+    if regionSrvArgs:
+        api += '?' + regionSrvArgs
 
     return api
 
@@ -1334,6 +1319,25 @@ def get_state_dir():
 
 # Private
 # ----------------------------------------------------------------------------
+def __get_framework_plugin(cfg):
+    """Return the configured framework specific plugin module"""
+    mod = None
+    if cfg.has_section('instance'):
+        module = None
+        if cfg.has_option('instance', 'instanceArgs'):
+            module = cfg.get('instance', 'instanceArgs')
+        if module and module != 'none':
+            try:
+                mod = __import__('cloudregister.%s' % module, fromlist=[''])
+            except Exception:
+                msg = 'Configured instanceArgs module could not be loaded. '
+                msg += 'Continuing without additional arguments.'
+                logging.warning(msg)
+
+    return mod
+
+
+# ----------------------------------------------------------------------------
 def __get_referenced_credentials(smt_server_name):
     """Return a list of credential names referenced by repositories"""
     repo_files = glob.glob('/etc/zypp/repos.d/*.repo')
@@ -1353,6 +1357,29 @@ def __get_referenced_credentials(smt_server_name):
                         referenced_credentials.append(credentials_name)
 
     return referenced_credentials
+
+
+# ----------------------------------------------------------------------------
+def __get_region_server_args(plugin):
+    """Returns the region server arguments"""
+    region_srv_args = ''
+    retry_cnt = 0
+    while retry_cnt < 5:
+        try:
+            region_srv_args = plugin.generateRegionSrvArgs()
+        except AttributeError:
+            msg = 'Configured and loaded module "%s" does not provide the '
+            msg += 'required generateRegionSrvArgs function.'
+            logging.error(msg % plugin.__file__)
+            return region_srv_args
+        if not region_srv_args:
+            retry_cnt += 1
+            time.sleep(1)
+            continue
+        logging.info('Region server arguments: ?%s' % region_srv_args)
+        break
+
+    return region_srv_args
 
 
 # ----------------------------------------------------------------------------
