@@ -101,6 +101,7 @@ def cleanup():
     utils.remove_registration_data()
     utils.clean_smt_cache()
     utils.clear_new_registration_flag()
+    utils.clean_framework_idetntifier()
 
 
 # ----------------------------------------------------------------------------
@@ -217,6 +218,8 @@ if cached_smt_servers:
     # If we have an update server cache the system is registered in
     # some way shape or form
     utils.clear_new_registration_flag()
+else:
+    utils.write_framework_identifier(cfg)
 
 # Forced registration or user specified SMT, clear existing registration
 # data
