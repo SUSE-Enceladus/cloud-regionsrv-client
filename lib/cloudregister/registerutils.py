@@ -1,4 +1,4 @@
-# Copyright (c) 2020, SUSE LLC, All rights reserved.
+# Copyright (c) 2022, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -1275,6 +1275,47 @@ def update_ca_chain(cmd_w_args_lst):
 
 
 # ----------------------------------------------------------------------------
+def update_rmt_certs():
+    """Check if the update server certs have changed and if yes update the
+       system accordingly"""
+    # We are currently getting the latest cert information, nothing to do
+    if is_new_registration():
+        return
+    cached_rmt_servers = get_available_smt_servers()
+    proxies = None
+    if set_proxy():
+        proxies = {
+            'http_proxy': os.environ.get('http_proxy'),
+            'https_proxy': os.environ.get('https_proxy')
+        }
+    region_rmt_server_data = fetch_smt_data(get_config(), proxies)
+    region_rmt_servers = []
+    for child in region_rmt_server_data:
+        region_rmt_servers.append(smt.SMT(child, True))
+    # We need to compare the unordered list of cached servers with the
+    # unordered list of servers we got from the region server.
+    # If any of the servers are different refresh the whole cache
+    # and import the new cert
+    for region_rmt_server in region_rmt_servers:
+        region_ipv4 = region_rmt_server.get_ipv4()
+        region_ipv6 = region_rmt_server.get_ipv6()
+        for cached_rmt_server in cached_rmt_servers:
+            cached_ipv4 = cached_rmt_server.get_ipv4()
+            cached_ipv6 = cached_rmt_server.get_ipv6()
+            if (region_ipv4 == cached_ipv4) and (region_ipv6 == cached_ipv6):
+                if region_rmt_server == cached_rmt_server:
+                    break
+        else:
+            logging.info(
+                'Found updated update server information, importing new data'
+            )
+            import_smt_cert(region_rmt_server)
+            clean_smt_cache()
+            __populate_srv_cache()
+            return
+
+
+# ----------------------------------------------------------------------------
 def uses_rmt_as_scc_proxy():
     """Check if the RMT registration is used as an SCC proxy"""
 
@@ -1362,6 +1403,7 @@ def __populate_srv_cache():
         store_smt_data(
             get_state_dir() + server_cache_file_name, update_server
         )
+        cnt += 1
 
 
 # ----------------------------------------------------------------------------
