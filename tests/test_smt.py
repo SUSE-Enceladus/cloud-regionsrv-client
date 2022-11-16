@@ -16,7 +16,7 @@ import os
 import sys
 
 from lxml import etree
-from mock import patch
+from mock import patch, Mock
 from textwrap import dedent
 
 test_path = os.path.abspath(
@@ -46,7 +46,7 @@ smt_data_ipv46 = dedent('''\
 
 # ----------------------------------------------------------------------------
 class Response():
-    """Fake a requeste response object"""
+    """Fake a request response object"""
     pass
 
 
@@ -127,7 +127,9 @@ def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
     response.status_code = 200
     response.text = 'Not a cert'
     mock_cert_pull.return_value = response
-    mock_load_cert.retun_value = 1
+    x509_mock = Mock()
+    x509_mock.get_fingerprint.return_value = 'not_matching_fingerprint'
+    mock_load_cert.return_value = x509_mock
     smt = SMT(etree.fromstring(smt_data_ipv46))
     assert not smt.get_cert()
     assert mock_logging.error.called
