@@ -16,12 +16,10 @@ import html
 import logging
 import requests
 import re
-import time
 import urllib.request
 import urllib.parse
 import urllib.error
 
-from html.parser import HTMLParser
 
 extensionConfigRx = re.compile(
     r'.*<ExtensionsConfig>(.*?)</ExtensionsConfig>.*', re.S | re.M

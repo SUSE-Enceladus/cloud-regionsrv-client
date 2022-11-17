@@ -12,9 +12,7 @@
 # License along with this library.
 
 import inspect
-import logging
 import os
-import pytest
 import requests
 import sys
 
@@ -41,7 +39,7 @@ def test_request_fail(mock_logging, mock_request):
     """Test proper exception handling when request to metadata server fails"""
     mock_request.side_effect = requests.exceptions.RequestException
     result = gce.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     msg = 'Unable to determine zone information from "'
     msg += 'http://169.254.169.254/computeMetadata/v1/instance/zone'
@@ -56,7 +54,7 @@ def test_request_fail_parse_response(mock_logging, mock_request):
     """Test unexpected return value"""
     mock_request.return_value = _get_unexpected_response()
     result = gce.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     msg = 'Unable to form region string from text: '
     msg += 'projects/284177885636/zones/us-central1'
@@ -70,7 +68,7 @@ def test_request_fail_response_error(mock_logging, mock_request):
     """Test unexpected return value"""
     mock_request.return_value = _get_error_response()
     result = gce.generateRegionSrvArgs()
-    assert result == None
+    assert result is None
     assert mock_logging.warning.called
     msg = '\tMessage: Test server failure'
     mock_logging.warning.assert_called_with(msg)
@@ -105,7 +103,7 @@ def _get_expected_response():
 
 # ----------------------------------------------------------------------------
 def _get_unexpected_response():
-    """Return an unexpected response, i.e. trigget a parse error"""
+    """Return an unexpected response, i.e. triggers a parse error"""
     response = Response()
     response.status_code = 200
     response.text = 'projects/284177885636/zones/us-central1'
