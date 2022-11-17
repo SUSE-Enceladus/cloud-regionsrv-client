@@ -37,6 +37,7 @@ from requests.auth import HTTPBasicAuth
 from cloudregister import smt
 
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
+FRAMEWORK_IDENTIFIER = 'framework_info'
 HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
 OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
@@ -107,6 +108,14 @@ def clean_hosts_file(domain_name):
     with open(HOSTSFILE_PATH, 'wb') as hosts_file:
         for entry in new_hosts_content:
             hosts_file.write(entry)
+
+
+# ----------------------------------------------------------------------------
+def clean_framework_identifier():
+    """Remove the framework identification data"""
+    framework_file_path = os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
+    if os.path.exists(framework_file_path):
+        os.unlink(framework_file_path)
 
 
 # ----------------------------------------------------------------------------
@@ -783,6 +792,11 @@ def get_smt_from_store(smt_store_file_path):
 
 
 # ----------------------------------------------------------------------------
+def get_state_dir():
+    return REGISTRATION_DATA_DIR
+
+
+# ----------------------------------------------------------------------------
 def get_update_server_name_from_hosts(ignore_inconsistent=False):
     """Try and extract the update server name from the /etc/hosts file"""
     if not ignore_inconsistent:
@@ -1313,8 +1327,26 @@ def uses_rmt_as_scc_proxy():
 
 
 # ----------------------------------------------------------------------------
-def get_state_dir():
-    return REGISTRATION_DATA_DIR
+def write_framework_identifier(cfg):
+    """Write a file we use as identifier to detect movement of a golden
+       image created from a registered instance"""
+    identifier = {}
+    try:
+        vendor, error = exec_subprocess(
+            ['dmidecode', '-s', 'system-manufacturer'], True
+        )
+    except TypeError:
+        vendor = b'unknown'
+    identifier['framework'] = vendor.decode().strip()
+    plugin = __get_framework_plugin(cfg)
+    if plugin:
+        identifier['plugin'] = plugin.__file__
+        region_hint = __get_region_server_args(plugin)
+        identifier['region'] = region_hint.split('=')[-1]
+
+    framework_file_path = os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
+    with open(framework_file_path, 'w') as framework_file:
+        framework_file.write(json.dumps(identifier))
 
 
 # Private

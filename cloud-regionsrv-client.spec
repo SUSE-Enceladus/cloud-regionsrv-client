@@ -1,7 +1,7 @@
 #
 # spec file for package cloud-regionsrv-client
 #
-# Copyright (c) 2021 SUSE LLC
+# Copyright (c) 2022 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -28,6 +28,7 @@ Source0:        %{name}-%{version}.tar.bz2
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
+Requires:       dmidecode
 Requires:       pciutils
 Requires:       procps
 Requires:       python3
