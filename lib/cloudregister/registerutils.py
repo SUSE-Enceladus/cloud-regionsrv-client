@@ -111,7 +111,7 @@ def clean_hosts_file(domain_name):
 
 
 # ----------------------------------------------------------------------------
-def clean_framework_idetntifier():
+def clean_framework_identifier():
     """Remove the framework identification data"""
     framework_file_path = os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
     if os.path.exists(framework_file_path):
@@ -1331,9 +1331,12 @@ def write_framework_identifier(cfg):
     """Write a file we use as identifier to detect movement of a golden
        image created from a registered instance"""
     identifier = {}
-    vendor, error = exec_subprocess(
-        ['dmidecode', '-s', 'system-manufacturer'], True
-    )
+    try:
+        vendor, error = exec_subprocess(
+            ['dmidecode', '-s', 'system-manufacturer'], True
+        )
+    except TypeError:
+        vendor = b'unknown'
     identifier['framework'] = vendor.decode().strip()
     plugin = __get_framework_plugin(cfg)
     if plugin:

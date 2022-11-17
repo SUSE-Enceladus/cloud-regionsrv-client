@@ -101,7 +101,7 @@ def cleanup():
     utils.remove_registration_data()
     utils.clean_smt_cache()
     utils.clear_new_registration_flag()
-    utils.clean_framework_idetntifier()
+    utils.clean_framework_identifier()
 
 
 # ----------------------------------------------------------------------------
