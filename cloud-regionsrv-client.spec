@@ -140,6 +140,7 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %post
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/updatesmtcache
+%{_sbindir}/createregioninfo
 %service_add_post guestregister.service containerbuild-regionsrv.service
 
 %post addon-azure
@@ -166,8 +167,9 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
 %{_mandir}/man*/*
-%{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/cloudguest-repo-service
+%{_sbindir}/containerbuild-regionsrv
+%{_sbindir}/createregioninfo
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest
 %{_sbindir}/updatesmtcache
