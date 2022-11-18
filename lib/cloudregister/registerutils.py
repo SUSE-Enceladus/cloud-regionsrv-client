@@ -901,13 +901,7 @@ def has_region_changed(cfg):
     """Check if the region has changed. If no region information is available
        we assume the instance has not moved."""
 
-    try:
-        vendor, error = exec_subprocess(
-            ['dmidecode', '-s', 'system-manufacturer'], True
-        )
-    except TypeError:
-        vendor = b'unknown'
-    framework = vendor.decode().strip()
+    framework = __get_system_mfg()
     plugin = __get_framework_plugin(cfg)
     region = 'unknown'
     if plugin:
@@ -1371,13 +1365,7 @@ def write_framework_identifier(cfg):
     """Write a file we use as identifier to detect movement of a golden
        image created from a registered instance"""
     identifier = {}
-    try:
-        vendor, error = exec_subprocess(
-            ['dmidecode', '-s', 'system-manufacturer'], True
-        )
-    except TypeError:
-        vendor = b'unknown'
-    identifier['framework'] = vendor.decode().strip()
+    identifier['framework'] = __get_system_mfg()
     identifier['region'] = 'unknown'
     plugin = __get_framework_plugin(cfg)
     if plugin:
@@ -1473,6 +1461,19 @@ def __get_service_plugins():
             plugin_link_names.append(service_plugin)
 
     return plugin_link_names
+
+
+# ----------------------------------------------------------------------------
+def __get_system_mfg():
+    """Returns the system manufacturer information"""
+    try:
+        vendor, error = exec_subprocess(
+            ['dmidecode', '-s', 'system-manufacturer'], True
+        )
+    except TypeError:
+        vendor = b'unknown'
+
+    return vendor.decode().strip()
 
 
 # ----------------------------------------------------------------------------
