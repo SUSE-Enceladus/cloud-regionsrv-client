@@ -78,6 +78,70 @@ def test_get_zypper_pid_cache_no_cache(path_exists):
     assert utils.get_zypper_pid_cache() == 0
 
 
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_framework_identifier_path')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_has_region_changed_no_dmidecode_has_cache(subproc, id_path, plugin):
+    subproc.side_effect = TypeError('demidecode failed')
+    id_path.return_value = data_path + 'framework_info'
+    plugin.return_value = False
+    assert True == utils.has_region_changed(cfg)
+
+
+@patch('cloudregister.registerutils.__get_region_server_args')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_framework_identifier_path')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_has_region_changed_provider_change(subproc, id_path, plugin, srvargs):
+    subproc.return_value = (b'Amazon EC2', b'')
+    id_path.return_value = data_path + 'framework_info'
+    plugin.return_value = True
+    srvargs.return_value = 'regionHint=us-central1-d'
+    assert True == utils.has_region_changed(cfg)
+
+
+@patch('cloudregister.registerutils.__get_region_server_args')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_framework_identifier_path')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_has_region_changed_provider_and_region_change(
+        subproc, id_path, plugin, srvargs
+):
+    subproc.return_value = (b'Amazon EC2', b'')
+    id_path.return_value = data_path + 'framework_info'
+    plugin.return_value = True
+    srvargs.return_value = 'regionHint=us-east-1'
+    assert True == utils.has_region_changed(cfg)
+
+
+@patch('cloudregister.registerutils.__get_region_server_args')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_framework_identifier_path')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_has_region_changed_region_change(
+        subproc, id_path, plugin, srvargs
+):
+    subproc.return_value = (b'Google', b'')
+    id_path.return_value = data_path + 'framework_info'
+    plugin.return_value = True
+    srvargs.return_value = 'regionHint=us-east2-f'
+    assert True == utils.has_region_changed(cfg)
+
+
+@patch('cloudregister.registerutils.__get_region_server_args')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_framework_identifier_path')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_has_region_changed_no_data(
+        subproc, id_path, plugin, srvargs
+):
+    subproc.return_value = (b'Google', b'')
+    id_path.return_value = 'foo'
+    plugin.return_value = True
+    srvargs.return_value = 'regionHint=us-east2-f'
+    assert False == utils.has_region_changed(cfg)
+
+
 def test_is_registration_supported_SUSE_Family():
     cfg.set('service', 'packageBackend', 'zypper')
     assert utils.is_registration_supported(cfg) is True

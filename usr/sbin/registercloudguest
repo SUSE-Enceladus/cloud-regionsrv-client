@@ -261,58 +261,31 @@ else:
 registration_smt = utils.get_current_smt()
 
 # Check if we are in the same region
-# This implies that at least one of the cached update servers matches the
-# data received or the user provided update server data
-region_smt_servers = {'cached': [], 'new': []}
-# Compare the smt information received from the region server with the
-# cached update server data
-
-for child in region_smt_data:
-    smt_server = smt.SMT(child, utils.https_only(cfg))
-    for cached_smt in cached_smt_servers:
-        if cached_smt == smt_server:
-            cached_smt_servers.remove(cached_smt)
-            region_smt_servers['cached'].append(cached_smt)
-            break
-    else:
-        region_smt_servers['new'].append(smt_server)
-
-# If we have extra SMT data check if the extra server is the registration
-# target if yes clean up the registration. Clean up the entire update
-# server cache
-if cached_smt_servers:
-    logging.info('Have extra cached SMT data, clearing cache')
-    for smt_srv in cached_smt_servers:
-        if registration_smt and smt_srv.is_equivalent(registration_smt):
-            msg = 'Extra cached server is current registration target, '
-            msg += 'cleaning up registration'
-            logging.info(msg)
-            utils.remove_registration_data()
-            registration_smt = None
-            break
-    # Clean the cache and re-write all the cache data later
-    utils.clean_smt_cache()
+region_smt_servers = []
+region_change = utils.has_region_changed(cfg)
+if region_change and utils.uses_rmt_as_scc_proxy():
+    # We do not have the users registration code, stay connected to the
+    # servers in a different region.
+    # If the user also moved to a new framework registration will be broken
+    # due to the instance data.
+    # This code is a safe guard in case a user enabled the service on a BYOS
+    # instance, which is not supposed to be the case.
+    logging.info('Region change detected:')
+    logging.info('\tSystem uses SCC credentials, please re-register the system'
+                 ' to the update infrastrusture in this region\n'
+                 '\tregistercloudguest --clean\n'
+                 '\tregistercloudguest -r YOUR_REG_CODE')
+    region_smt_servers = cached_smt_servers
+elif region_change:
+    logging.info('Region change detected, registering to new servers')
+    cleanup()
     cached_smt_servers = []
-
-if region_smt_servers['new']:
-    # Create a new cache
-    smt_count = len(region_smt_servers['cached']) + 1
-    for smt_server in region_smt_servers['new']:
-        store_file_name = (
-            utils.get_state_dir() +
-            utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % smt_count
-        )
-        utils.store_smt_data(store_file_name, smt_server)
-        smt_count += 1
-
-# We are in a new region none of the previously cached update servers
-# matched the new servers. The system needs to be re-registered
-if not region_smt_servers['cached']:
     registration_smt = None
-    utils.remove_registration_data()
-
-# We no longer need to differentiate between new and existing SMT servers
-region_smt_servers = region_smt_servers['cached'] + region_smt_servers['new']
+    utils.set_new_registration_flag()
+    utils.write_framework_identifier(cfg)
+    for child in region_smt_data:
+        smt_server = smt.SMT(child, utils.https_only(cfg))
+        region_smt_servers.append(smt)
 
 # Check if the target SMT for the registration is alive or if we can
 # find a server that is alive in this region

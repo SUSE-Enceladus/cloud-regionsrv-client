@@ -555,6 +555,12 @@ def get_current_smt():
 
 
 # ----------------------------------------------------------------------------
+def get_framework_identifier_path():
+    """Return the path for the frmework identifier file"""
+    return os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
+
+
+# ----------------------------------------------------------------------------
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
@@ -888,6 +894,40 @@ def has_nvidia_support():
         return True
 
     return False
+
+
+# ----------------------------------------------------------------------------
+def has_region_changed(cfg):
+    """Check if the region has changed. If no region information is available
+       we assume the instance has not moved."""
+
+    try:
+        vendor, error = exec_subprocess(
+            ['dmidecode', '-s', 'system-manufacturer'], True
+        )
+    except TypeError:
+        vendor = b'unknown'
+    framework = vendor.decode().strip()
+    plugin = __get_framework_plugin(cfg)
+    region = 'unknown'
+    if plugin:
+        region_hint = __get_region_server_args(plugin)
+        region = region_hint.split('=')[-1]
+
+    try:
+        registered_region = json.loads(
+            open(get_framework_identifier_path()).read()
+        )
+    except:
+        return False
+
+    if (
+            framework == registered_region.get('framework') and
+            region == registered_region.get('region')
+    ):
+        return False
+
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -1338,14 +1378,14 @@ def write_framework_identifier(cfg):
     except TypeError:
         vendor = b'unknown'
     identifier['framework'] = vendor.decode().strip()
+    identifier['region'] = 'unknown'
     plugin = __get_framework_plugin(cfg)
     if plugin:
         identifier['plugin'] = plugin.__file__
         region_hint = __get_region_server_args(plugin)
         identifier['region'] = region_hint.split('=')[-1]
 
-    framework_file_path = os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
-    with open(framework_file_path, 'w') as framework_file:
+    with open(get_framework_identifier_path(), 'w') as framework_file:
         framework_file.write(json.dumps(identifier))
 
 
