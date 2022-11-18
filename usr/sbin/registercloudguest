@@ -233,6 +233,7 @@ if (args.force_new_registration and cached_smt_servers) or args.user_smt_ip:
         sys.exit(1)
     cleanup()
     utils.set_new_registration_flag()
+    utils.write_framework_identifier(cfg)
     cached_smt_servers = []
 
 # Proxy setup
@@ -260,7 +261,7 @@ else:
 registration_smt = utils.get_current_smt()
 
 # Check if we are in the same region
-# This implies that at least one of the cached updated servers matches the
+# This implies that at least one of the cached update servers matches the
 # data received or the user provided update server data
 region_smt_servers = {'cached': [], 'new': []}
 # Compare the smt information received from the region server with the
