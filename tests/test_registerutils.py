@@ -14,6 +14,7 @@
 import inspect
 import os
 import sys
+from unittest import mock
 from unittest.mock import patch
 from lxml import etree
 
@@ -78,14 +79,32 @@ def test_get_zypper_pid_cache_no_cache(path_exists):
     assert utils.get_zypper_pid_cache() == 0
 
 
+@patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')
 @patch('cloudregister.registerutils.exec_subprocess')
-def test_has_region_changed_no_dmidecode_has_cache(subproc, id_path, plugin):
-    subproc.side_effect = TypeError('demidecode failed')
+def test_has_region_changed_no_change(subproc, id_path, plugin, srvargs):
+    subproc.return_value = (b'Google', b'')
     id_path.return_value = data_path + 'framework_info'
+    plugin.return_value = True
+    srvargs.return_value = 'regionHint=us-central1-d'
+    assert False == utils.has_region_changed(cfg)
+
+
+@patch('cloudregister.registerutils.__get_system_mfg')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+def test_has_region_changed_no_dmidecode(plugin, mfg):
     plugin.return_value = False
-    assert True == utils.has_region_changed(cfg)
+    mfg.return_value = False
+    assert False == utils.has_region_changed(cfg)
+
+
+@patch('cloudregister.registerutils.__get_system_mfg')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+def test_has_region_changed_no_plugin(plugin, mfg):
+    plugin.return_value = False
+    mfg.return_value = 'Google'
+    assert False == utils.has_region_changed(cfg)
 
 
 @patch('cloudregister.registerutils.__get_region_server_args')
@@ -128,20 +147,6 @@ def test_has_region_changed_region_change(
     assert True == utils.has_region_changed(cfg)
 
 
-@patch('cloudregister.registerutils.__get_region_server_args')
-@patch('cloudregister.registerutils.__get_framework_plugin')
-@patch('cloudregister.registerutils.get_framework_identifier_path')
-@patch('cloudregister.registerutils.exec_subprocess')
-def test_has_region_changed_no_data(
-        subproc, id_path, plugin, srvargs
-):
-    subproc.return_value = (b'Google', b'')
-    id_path.return_value = 'foo'
-    plugin.return_value = True
-    srvargs.return_value = 'regionHint=us-east2-f'
-    assert False == utils.has_region_changed(cfg)
-
-
 def test_is_registration_supported_SUSE_Family():
     cfg.set('service', 'packageBackend', 'zypper')
     assert utils.is_registration_supported(cfg) is True
@@ -152,52 +157,86 @@ def test_is_registration_supported_RHEL_Family():
     assert utils.is_registration_supported(cfg) is False
 
 
-@patch('cloudregister.registerutils.is_new_registration')
-def test_update_rmt_certs_new_reg(new_reg):
-    new_reg.return_value = True
-    res = utils.update_rmt_certs()
-    assert res is None
+def test_has_rmt_in_hosts_has_ipv4():
+    hosts_content = """
+    # simulates hosts file containing the ipv4 we are looking for in the test
+
+    1.1.1.1   smt-foo.susecloud.net  smt-foo
+    """
+    server = MockServer()
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+        has_entry = utils.has_rmt_in_hosts(server) 
+    
+    assert True == has_entry
 
 
-@patch('cloudregister.registerutils.import_smt_cert')
-@patch('cloudregister.registerutils.get_config')
-@patch('cloudregister.registerutils.fetch_smt_data')
-@patch('cloudregister.registerutils.set_proxy')
-@patch('cloudregister.registerutils.get_state_dir')
-@patch('cloudregister.registerutils.is_new_registration')
-def test_update_rmt_certs_no_cert_change(
-        new_reg, state_dir, set_proxy, fetch_srvs, get_config, import_cert
-):
-    new_reg.return_value = False
-    state_dir.return_value = data_path
-    set_proxy.return_value = False
-    fetch_srvs.return_value = get_servers_data()
-    get_config.return_value = {}
-    utils.update_rmt_certs()
-    assert not import_cert.called
+def test_has_rmt_in_hosts_has_ipv4_6():
+    hosts_content = """
+    # simulates hosts file containing the ipv4 and iv6 we are looking for
+    # in the test
+
+    1.1.1.1   smt-foo.susecloud.net  smt-foo
+    11:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    """
+    server = MockServer()
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+        has_entry = utils.has_rmt_in_hosts(server) 
+    
+    assert True == has_entry
 
 
-@patch('cloudregister.registerutils.__populate_srv_cache')
-@patch('cloudregister.registerutils.clean_smt_cache')
-@patch('cloudregister.registerutils.import_smt_cert')
-@patch('cloudregister.registerutils.get_config')
-@patch('cloudregister.registerutils.fetch_smt_data')
-@patch('cloudregister.registerutils.set_proxy')
-@patch('cloudregister.registerutils.get_state_dir')
-@patch('cloudregister.registerutils.is_new_registration')
-def test_update_rmt_certs_cert_change(
-        new_reg, state_dir, set_proxy, fetch_srvs, get_config, import_cert,
-        cache_clean, pop_cache
-):
-    new_reg.return_value = False
-    state_dir.return_value = data_path
-    set_proxy.return_value = False
-    fetch_srvs.return_value = get_modified_servers_data()
-    get_config.return_value = {}
-    utils.update_rmt_certs()
-    assert import_cert.called
-    assert cache_clean.called
-    assert pop_cache.called
+def test_has_rmt_in_hosts_ipv4_not_found():
+    hosts_content = """
+    # simulates hosts file containing a different ipv4
+
+    2.1.1.1   smt-foo.susecloud.net  smt-foo
+    """
+    server = MockServer()
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+        has_entry = utils.has_rmt_in_hosts(server) 
+    
+    assert False == has_entry
+
+
+def test_has_rmt_in_hosts_has_ipv6():
+    hosts_content = """
+    # simulates hosts file containing the ipv6 we are looking for in the test
+
+    11:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    """
+    server = MockServer()
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+        has_entry = utils.has_rmt_in_hosts(server) 
+    
+    assert True == has_entry
+
+
+def test_has_rmt_in_hosts_has_ipv6_4():
+    hosts_content = """
+    # simulates hosts file containing the ipv4 and iv6 we are looking for
+    # in the test
+
+    11:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    1.1.1.1   smt-foo.susecloud.net  smt-foo
+    """
+    server = MockServer()
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+        has_entry = utils.has_rmt_in_hosts(server) 
+    
+    assert True == has_entry
+
+
+def test_has_rmt_in_hosts_ipv6_not_found():
+    hosts_content = """
+    # simulates hosts file containing the ipv6 we are looking for in the test
+
+    22:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    """
+    server = MockServer()
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+        has_entry = utils.has_rmt_in_hosts(server) 
+    
+    assert False == has_entry
 
 
 # ---------------------------------------------------------------------------
@@ -249,3 +288,10 @@ def get_modified_servers_data():
     """
 
     return etree.fromstring(srv_xml)
+
+class MockServer:
+    def get_ipv4(self):
+        return '1.1.1.1'
+
+    def get_ipv6(self):
+        return '11:22:33:44::::00'

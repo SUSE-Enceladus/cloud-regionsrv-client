@@ -32,12 +32,26 @@ if os.path.exists(utils.OLD_REGISTRATION_DATA_DIR):
         )
     )
 
+# Update the server cache with region information introduced in
+# region server 8.1.3
 cached_server_files = glob.glob('%s/*SMT*' % utils.REGISTRATION_DATA_DIR)
+proxies = None
+    if set_proxy():
+        proxies = {
+            'http_proxy': os.environ.get('http_proxy'),
+            'https_proxy': os.environ.get('https_proxy')
+        }
+cfg = utils.get_config()
+region_rmt_data = utils.fetch_smt_data(cfg, proxies)
+region_rmt_servers = []
+for child in region_rmt_data:
+    smt_server = smt.SMT(child, utils.https_only(cfg))
+    region_rmt_servers.append(smt)
 
 for cached_server_file in cached_server_files:
-    smt = utils.get_smt_from_store(cached_server_file)
-    if hasattr(smt, 'set_protocol'):
-        smt.set_protocol('http')
-        if utils.https_only(utils.get_config()):
-            smt.set_protocol('https')
-    utils.store_smt_data(cached_server_file, smt)
+    rmt = utils.get_smt_from_store(cached_server_file)
+    cached_ipv4 = rmt.get_ipv4()
+    for region_rmt in region_rmt_servers:
+        if region_rmt.get_ipv4() == cached_ipv4:
+            utils.store_smt_data(cached_server_file, region_rmt)
+            break
