@@ -261,7 +261,7 @@ else:
 registration_smt = utils.get_current_smt()
 
 # Check if we are in the same region
-region_smt_servers = []
+region_smt_servers = cached_smt_servers
 region_change = utils.has_region_changed(cfg)
 if region_change and utils.uses_rmt_as_scc_proxy():
     # We do not have the users registration code, stay connected to the
@@ -269,51 +269,57 @@ if region_change and utils.uses_rmt_as_scc_proxy():
     # If the user also moved to a new framework registration will be broken
     # due to the instance data.
     # This code is a safe guard in case a user enabled the service on a BYOS
-    # instance, which is not supposed to be the case.
-    logging.info('Region change detected:')
-    logging.info('\tSystem uses SCC credentials, please re-register the system'
+    # instance, which is not supposed to be the case or tries
+    print('Region change detected:')
+    print('\tSystem uses SCC credentials, please re-register the system'
                  ' to the update infrastrusture in this region\n'
                  '\tregistercloudguest --clean\n'
                  '\tregistercloudguest -r YOUR_REG_CODE')
-    region_smt_servers = cached_smt_servers
 elif region_change:
     logging.info('Region change detected, registering to new servers')
     cleanup()
-    cached_smt_servers = []
+    region_smt_servers = cached_smt_servers = []
     registration_smt = None
     utils.set_new_registration_flag()
     utils.write_framework_identifier(cfg)
+
+if not region_smt_servers:
     for child in region_smt_data:
         smt_server = smt.SMT(child, utils.https_only(cfg))
-        region_smt_servers.append(smt)
+        region_smt_servers.append(smt_server)
 
-# Check if the target SMT for the registration is alive or if we can
+# Check if the target RMT for the registration is alive or if we can
 # find a server that is alive in this region
 if registration_smt:
     registration_smt_cache_file_name = (
             utils.get_state_dir() +
             utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
         )
+    updated = utils.update_rmt_cert(registration_smt)
     alive = registration_smt.is_responsive()
     if alive:
         msg = 'Instance is registered, and update server is reachable, '
         msg += 'nothing to do'
         # The cache data may have been cleared, write if necessary
-        if not os.path.exists(registration_smt_cache_file_name):
+        if not os.path.exists(registration_smt_cache_file_name) or updated:
             utils.store_smt_data(
                 registration_smt_cache_file_name,
                 registration_smt
             )
+            if not utils.has_rmt_in_hosts(registration_smt):
+                utils.clean_hosts_file(registration_smt.get_FQDN())
+                utils.add_hosts_entry(registration_smt)
         logging.info(msg)
         sys.exit(0)
     else:
-        # The configured server is not resposive, lets check if we can
+        # The current target server is not resposive, lets check if we can
         # find another server
-        new_target = utils.find_equivalent_smt_server(
-            registration_smt,
-            region_smt_servers
-        )
-        if new_target:
+        for new_target in region_smt_servers:
+            if (
+                    not new_target.is_responsive() or
+                    not registration_smt.is_equivalent()
+            ):
+                continue
             smt_ip = new_target.get_ipv4()
             if utils.has_ipv6_access(new_target):
                 smt_ip = new_target.get_ipv6()
@@ -322,14 +328,23 @@ if registration_smt:
             utils.replace_hosts_entry(registration_smt, new_target)
             utils.store_smt_data(
                 registration_smt_cache_file_name,
-                registration_smt
+                new_target
             )
+            utils.update_rmt_cert(new_target)
+            break
         else:
             msg = 'Configured update server is unresponsive. Could not find '
             msg += 'a replacement update server in this region. '
             msg += 'Possible network configuration issue'
             logging.error(msg)
             sys.exit(1)
+
+# We should not get here for a registered system that is a proxy. However,
+# it doesn't hurt to check and get out before breaking things
+if utils.uses_rmt_as_scc_proxy():
+    logging.info('System already uses the update infrastructure with a '
+                 'registration code, nothing to do')
+    sys.exit(0)
 
 # Figure out which server is responsive and use it as registration target
 registration_target = None
@@ -482,6 +497,7 @@ if registration_returncode != 0:
         file=sys.stderr
     )
 else:
+    utils.finalize_registration()
     print('Registration succeeded')
 
 if os.path.exists(instance_data_filepath):

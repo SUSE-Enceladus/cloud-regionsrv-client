@@ -30,17 +30,25 @@ from smt import SMT
 smt_data_ipv4 = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
      SMTserverIP="192.168.1.1"
-     SMTserverName="fantasy.example.com"/>''')
+     SMTserverName="fantasy.example.com"
+     region="antarctica-1"/>''')
 
 smt_data_ipv6 = dedent('''\
     <smtInfo fingerprint="00:44:22:33"
      SMTserverIPv6="fc00::1"
-     SMTserverName="fantasy.example.com"/>''')
+     SMTserverName="fantasy.example.com"
+     region="antarctica-1"/>''')
 
 smt_data_ipv46 = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
      SMTserverIP="192.168.1.1"
      SMTserverIPv6="fc00::1"
+     SMTserverName="fantasy.example.com"
+     region="antarctica-1"/>''')
+
+smt_data_no_region = dedent('''\
+    <smtInfo fingerprint="00:11:22:33"
+     SMTserverIP="192.168.1.1"
      SMTserverName="fantasy.example.com"/>''')
 
 
@@ -66,6 +74,13 @@ def test_ctor_ipv6():
 def test_ctor_dual():
     """Test object creation with IPv4 and IPv6 data only"""
     assert SMT(etree.fromstring(smt_data_ipv46))
+
+
+# ----------------------------------------------------------------------------
+def test_ctor_no_region():
+    """Test object whne no region is in the data"""
+    smt = SMT(etree.fromstring(smt_data_no_region))
+    assert smt.get_region() == 'unknown'
 
 
 # ----------------------------------------------------------------------------
@@ -98,7 +113,7 @@ def test_not_equal_ipv4_ipv6():
     """Test two SMT servers with different data are not equal"""
     smt1 = SMT(etree.fromstring(smt_data_ipv4))
     smt2 = SMT(etree.fromstring(smt_data_ipv6))
-    assert not smt1 == smt2
+    assert smt1 != smt2
 
 
 # ----------------------------------------------------------------------------
@@ -194,7 +209,7 @@ def test_get_ipv6_null():
 
 
 # ----------------------------------------------------------------------------
-def test_is_equivalent():
+def test_is_equivalent_on_ipv4():
     """Test two SMT servers with same name and fingerprint are treated
         as equivalent"""
     smt1 = SMT(etree.fromstring(smt_data_ipv4))
@@ -203,14 +218,40 @@ def test_is_equivalent():
 
 
 # ----------------------------------------------------------------------------
-def test_is_equivalent_fails():
-    """Test two SMT servers with same name but different fingerprint are
-       treated as not equivalent"""
+def test_is_equivalent_on_ipv6():
+    """Test two SMT servers with same name and fingerprint are treated
+        as equivalent"""
+    smt1 = SMT(etree.fromstring(smt_data_ipv6))
+    smt2 = SMT(etree.fromstring(smt_data_ipv46))
+    assert smt1.is_equivalent(smt2)
+
+
+
+# ----------------------------------------------------------------------------
+def test_is_equivalent_fails_differ_ipv():
+    """Test two SMT servers with different network config are not equivalent"""
     smt1 = SMT(etree.fromstring(smt_data_ipv4))
     smt2 = SMT(etree.fromstring(smt_data_ipv6))
     assert not smt1.is_equivalent(smt2)
 
 
+# ----------------------------------------------------------------------------
+def test_is_equivalent_fails_differ_region():
+    """Test two SMT servers with different regions are not equivalent"""
+    smt1 = SMT(etree.fromstring(smt_data_ipv4))
+    smt2 = SMT(etree.fromstring(smt_data_no_region))
+    assert not smt1.is_equivalent(smt2)
+
+
+# ----------------------------------------------------------------------------
+def test_is_equivalent_true_same():
+    """Test that equal servers are also equivalent"""
+    smt1 = SMT(etree.fromstring(smt_data_ipv4))
+    smt2 = SMT(etree.fromstring(smt_data_ipv4))
+    assert smt1.is_equivalent(smt2)
+
+
+    
 # ----------------------------------------------------------------------------
 @patch('smt.requests.get')
 def test_is_responsive_server_offline(mock_cert_pull):

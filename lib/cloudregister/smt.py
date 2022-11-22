@@ -33,6 +33,10 @@ class SMT:
             self._ipv6 = smtXMLNode.attrib['SMTserverIPv6']
         except KeyError:
             pass
+        try:
+            self._region = smtXMLNode.attrib['region']
+        except KeyError:
+            self._region = 'unknown'
         self._fqdn = smtXMLNode.attrib['SMTserverName']
         self._fingerprint = smtXMLNode.attrib['fingerprint']
         self._cert = None
@@ -48,11 +52,16 @@ class SMT:
                 self.get_ipv4() == other_smt.get_ipv4() and
                 self.get_ipv6() == other_smt.get_ipv6() and
                 self.get_FQDN() == other_smt.get_FQDN() and
-                self.get_fingerprint() == other_smt.get_fingerprint()
+                self.get_fingerprint() == other_smt.get_fingerprint() and
+                self.get_region() == other_smt.get_region()
         ):
             return True
 
         return False
+
+    # --------------------------------------------------------------------
+    def __ne__(self, other_smt):
+        return not self.__eq__(other_smt)
 
     # --------------------------------------------------------------------
     def get_cert(self):
@@ -109,12 +118,19 @@ class SMT:
         return self._ipv6
 
     # --------------------------------------------------------------------
+    def get_region(self):
+        """Return the region name this server is associated with"""
+        return self._region
+
+    # --------------------------------------------------------------------
     def is_equivalent(self, smt_server):
-        """When 2 SMT servers have the same cert fingerprint and their
-           FQDN is the same they are equivalent."""
+        """Have both an ipv4 address and/or both an ipv6 address and they
+           are in the same region they are interchangable and considered
+           equivalent"""
         if (
-                self.get_FQDN() == smt_server.get_FQDN() and
-                self.get_fingerprint() == smt_server.get_fingerprint()
+                ((self.get_ipv4() and smt_server.get_ipv4()) or
+                 (self.get_ipv6() and smt_server.get_ipv6())) and
+                self.get_region() == smt_server.get_region()
         ):
             return True
 

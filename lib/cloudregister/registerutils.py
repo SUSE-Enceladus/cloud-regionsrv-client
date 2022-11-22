@@ -350,6 +350,14 @@ def fetch_smt_data(cfg, proxies):
 
 
 # ----------------------------------------------------------------------------
+def finalize_registration():
+     """During registration we only write information about the update server
+        that is used for the registration to the cache. But we want to cache
+        information about all update servers."""
+     __populate_srv_cache()
+
+
+# ----------------------------------------------------------------------------
 def find_equivalent_smt_server(configured_smt, known_smt_servers):
     """Find an SMT server that is equivalent to the currently configured
        SMT server, only consider responsive servers"""
@@ -908,6 +916,11 @@ def has_region_changed(cfg):
         region_hint = __get_region_server_args(plugin)
         region = region_hint.split('=')[-1]
 
+    if framework == 'unknown' or region == 'unknown':
+        # We cannot determine with certainty if anything has changed
+        # Assume everything is as it was
+        return False
+
     try:
         registered_region = json.loads(
             open(get_framework_identifier_path()).read()
@@ -922,6 +935,19 @@ def has_region_changed(cfg):
         return False
 
     return True
+
+
+# ----------------------------------------------------------------------------
+def has_rmt_in_hosts(server):
+    """Check if an entry for the given update server is in the hosts file"""
+    hosts_content = open('/etc/hosts').read()
+    srv_ipv4 = server.get_ipv4()
+    srv_ipv6 = server.get_ipv6()
+
+    if srv_ipv4 in hosts_content or srv_ipv6 in hosts_content:
+        return True
+
+    return False
 
 
 # ----------------------------------------------------------------------------
@@ -1313,13 +1339,13 @@ def update_ca_chain(cmd_w_args_lst):
 
 
 # ----------------------------------------------------------------------------
-def update_rmt_certs():
-    """Check if the update server certs have changed and if yes update the
-       system accordingly"""
+def update_rmt_cert(server):
+    """Import the cert for the given server if it has changed"""
     # We are currently getting the latest cert information, nothing to do
     if is_new_registration():
         return
-    cached_rmt_servers = get_available_smt_servers()
+    target_ipv4 = server.get_ipv4()
+    target_ipv6 = server.get_ipv6()
     proxies = None
     if set_proxy():
         proxies = {
@@ -1330,27 +1356,15 @@ def update_rmt_certs():
     region_rmt_servers = []
     for child in region_rmt_server_data:
         region_rmt_servers.append(smt.SMT(child, True))
-    # We need to compare the unordered list of cached servers with the
-    # unordered list of servers we got from the region server.
-    # If any of the servers are different refresh the whole cache
-    # and import the new cert
     for region_rmt_server in region_rmt_servers:
         region_ipv4 = region_rmt_server.get_ipv4()
         region_ipv6 = region_rmt_server.get_ipv6()
-        for cached_rmt_server in cached_rmt_servers:
-            cached_ipv4 = cached_rmt_server.get_ipv4()
-            cached_ipv6 = cached_rmt_server.get_ipv6()
-            if (region_ipv4 == cached_ipv4) and (region_ipv6 == cached_ipv6):
-                if region_rmt_server == cached_rmt_server:
-                    break
-        else:
-            logging.info(
-                'Found updated update server information, importing new data'
-            )
-            import_smt_cert(region_rmt_server)
-            clean_smt_cache()
-            __populate_srv_cache()
-            return
+        if (region_ipv4 == target_ipv4) and (region_ipv6 == target_ipv6):
+            if region_rmt_server != server:
+                import_smt_cert(region_rmt_server)
+                return True
+
+    return False
 
 
 # ----------------------------------------------------------------------------
