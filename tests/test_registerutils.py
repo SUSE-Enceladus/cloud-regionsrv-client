@@ -165,8 +165,8 @@ def test_has_rmt_in_hosts_has_ipv4():
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server) 
-    
+        has_entry = utils.has_rmt_in_hosts(server)
+
     assert True == has_entry
 
 
@@ -176,7 +176,7 @@ def test_has_rmt_in_hosts_has_ipv4_6():
     # in the test
 
     1.1.1.1   smt-foo.susecloud.net  smt-foo
-    11:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    11:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
@@ -193,8 +193,8 @@ def test_has_rmt_in_hosts_ipv4_not_found():
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server) 
-    
+        has_entry = utils.has_rmt_in_hosts(server)
+
     assert False == has_entry
 
 
@@ -202,12 +202,12 @@ def test_has_rmt_in_hosts_has_ipv6():
     hosts_content = """
     # simulates hosts file containing the ipv6 we are looking for in the test
 
-    11:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    11:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server) 
-    
+        has_entry = utils.has_rmt_in_hosts(server)
+
     assert True == has_entry
 
 
@@ -216,13 +216,13 @@ def test_has_rmt_in_hosts_has_ipv6_4():
     # simulates hosts file containing the ipv4 and iv6 we are looking for
     # in the test
 
-    11:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    11:22:33:44::00   smt-foo.susecloud.net  smt-foo
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server) 
-    
+        has_entry = utils.has_rmt_in_hosts(server)
+
     assert True == has_entry
 
 
@@ -230,12 +230,12 @@ def test_has_rmt_in_hosts_ipv6_not_found():
     hosts_content = """
     # simulates hosts file containing the ipv6 we are looking for in the test
 
-    22:22:33:44::::00   smt-foo.susecloud.net  smt-foo
+    22:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server) 
-    
+        has_entry = utils.has_rmt_in_hosts(server)
+
     assert False == has_entry
 
 
@@ -294,4 +294,4 @@ class MockServer:
         return '1.1.1.1'
 
     def get_ipv6(self):
-        return '11:22:33:44::::00'
+        return '11:22:33:44::00'

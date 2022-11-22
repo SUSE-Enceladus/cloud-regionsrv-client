@@ -917,7 +917,7 @@ def has_region_changed(cfg):
         region = region_hint.split('=')[-1]
 
     if framework == 'unknown' or region == 'unknown':
-        # We cannot determine with certainy if anything has changed
+        # We cannot determine with certainty if anything has changed
         # Assume everything is as it was
         return False
 
@@ -1363,6 +1363,9 @@ def update_rmt_cert(server):
             if region_rmt_server != server:
                 import_smt_cert(region_rmt_server)
                 return True
+
+    return False
+
 
 # ----------------------------------------------------------------------------
 def uses_rmt_as_scc_proxy():

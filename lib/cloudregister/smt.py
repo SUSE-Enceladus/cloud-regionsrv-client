@@ -35,7 +35,7 @@ class SMT:
             pass
         try:
             self._region = smtXMLNode.attrib['region']
-        except KeyError: 
+        except KeyError:
             self._region = 'unknown'
         self._fqdn = smtXMLNode.attrib['SMTserverName']
         self._fingerprint = smtXMLNode.attrib['fingerprint']
