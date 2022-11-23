@@ -125,7 +125,7 @@ class SMT:
     # --------------------------------------------------------------------
     def is_equivalent(self, smt_server):
         """Have both an ipv4 address and/or both an ipv6 address and they
-           are in the same region they are interchangable and considered
+           are in the same region they are interchangeable and considered
            equivalent"""
         if (
                 ((self.get_ipv4() and smt_server.get_ipv4()) or

@@ -1,6 +1,16 @@
 Test matrix cloud-regionsrv-client
 
+Test one SLE 15 based and one SLE 12 based instance
+
 on-demand
+After installing the test package with "zypper in"
+- run /usr/sbin/switchcloudguestservices
+  + $? is 0
+- run /usr/sbin/updatesmtcache
+  + $? is 0
+- run /usr/sbin/createregioninfo
+  + $? is 0
+
 - Initial boot
   + registration success
     - check log
@@ -19,7 +29,7 @@ on-demand
   + success message on stdout
   + $? is 0
   + zypper lr has repos
-- rm /usr/share/pki/trust/anchors/registration_server_*.pem
+- rm /etc/pki/trust/anchors/registration_server_*.pem
   + update-ca-certificates
   + registercloudguest --force-new
   + success message on stdout
@@ -27,11 +37,19 @@ on-demand
   + zypper lr has repos
 
 byos - test on SLES4SAP instance
+After installing the test package with "zypper in"
+- run /usr/sbin/switchcloudguestservices
+  + $? is 0
+- run /usr/sbin/updatesmtcache
+  + $? is 0
+- run /usr/sbin/createregioninfo
+  + $? is 0
+
 - Initial boot
   + no registration
   + on Azure regionsrv-enabler-azure.timer is enabled
   + guestregister.service is not enabled and not running
-  + /var/log/cloudregister is empty
+  + /var/cache/cloudregister/ only has framework_info file or is empty
   + zypper lr has no repos
 - SUSEConnect -d
   + produce error message
@@ -64,3 +82,13 @@ byos - test on SLES4SAP instance
   + registartion successful
   + Cloud based RMT server is the target
 - registercloudguest --clean
+
+Extended testing
+- Clean out /var/log/cloudregister
+- Create an image from a registered instance (PAYG)
+- Start an image from the created image in a different region
+  + /var/log/cloudregister contains
+    "INFO:Region change detected, registering to new servers"
+  + instance has repos
+  + cat /etc/hosts server point to an update server in the region
+  + zypper up has no errors

@@ -105,6 +105,21 @@ def clean_hosts_file(domain_name):
             continue
         new_hosts_content.append(entry)
 
+    # Clean up empty lines at the end of the file such that there is only 1
+    # empty line remaining
+    empty_idx = -1
+    try:
+        while new_hosts_content[empty_idx] == b'\n':
+            empty_idx -= 1
+    except IndexError:
+        # Hmm the host file is not what we expect, better leave it alone
+        # - 2 is because we planned to leave 1 empty line at the end of the
+        # file and since we are counting backwards, which starts at -1 we
+        # have 1 extra that we need to leave
+        empty_idx = len(new_hosts_content) - 2
+
+    new_hosts_content = new_hosts_content[:empty_idx+2]
+
     with open(HOSTSFILE_PATH, 'wb') as hosts_file:
         for entry in new_hosts_content:
             hosts_file.write(entry)
@@ -192,7 +207,7 @@ def exec_subprocess(cmd, return_output=False):
 
 
 # ----------------------------------------------------------------------------
-def fetch_smt_data(cfg, proxies):
+def fetch_smt_data(cfg, proxies, quiet=False):
     """Retrieve the data for the region SMT servers from a remote host"""
     response = None
     if cfg.has_option('server', 'metadata_server'):
@@ -291,12 +306,14 @@ def fetch_smt_data(cfg, proxies):
             retry_cnt = attempt + 1
             request_timeout = 15/retry_cnt
             retry_timeout = int(20/retry_cnt)
-            logging.info(
-                'Getting update server information, attempt %d' % retry_cnt
-            )
+            if not quiet:
+                logging.info(
+                    'Getting update server information, attempt %d' % retry_cnt
+                )
             for srv in region_servers:
                 srvName = str(srv)
-                logging.info('\tUsing region server: %s' % srvName)
+                if not quiet:
+                    logging.info('\tUsing region server: %s' % srvName)
                 certFile = cert_dir + '/' + srvName + '.pem'
                 if not os.path.isfile(certFile):
                     logging.info(
@@ -327,6 +344,8 @@ def fetch_smt_data(cfg, proxies):
                         if srv == region_servers[-1]:
                             logging.error('\tAll servers reported an error')
                 except requests.exceptions.RequestException:
+                    if quiet:
+                        continue
                     logging.error('\tNo response from: %s' % srvName)
                     if srv == region_servers[-1]:
                         logging.error('\tNone of the servers responded')
@@ -347,14 +366,6 @@ def fetch_smt_data(cfg, proxies):
         smt_data_root = etree.fromstring(response.text)
 
     return smt_data_root
-
-
-# ----------------------------------------------------------------------------
-def finalize_registration():
-     """During registration we only write information about the update server
-        that is used for the registration to the cache. But we want to cache
-        information about all update servers."""
-     __populate_srv_cache()
 
 
 # ----------------------------------------------------------------------------
@@ -1352,7 +1363,8 @@ def update_rmt_cert(server):
             'http_proxy': os.environ.get('http_proxy'),
             'https_proxy': os.environ.get('https_proxy')
         }
-    region_rmt_server_data = fetch_smt_data(get_config(), proxies)
+    logging.info('Check for cert update')
+    region_rmt_server_data = fetch_smt_data(get_config(), proxies, True)
     region_rmt_servers = []
     for child in region_rmt_server_data:
         region_rmt_servers.append(smt.SMT(child, True))
@@ -1362,8 +1374,9 @@ def update_rmt_cert(server):
         if (region_ipv4 == target_ipv4) and (region_ipv6 == target_ipv6):
             if region_rmt_server != server:
                 import_smt_cert(region_rmt_server)
+                logging.info('Update server cert updated')
                 return True
-
+    logging.info('No cert change')
     return False
 
 
@@ -1514,7 +1527,8 @@ def __populate_srv_cache():
             'https_proxy': os.environ.get('https_proxy')
         }
     cfg = get_config()
-    region_smt_data = fetch_smt_data(cfg, proxies)
+    logging.info('Populating server cache')
+    region_smt_data = fetch_smt_data(cfg, proxies, True)
     cnt = 1
     for child in region_smt_data:
         update_server = smt.SMT(child)

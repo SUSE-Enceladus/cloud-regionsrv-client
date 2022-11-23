@@ -284,9 +284,17 @@ elif region_change:
     utils.write_framework_identifier(cfg)
 
 if not region_smt_servers:
+    cnt = 1
     for child in region_smt_data:
         smt_server = smt.SMT(child, utils.https_only(cfg))
         region_smt_servers.append(smt_server)
+        # Write the available servers to cache as well
+        utils.store_smt_data(
+            utils.get_state_dir() +
+            utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt,
+            smt_server
+        )
+        cnt +=1
 
 # Check if the target RMT for the registration is alive or if we can
 # find a server that is alive in this region
@@ -354,6 +362,7 @@ for smt_srv in region_smt_servers:
     alive = smt_srv.is_responsive()
     if alive:
         registration_target = smt_srv
+        utils.set_as_current_smt(smt_srv)
         # Use the first server that responds
         break
 
@@ -448,6 +457,7 @@ while not base_registered:
                     )
                 )
                 utils.remove_registration_data()
+                utils.clean_hosts_file(registration_target.get_FQDN())
                 registration_target = smt_srv
                 break
     else:
@@ -497,7 +507,6 @@ if registration_returncode != 0:
         file=sys.stderr
     )
 else:
-    utils.finalize_registration()
     print('Registration succeeded')
 
 if os.path.exists(instance_data_filepath):
