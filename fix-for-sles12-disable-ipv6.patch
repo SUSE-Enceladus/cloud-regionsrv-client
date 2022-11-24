@@ -1,0 +1,33 @@
+From 19cd87bc3bf572abb19903297a6d1916e232a695 Mon Sep 17 00:00:00 2001
+From: James Mason <jmason@suse.com>
+Date: Wed, 16 Nov 2022 11:54:38 -0800
+Subject: [PATCH] Disable IPv6 returns
+
+---
+ lib/cloudregister/smt.py | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/lib/cloudregister/smt.py b/lib/cloudregister/smt.py
+index b717141..990fe62 100644
+--- a/lib/cloudregister/smt.py
++++ b/lib/cloudregister/smt.py
+@@ -109,13 +109,9 @@ class SMT:
+     # --------------------------------------------------------------------
+     def get_ipv6(self):
+         """Return the IP address"""
+-        # Before handling ipv6 the IP address was stored in the _ip
+-        # member. When the SMT object is restored from an old pickeled
+-        # file the _ipv6 member does not exist. Handle this transition
+-        # properly.
+-        if not hasattr(self, '_ipv6'):
+-            return None
+-        return self._ipv6
++        # For SLES 12 IPv6 registration fails due to issues in upstream
++        # dependencies, so these addresses need to be ignored
++        return None
+ 
+     # --------------------------------------------------------------------
+     def get_region(self):
+-- 
+2.34.1
+

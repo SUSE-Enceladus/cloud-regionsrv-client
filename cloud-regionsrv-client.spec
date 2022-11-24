@@ -25,6 +25,8 @@ License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
 URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
+# PATCH-FIX-SLES12 bsc#1203382 fix-for-sles12-disable-ipv6.patch
+Patch0:         fix-for-sles12-disable-ipv6.patch
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
@@ -113,6 +115,9 @@ Enable/Disable Guest Registration for Microsoft Azure
 
 %prep
 %setup -q
+%if 0%{?suse_version} == 1315
+%patch0 -p1
+%endif
 
 %build
 python3 setup.py build
