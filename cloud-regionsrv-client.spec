@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.0.6
+%define base_version 10.0.7
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -25,6 +25,8 @@ License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
 URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
+# PATCH-FIX-SLES12 bsc#1203382 fix-for-sles12-disable-ipv6.patch
+Patch0:         fix-for-sles12-disable-ipv6.patch
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
@@ -113,6 +115,9 @@ Enable/Disable Guest Registration for Microsoft Azure
 
 %prep
 %setup -q
+%if 0%{?suse_version} == 1315
+%patch0
+%endif
 
 %build
 python3 setup.py build
@@ -138,9 +143,16 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %service_add_pre regionsrv-enabler.timer
 
 %post
-%{_sbindir}/switchcloudguestservices
-%{_sbindir}/updatesmtcache
-%{_sbindir}/createregioninfo
+# Scripts need access to the update infrastructure, do not execute them
+# in the build service.
+if [ "$YAST_IS_RUNNING" != "instsys" ] ; then
+# On initial install we do not need to handle existing data, only on update
+if [ "$1" -gt 1 ] ; then
+    %{_sbindir}/switchcloudguestservices
+    %{_sbindir}/updatesmtcache
+    %{_sbindir}/createregioninfo
+fi
+fi
 %service_add_post guestregister.service containerbuild-regionsrv.service
 
 %post addon-azure
