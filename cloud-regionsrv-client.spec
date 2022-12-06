@@ -30,7 +30,9 @@ Patch0:         fix-for-sles12-disable-ipv6.patch
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
+%ifarch %ix86 x86_64
 Requires:       dmidecode
+%endif
 Requires:       pciutils
 Requires:       procps
 Requires:       python3
