@@ -258,12 +258,10 @@ def test_clean_host_file_no_empty_bottom_lines():
 4.3.2.1   another_entry.whatever.com another_entry"""
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry'.encode())
-        print(f'CALLS {m().write.mock_calls}')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
     for line in expected_lines[:-1]:
-        print(f'LINE ->{line}')
         line = line + '\n'
         expected_write_calls.append(call(line.encode()))
     if expected_lines[-1] != '':
@@ -271,7 +269,6 @@ def test_clean_host_file_no_empty_bottom_lines():
 
     expected_write_calls.append(call(b'\n'))
 
-    print(f'EXPECTED_WRITE_CALLS ->{expected_write_calls}')
     assert m().write.mock_calls == expected_write_calls
 
 
@@ -296,12 +293,10 @@ def test_clean_host_file_one_empty_bottom_line():
 """
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry'.encode())
-        print(f'CALLS {m().write.mock_calls}')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
     for line in expected_lines[:-1]:
-        print(f'LINE ->{line}')
         line = line + '\n'
         expected_write_calls.append(call(line.encode()))
     if expected_lines[-1] != '':
@@ -309,7 +304,6 @@ def test_clean_host_file_one_empty_bottom_line():
 
     expected_write_calls.append(call(b'\n'))
 
-    print(f'EXPECTED_WRITE_CALLS ->{expected_write_calls}')
     assert m().write.mock_calls == expected_write_calls
 
 
@@ -337,12 +331,10 @@ def test_clean_host_file_some_empty_bottom_lines():
 """
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry'.encode())
-        print(f'CALLS {m().write.mock_calls}')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
     for line in expected_lines[:-1]:
-        print(f'LINE ->{line}')
         line = line + '\n'
         expected_write_calls.append(call(line.encode()))
     if expected_lines[-1] != '':
@@ -350,7 +342,6 @@ def test_clean_host_file_some_empty_bottom_lines():
 
     expected_write_calls.append(call(b'\n'))
 
-    print(f'EXPECTED_WRITE_CALLS ->{expected_write_calls}')
     assert m().write.mock_calls == expected_write_calls
 
 
@@ -380,12 +371,10 @@ def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
 
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry'.encode())
-        print(f'CALLS {m().write.mock_calls}')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
     for line in expected_lines[:-1]:
-        print(f'LINE ->{line}')
         line = line + '\n'
         expected_write_calls.append(call(line.encode()))
     if expected_lines[-1] != '':
@@ -393,7 +382,6 @@ def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
 
     expected_write_calls.append(call(b'\n'))
 
-    print(f'EXPECTED_WRITE_CALLS ->{expected_write_calls}')
     assert m().write.mock_calls == expected_write_calls
 
 
@@ -421,12 +409,10 @@ def test_clean_host_file_one_empty_bottom_lines_smt_entry_is_last():
 
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry'.encode())
-        print(f'CALLS {m().write.mock_calls}')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
     for line in expected_lines[:-1]:
-        print(f'LINE ->{line}')
         line = line + '\n'
         expected_write_calls.append(call(line.encode()))
     if expected_lines[-1] != '':
@@ -434,7 +420,6 @@ def test_clean_host_file_one_empty_bottom_lines_smt_entry_is_last():
 
     expected_write_calls.append(call(b'\n'))
 
-    print(f'EXPECTED_WRITE_CALLS ->{expected_write_calls}')
     assert m().write.mock_calls == expected_write_calls
 
 
@@ -459,12 +444,10 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 """
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry'.encode())
-        print(f'CALLS {m().write.mock_calls}')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
     for line in expected_lines[:-1]:
-        print(f'LINE ->{line}')
         line = line + '\n'
         expected_write_calls.append(call(line.encode()))
     if expected_lines[-1] != '':
@@ -472,7 +455,6 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 
     expected_write_calls.append(call(b'\n'))
 
-    print(f'EXPECTED_WRITE_CALLS ->{expected_write_calls}')
     assert m().write.mock_calls == expected_write_calls
 
 
