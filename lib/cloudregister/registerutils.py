@@ -107,18 +107,12 @@ def clean_hosts_file(domain_name):
 
     # Clean up empty lines at the end of the file such that there is only 1
     # empty line remaining
-    empty_idx = -1
     try:
-        while new_hosts_content[empty_idx] == b'\n':
-            empty_idx -= 1
+        while new_hosts_content[-1] == b'\n':
+            new_hosts_content.pop(-1)
+        new_hosts_content.append(b'\n')
     except IndexError:
-        # Hmm the host file is not what we expect, better leave it alone
-        # - 2 is because we planned to leave 1 empty line at the end of the
-        # file and since we are counting backwards, which starts at -1 we
-        # have 1 extra that we need to leave
-        empty_idx = len(new_hosts_content) - 2
-
-    new_hosts_content = new_hosts_content[:empty_idx+2]
+        pass
 
     with open(HOSTSFILE_PATH, 'wb') as hosts_file:
         for entry in new_hosts_content:
