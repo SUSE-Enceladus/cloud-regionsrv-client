@@ -622,6 +622,8 @@ def get_instance_data(config):
     # Marker for the server to not return https:// formatted
     # service and repo information
     instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
+    # add system UUID to use as an ID instead of system_token
+    instance_data += '<uuid>{}</uuid>\n'.format(_get_instance_uuid())
 
     return instance_data
 
@@ -1621,3 +1623,19 @@ def __replace_url_target(config_files, new_smt):
                 current_service_server,
                 new_smt.get_FQDN()))
             new_config.close()
+
+# ----------------------------------------------------------------------------
+def _get_instance_uuid():
+    """Return the system UUID information."""
+    try:
+        uuid, error = exec_subprocess(
+            ['dmidecode', '-s', 'system-uuid'], True
+        )
+        if error:
+            logging.error(error)
+            uuid = b'unknown'
+    except Exception as error:
+        logging.error(error)
+        uuid = b'unknown'
+
+    return uuid.decode().strip()

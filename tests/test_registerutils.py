@@ -508,6 +508,16 @@ def get_modified_servers_data():
 
     return etree.fromstring(srv_xml)
 
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_get_uuid(subproc):
+    subproc.return_value = (b'foo', b'')
+    assert 'foo' == utils._get_instance_uuid()
+
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_get_uuid_error(subproc):
+    subproc.return_value = (b'foo', b'OH NO')
+    assert 'unknown' == utils._get_instance_uuid()
+
 
 class MockServer:
     def get_ipv4(self):
