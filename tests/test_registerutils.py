@@ -35,6 +35,41 @@ cfg = utils.get_config(config_path + '/regionserverclnt.cfg')
 CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
 
 
+def test_log_rotation():
+
+    log_filename = data_path + 'log' + os.sep + 'test_logfile'
+    backup_count = 2
+    # try:
+    #     os.remove(log_filename)
+    # except FileNotFoundError:
+    #     pass
+    # for i in range(1, backup_count+1):
+    #     try:
+    #         os.remove(log_filename + ".%s" % i)
+    #     except FileNotFoundError:
+    #         pass
+
+    utils.start_logging(
+        log_filename=data_path + 'log' + os.sep + 'test_logfile',
+        rotating_size=1,
+        backup_count=backup_count
+    )
+    for i in range(5):
+        logging.info("test %d" % i)
+
+    with open(log_filename, "r") as f0:
+        log_content = f0.readline()
+        assert "test 4" in log_content
+
+    with open(log_filename + ".1", "r") as f:
+        log_content = f.readline()
+        assert "test 3" in log_content
+
+    with open(log_filename + ".2", "r") as f:
+        log_content = f.readline()
+        assert "test 2" in log_content
+
+
 @patch('os.path.exists')
 def test_get_available_smt_servers_no_cache(path_exists):
     path_exists.return_value = False
@@ -165,8 +200,9 @@ def test_has_rmt_in_hosts_has_ipv4():
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)) as m:
         has_entry = utils.has_rmt_in_hosts(server)
+    m().stop()
 
     assert True == has_entry
 
@@ -271,6 +307,7 @@ def test_clean_host_file_no_empty_bottom_lines():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
+    m.stop()
 
 
 def test_clean_host_file_one_empty_bottom_line():
@@ -306,6 +343,7 @@ def test_clean_host_file_one_empty_bottom_line():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
+    m.stop()
 
 
 def test_clean_host_file_some_empty_bottom_lines():
@@ -344,6 +382,7 @@ def test_clean_host_file_some_empty_bottom_lines():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
+    m.stop()
 
 
 def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
@@ -457,17 +496,6 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
-
-
-def test_log_rotation():
-    utils.start_logging(
-        log_filename=data_path + 'log' + os.sep + 'test_logfile',
-        rotating_size=300,
-        backup_count=2
-    )
-    for i in range(100):
-        msg = "This is a logging test: %d" % i
-        logging.error(msg)
 
 
 # ---------------------------------------------------------------------------

@@ -486,15 +486,16 @@ def get_credentials(credentials_file):
     password = None
     if not os.path.exists(credentials_file):
         return (username, password)
-    credentials = open(credentials_file).readlines()
-    for entry in credentials:
-        if entry.startswith('username'):
-            username = entry.split('=')[-1].strip()
-        elif entry.startswith('password'):
-            password = entry.split('=')[-1].strip()
-        else:
-            logging.warning('Found unknown entry in '
-                            'credentials file "%s"' % entry)
+    with open(credentials_file) as cred_file:
+        credentials = cred_file.readlines()
+        for entry in credentials:
+            if entry.startswith('username'):
+                username = entry.split('=')[-1].strip()
+            elif entry.startswith('password'):
+                password = entry.split('=')[-1].strip()
+            else:
+                logging.warning('Found unknown entry in '
+                                'credentials file "%s"' % entry)
 
     return (username, password)
 
@@ -1313,7 +1314,6 @@ def start_logging(
     except IOError:
         print('Could not open log file "', log_filename, '" for writing.')
         sys.exit(1)
-
 
 # ----------------------------------------------------------------------------
 def store_smt_data(smt_data_file_path, smt):
