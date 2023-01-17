@@ -33,6 +33,7 @@ import time
 from lxml import etree
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
+from logging import handlers as log_handlers
 
 from cloudregister import smt
 
@@ -44,6 +45,9 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
+DEFAULT_LOG_FILE = '/var/log/cloudregister'
+DEFAULT_LOG_ROTATING_SIZE = 10 * 1024 * 1024
+DEFAULT_LOG_BACKUP_COUNT = 2
 
 
 # ----------------------------------------------------------------------------
@@ -1288,14 +1292,23 @@ def replace_hosts_entry(current_smt, new_smt):
 
 
 # ----------------------------------------------------------------------------
-def start_logging():
+def start_logging(
+    log_filename=DEFAULT_LOG_FILE,
+    rotating_size=DEFAULT_LOG_ROTATING_SIZE,
+    backup_count=DEFAULT_LOG_BACKUP_COUNT
+):
     """Set up logging"""
-    log_filename = '/var/log/cloudregister'
     try:
+        handler = log_handlers.RotatingFileHandler(
+            log_filename,
+            mode="a",
+            maxBytes=rotating_size,
+            backupCount=backup_count
+        )
         logging.basicConfig(
-            filename=log_filename,
             level=logging.INFO,
-            format='%(asctime)s %(levelname)s:%(message)s'
+            format='%(asctime)s %(levelname)s:%(message)s',
+            handlers=[handler]
         )
     except IOError:
         print('Could not open log file "', log_filename, '" for writing.')

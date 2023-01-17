@@ -12,6 +12,7 @@
 # License along with this library.
 
 import inspect
+import logging
 import os
 import sys
 from unittest import mock
@@ -456,6 +457,17 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
+
+
+def test_log_rotation():
+    utils.start_logging(
+        log_filename=data_path + 'log' + os.sep + 'test_logfile',
+        rotating_size=300,
+        backup_count=2
+    )
+    for i in range(100):
+        msg = "This is a logging test: %d" % i
+        logging.error(msg)
 
 
 # ---------------------------------------------------------------------------
