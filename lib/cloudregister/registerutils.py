@@ -1314,6 +1314,7 @@ def start_logging(
         print('Could not open log file "', log_filename, '" for writing.')
         sys.exit(1)
 
+
 # ----------------------------------------------------------------------------
 def store_smt_data(smt_data_file_path, smt):
     """Store the given SMT server information to the given file"""
