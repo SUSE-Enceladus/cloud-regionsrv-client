@@ -200,9 +200,8 @@ def test_has_rmt_in_hosts_has_ipv4():
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)) as m:
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
-    m().stop()
 
     assert True == has_entry
 
@@ -307,7 +306,6 @@ def test_clean_host_file_no_empty_bottom_lines():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
-    m.stop()
 
 
 def test_clean_host_file_one_empty_bottom_line():
@@ -343,7 +341,6 @@ def test_clean_host_file_one_empty_bottom_line():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
-    m.stop()
 
 
 def test_clean_host_file_some_empty_bottom_lines():
@@ -382,7 +379,6 @@ def test_clean_host_file_some_empty_bottom_lines():
     expected_write_calls.append(call(b'\n'))
 
     assert m().write.mock_calls == expected_write_calls
-    m.stop()
 
 
 def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
