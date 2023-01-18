@@ -486,16 +486,15 @@ def get_credentials(credentials_file):
     password = None
     if not os.path.exists(credentials_file):
         return (username, password)
-    with open(credentials_file) as cred_file:
-        credentials = cred_file.readlines()
-        for entry in credentials:
-            if entry.startswith('username'):
-                username = entry.split('=')[-1].strip()
-            elif entry.startswith('password'):
-                password = entry.split('=')[-1].strip()
-            else:
-                logging.warning('Found unknown entry in '
-                                'credentials file "%s"' % entry)
+    credentials = open(credentials_file).readlines()
+    for entry in credentials:
+        if entry.startswith('username'):
+            username = entry.split('=')[-1].strip()
+        elif entry.startswith('password'):
+            password = entry.split('=')[-1].strip()
+        else:
+            logging.warning('Found unknown entry in '
+                            'credentials file "%s"' % entry)
 
     return (username, password)
 
