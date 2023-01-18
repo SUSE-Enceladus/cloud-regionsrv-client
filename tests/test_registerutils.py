@@ -36,18 +36,17 @@ CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
 
 
 def test_log_rotation():
-
     log_filename = data_path + 'log' + os.sep + 'test_logfile'
     backup_count = 2
-    # try:
-    #     os.remove(log_filename)
-    # except FileNotFoundError:
-    #     pass
-    # for i in range(1, backup_count+1):
-    #     try:
-    #         os.remove(log_filename + ".%s" % i)
-    #     except FileNotFoundError:
-    #         pass
+    try:
+        os.remove(log_filename)
+    except FileNotFoundError:
+        pass
+    for i in range(1, backup_count+1):
+        try:
+            os.remove(log_filename + ".%s" % i)
+        except FileNotFoundError:
+            pass
 
     utils.start_logging(
         log_filename=data_path + 'log' + os.sep + 'test_logfile',
