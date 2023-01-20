@@ -484,14 +484,14 @@ def get_credentials(credentials_file):
         return (username, password)
     with open(credentials_file) as cred_file:
         credentials = cred_file.readlines()
-        for entry in credentials:
-            if entry.startswith('username'):
-                username = entry.split('=')[-1].strip()
-            elif entry.startswith('password'):
-                password = entry.split('=')[-1].strip()
-            else:
-                logging.warning('Found unknown entry in '
-                                'credentials file "%s"' % entry)
+    for entry in credentials:
+        if entry.startswith('username'):
+            username = entry.split('=')[-1].strip()
+        elif entry.startswith('password'):
+            password = entry.split('=')[-1].strip()
+        else:
+            logging.warning('Found unknown entry in '
+                            'credentials file "%s"' % entry)
 
     return (username, password)
 
@@ -554,17 +554,17 @@ def get_current_smt():
     fqdn_search = '\s%s\s' % smt_fqdn
     with open(HOSTSFILE_PATH, 'rb') as hosts_file:
         hosts = hosts_file.read()
-        if (
-            not (
-                re.search(ipv4_search.encode(), hosts) or
-                re.search(ipv6_search.encode(), hosts)
-            ) or not
+    if (
+        not (
+            re.search(ipv4_search.encode(), hosts) or
+            re.search(ipv6_search.encode(), hosts)
+        ) or not
             re.search(fqdn_search.encode(), hosts)
-        ):
-            os.unlink(__get_registered_smt_file_path())
-            return
-        if not is_registered(smt_fqdn):
-            return
+    ):
+        os.unlink(__get_registered_smt_file_path())
+        return
+    if not is_registered(smt_fqdn):
+        return
 
     return smt
 
@@ -827,10 +827,10 @@ def get_update_server_name_from_hosts(ignore_inconsistent=False):
     servers = get_available_smt_servers()
     with open(HOSTSFILE_PATH, 'rb') as hosts_file:
         hosts_content = hosts_file.read()
-        for server in servers:
-            name = server.get_FQDN().encode()
-            if name in hosts_content:
-                return name.decode()
+    for server in servers:
+        name = server.get_FQDN().encode()
+        if name in hosts_content:
+            return name.decode()
 
 
 # ----------------------------------------------------------------------------
@@ -953,8 +953,8 @@ def has_rmt_in_hosts(server):
     """Check if an entry for the given update server is in the hosts file"""
     with open('/etc/hosts') as hosts_file:
         hosts_content = hosts_file.read()
-        srv_ipv4 = server.get_ipv4()
-        srv_ipv6 = server.get_ipv6()
+    srv_ipv4 = server.get_ipv4()
+    srv_ipv6 = server.get_ipv6()
 
     if srv_ipv4 in hosts_content or srv_ipv6 in hosts_content:
         return True
@@ -969,14 +969,14 @@ def has_services(smt_server_name):
     for service_file in service_files:
         with open(service_file) as svc_file:
             content = svc_file.readlines()
-            for entry in content:
-                if entry.startswith('url'):
-                    if (
-                        smt_server_name in entry or
-                        'plugin:/susecloud' in entry or
-                        'plugin:susecloud' in entry
-                    ):
-                        return True
+        for entry in content:
+            if entry.startswith('url'):
+                if (
+                    smt_server_name in entry or
+                    'plugin:/susecloud' in entry or
+                    'plugin:susecloud' in entry
+                ):
+                    return True
         service_plugins = __get_service_plugins()
         if service_plugins:
             return True
@@ -1145,17 +1145,17 @@ def set_proxy():
         return False
     with open(proxy_config_file, 'r') as pc_file:
         proxy_config = pc_file.readlines()
-        http_proxy = ''
-        https_proxy = ''
-        for entry in proxy_config:
-            if 'PROXY_ENABLED' in entry and 'no' in entry:
-                return False
-            if 'HTTP_PROXY' in entry:
-                http_proxy = entry.split('"')[1]
-            if 'HTTPS_PROXY' in entry:
-                https_proxy = entry.split('"')[1]
-            if 'NO_PROXY' in entry:
-                no_proxy = entry.split('"')[1]
+    http_proxy = ''
+    https_proxy = ''
+    for entry in proxy_config:
+        if 'PROXY_ENABLED' in entry and 'no' in entry:
+            return False
+        if 'HTTP_PROXY' in entry:
+            http_proxy = entry.split('"')[1]
+        if 'HTTPS_PROXY' in entry:
+            https_proxy = entry.split('"')[1]
+        if 'NO_PROXY' in entry:
+            no_proxy = entry.split('"')[1]
         os.environ['http_proxy'] = http_proxy
         os.environ['https_proxy'] = https_proxy
         os.environ['no_proxy'] = no_proxy
@@ -1624,9 +1624,9 @@ def __replace_url_target(config_files, new_smt):
     for config_file in config_files:
         with open(config_file, 'r') as cfg_file:
             content = cfg_file.read()
-            if current_service_server in content:
-                with open(config_file, 'w') as new_config:
-                    new_config.write(content.replace(
-                        current_service_server,
-                        new_smt.get_FQDN())
-                    )
+        if current_service_server in content:
+            with open(config_file, 'w') as new_config:
+                new_config.write(content.replace(
+                    current_service_server,
+                    new_smt.get_FQDN())
+                )
