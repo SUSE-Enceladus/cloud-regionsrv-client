@@ -977,9 +977,9 @@ def has_services(smt_server_name):
                     'plugin:susecloud' in entry
                 ):
                     return True
-        service_plugins = __get_service_plugins()
-        if service_plugins:
-            return True
+    service_plugins = __get_service_plugins()
+    if service_plugins:
+        return True
 
     return False
 
@@ -1156,9 +1156,9 @@ def set_proxy():
             https_proxy = entry.split('"')[1]
         if 'NO_PROXY' in entry:
             no_proxy = entry.split('"')[1]
-        os.environ['http_proxy'] = http_proxy
-        os.environ['https_proxy'] = https_proxy
-        os.environ['no_proxy'] = no_proxy
+    os.environ['http_proxy'] = http_proxy
+    os.environ['https_proxy'] = https_proxy
+    os.environ['no_proxy'] = no_proxy
 
     return True
 
