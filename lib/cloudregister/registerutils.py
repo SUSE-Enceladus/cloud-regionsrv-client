@@ -52,16 +52,16 @@ def add_hosts_entry(smt_server):
 
     smt_hosts_entry_comment = '\n# Added by SMT registration do not remove, '
     smt_hosts_entry_comment += 'retain comment as well\n'
+    smt_ip = smt_server.get_ipv4()
+    if has_ipv6_access(smt_server):
+        smt_ip = smt_server.get_ipv6()
+    entry = '%s\t%s\t%s\n' % (
+        smt_ip,
+        smt_server.get_FQDN(),
+        smt_server.get_name()
+    )
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
-        smt_ip = smt_server.get_ipv4()
-        if has_ipv6_access(smt_server):
-            smt_ip = smt_server.get_ipv6()
-        entry = '%s\t%s\t%s\n' % (
-            smt_ip,
-            smt_server.get_FQDN(),
-            smt_server.get_name()
-        )
         hosts_file.write(entry)
     logging.info('Modified /etc/hosts, added: %s' % entry)
 
@@ -841,7 +841,7 @@ def get_zypper_command():
     if zypper_pid:
         with open('/proc/%s/cmdline' % zypper_pid, 'r') as zypper_pid_file:
             zypper_cmd = zypper_pid_file.read()
-            zypper_cmd = zypper_cmd.replace('\x00', ' ')
+        zypper_cmd = zypper_cmd.replace('\x00', ' ')
 
     return zypper_cmd
 
