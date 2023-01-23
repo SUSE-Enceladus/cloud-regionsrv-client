@@ -52,8 +52,6 @@ def add_hosts_entry(smt_server):
 
     smt_hosts_entry_comment = '\n# Added by SMT registration do not remove, '
     smt_hosts_entry_comment += 'retain comment as well\n'
-    hosts = open('/etc/hosts', 'a')
-    hosts.write(smt_hosts_entry_comment)
     smt_ip = smt_server.get_ipv4()
     if has_ipv6_access(smt_server):
         smt_ip = smt_server.get_ipv6()
@@ -62,8 +60,9 @@ def add_hosts_entry(smt_server):
         smt_server.get_FQDN(),
         smt_server.get_name()
     )
-    hosts.write(entry)
-    hosts.close()
+    with open('/etc/hosts', 'a') as hosts_file:
+        hosts_file.write(smt_hosts_entry_comment)
+        hosts_file.write(entry)
     logging.info('Modified /etc/hosts, added: %s' % entry)
 
 
@@ -95,6 +94,7 @@ def clean_hosts_file(domain_name):
     # Yes, users put non ascii characters into /etc/hosts
     with open(HOSTSFILE_PATH, 'rb') as hosts_file:
         content = hosts_file.readlines()
+
     smt_announce_found = None
     for entry in content:
         if b'# Added by SMT' in entry:
@@ -482,7 +482,8 @@ def get_credentials(credentials_file):
     password = None
     if not os.path.exists(credentials_file):
         return (username, password)
-    credentials = open(credentials_file).readlines()
+    with open(credentials_file) as cred_file:
+        credentials = cred_file.readlines()
     for entry in credentials:
         if entry.startswith('username'):
             username = entry.split('=')[-1].strip()
@@ -551,12 +552,13 @@ def get_current_smt():
     ipv4_search = '%s\s' % smt_ipv4
     ipv6_search = '%s\s' % smt_ipv6
     fqdn_search = '\s%s\s' % smt_fqdn
-    hosts = open(HOSTSFILE_PATH, 'rb').read()
+    with open(HOSTSFILE_PATH, 'rb') as hosts_file:
+        hosts = hosts_file.read()
     if (
-            not (
-                re.search(ipv4_search.encode(), hosts) or
-                re.search(ipv6_search.encode(), hosts)
-            ) or not
+        not (
+            re.search(ipv4_search.encode(), hosts) or
+            re.search(ipv6_search.encode(), hosts)
+        ) or not
             re.search(fqdn_search.encode(), hosts)
     ):
         os.unlink(__get_registered_smt_file_path())
@@ -823,7 +825,8 @@ def get_update_server_name_from_hosts(ignore_inconsistent=False):
                         'definitions, cached update server data, and '
                         'credentials file do not match')
     servers = get_available_smt_servers()
-    hosts_content = open(HOSTSFILE_PATH, 'rb').read()
+    with open(HOSTSFILE_PATH, 'rb') as hosts_file:
+        hosts_content = hosts_file.read()
     for server in servers:
         name = server.get_FQDN().encode()
         if name in hosts_content:
@@ -836,7 +839,8 @@ def get_zypper_command():
     zypper_pid = get_zypper_pid()
     zypper_cmd = None
     if zypper_pid:
-        zypper_cmd = open('/proc/%s/cmdline' % zypper_pid, 'r').read()
+        with open('/proc/%s/cmdline' % zypper_pid, 'r') as zypper_pid_file:
+            zypper_cmd = zypper_pid_file.read()
         zypper_cmd = zypper_cmd.replace('\x00', ' ')
 
     return zypper_cmd
@@ -863,7 +867,8 @@ def get_zypper_pid_cache():
     zypper_pid = 0
     if not os.path.exists(get_state_dir() + 'zypper_pid'):
         return zypper_pid
-    return open(get_state_dir() + 'zypper_pid').read()
+    with open(get_state_dir() + 'zypper_pid') as zypper_state_file:
+        return zypper_state_file.read()
 
 
 # ----------------------------------------------------------------------------
@@ -927,9 +932,10 @@ def has_region_changed(cfg):
         return False
 
     try:
-        registered_region = json.loads(
-            open(get_framework_identifier_path()).read()
-        )
+        with open(get_framework_identifier_path()) as framework_file:
+            registered_region = json.loads(
+                framework_file.read()
+            )
     except:
         return False
 
@@ -945,7 +951,8 @@ def has_region_changed(cfg):
 # ----------------------------------------------------------------------------
 def has_rmt_in_hosts(server):
     """Check if an entry for the given update server is in the hosts file"""
-    hosts_content = open('/etc/hosts').read()
+    with open('/etc/hosts') as hosts_file:
+        hosts_content = hosts_file.read()
     srv_ipv4 = server.get_ipv4()
     srv_ipv6 = server.get_ipv6()
 
@@ -960,13 +967,14 @@ def has_services(smt_server_name):
     """Check if repositories exist."""
     service_files = glob.glob('/etc/zypp/services.d/*.service')
     for service_file in service_files:
-        content = open(service_file).readlines()
+        with open(service_file) as svc_file:
+            content = svc_file.readlines()
         for entry in content:
             if entry.startswith('url'):
                 if (
-                        smt_server_name in entry or
-                        'plugin:/susecloud' in entry or
-                        'plugin:susecloud' in entry
+                    smt_server_name in entry or
+                    'plugin:/susecloud' in entry or
+                    'plugin:susecloud' in entry
                 ):
                     return True
     service_plugins = __get_service_plugins()
@@ -1135,7 +1143,8 @@ def set_proxy():
     proxy_config_file = '/etc/sysconfig/proxy'
     if not os.path.exists(proxy_config_file):
         return False
-    proxy_config = open(proxy_config_file, 'r').readlines()
+    with open(proxy_config_file, 'r') as pc_file:
+        proxy_config = pc_file.readlines()
     http_proxy = ''
     https_proxy = ''
     for entry in proxy_config:
@@ -1305,11 +1314,10 @@ def start_logging():
 # ----------------------------------------------------------------------------
 def store_smt_data(smt_data_file_path, smt):
     """Store the given SMT server information to the given file"""
-    smt_data = open(smt_data_file_path, 'wb')
-    os.fchmod(smt_data.fileno(), stat.S_IREAD | stat.S_IWRITE)
-    p = pickle.Pickler(smt_data)
-    p.dump(smt)
-    smt_data.close()
+    with open(smt_data_file_path, 'wb') as smt_data:
+        os.fchmod(smt_data.fileno(), stat.S_IREAD | stat.S_IWRITE)
+        p = pickle.Pickler(smt_data)
+        p.dump(smt)
 
 
 # ----------------------------------------------------------------------------
@@ -1614,10 +1622,11 @@ def __replace_url_target(config_files, new_smt):
     current_smt = get_current_smt()
     current_service_server = current_smt.get_FQDN()
     for config_file in config_files:
-        content = open(config_file, 'r').read()
+        with open(config_file, 'r') as cfg_file:
+            content = cfg_file.read()
         if current_service_server in content:
-            new_config = open(config_file, 'w')
-            new_config.write(content.replace(
-                current_service_server,
-                new_smt.get_FQDN()))
-            new_config.close()
+            with open(config_file, 'w') as new_config:
+                new_config.write(content.replace(
+                    current_service_server,
+                    new_smt.get_FQDN())
+                )
