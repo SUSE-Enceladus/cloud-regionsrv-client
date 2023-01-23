@@ -44,6 +44,7 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
+TIME_CACHED = 60 * 5  # 5 min in seconds
 
 
 # ----------------------------------------------------------------------------
@@ -578,6 +579,10 @@ def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
     instance_data = ''
+    cached_instance_data = get_cached_instance_data()
+    if cached_instance_data:
+        return cached_instance_data
+
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -622,6 +627,8 @@ def get_instance_data(config):
     # Marker for the server to not return https:// formatted
     # service and repo information
     instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
+
+    update_instance_data_cache(instance_data)
 
     return instance_data
 
@@ -1396,6 +1403,44 @@ def write_framework_identifier(cfg):
 
     with open(get_framework_identifier_path(), 'w') as framework_file:
         framework_file.write(json.dumps(identifier))
+
+
+# ----------------------------------------------------------------------------
+def get_cached_instance_data():
+    """Get cached instance data if cache has not expired."""
+    cache_instance_data_path = os.path.join(
+        get_state_dir(), 'cache_instance_data'
+    )
+    try:
+        if instance_data_cache_expired():
+            return None
+        else:
+            with open(cache_instance_data_path) as f:
+                cached_instance_data = f.read()
+            return cached_instance_data
+    except OSError:
+        # cache instance data file does not exist
+        return None
+
+
+# ----------------------------------------------------------------------------
+def instance_data_cache_expired():
+    """Check if instance data cache has expired."""
+    cache_instance_data_path = os.path.join(
+        get_state_dir(), 'cache_instance_data'
+    )
+    last_modified_time = os.path.getmtime(cache_instance_data_path)
+    time_passed = int(time.time() - last_modified_time)
+    return time_passed > TIME_CACHED
+
+
+def update_instance_data_cache(instance_data):
+    """Update the instance data cache file with new instance data."""
+    cache_instance_data_path = os.path.join(
+        get_state_dir(), 'cache_instance_data'
+    )
+    with open(cache_instance_data_path, 'w') as f:
+        f.write(instance_data)
 
 
 # Private
