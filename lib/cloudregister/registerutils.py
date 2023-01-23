@@ -29,6 +29,7 @@ import stat
 import subprocess
 import sys
 import time
+import uuid
 
 from lxml import etree
 from pathlib import Path
@@ -44,8 +45,6 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
-TIME_CACHED = 60 * 5  # 5 min in seconds
-
 
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
@@ -628,7 +627,7 @@ def get_instance_data(config):
     # service and repo information
     instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
 
-    update_instance_data_cache(instance_data)
+    set_instance_data_cache(instance_data)
 
     return instance_data
 
@@ -1408,40 +1407,37 @@ def write_framework_identifier(cfg):
 # ----------------------------------------------------------------------------
 def get_cached_instance_data():
     """Get cached instance data if cache has not expired."""
-    cache_instance_data_path = os.path.join(
-        get_state_dir(), 'cache_instance_data'
-    )
     try:
-        if instance_data_cache_expired():
-            return None
-        else:
-            with open(cache_instance_data_path) as f:
-                cached_instance_data = f.read()
-            return cached_instance_data
-    except OSError:
-        # cache instance data file does not exist
+        with open(get_instance_data_filepath(), 'r') as f:
+            return f.read()
+    except FileNotFoundError:
         return None
 
-
 # ----------------------------------------------------------------------------
-def instance_data_cache_expired():
-    """Check if instance data cache has expired."""
-    cache_instance_data_path = os.path.join(
-        get_state_dir(), 'cache_instance_data'
-    )
-    last_modified_time = os.path.getmtime(cache_instance_data_path)
-    time_passed = int(time.time() - last_modified_time)
-    return time_passed > TIME_CACHED
-
-
-def update_instance_data_cache(instance_data):
+def set_instance_data_cache(instance_data):
     """Update the instance data cache file with new instance data."""
-    cache_instance_data_path = os.path.join(
-        get_state_dir(), 'cache_instance_data'
-    )
-    with open(cache_instance_data_path, 'w') as f:
+    with open(get_instance_data_filepath(), 'w') as f:
         f.write(instance_data)
 
+# ----------------------------------------------------------------------------
+def clear_instance_data_cache():
+    """Remove instance data cache file."""
+    try:
+        os.unlink(get_instance_data_filepath())
+    except FileNotFoundError:
+        return
+
+def get_instance_data_filepath():
+    instance_data_cache_filepath = glob.glob(
+        os.path.join(REGISTRATION_DATA_DIR, '5U53-*')
+    )
+    try:
+        return instance_data_cache_filepath[0]
+    except IndexError:
+        return os.path.join(
+            REGISTRATION_DATA_DIR,
+            '5U53-{}'.format(uuid.uuid4())
+        )
 
 # Private
 # ----------------------------------------------------------------------------

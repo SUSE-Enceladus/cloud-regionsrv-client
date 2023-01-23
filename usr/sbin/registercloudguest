@@ -37,7 +37,6 @@ import sys
 import time
 import urllib.parse
 import urllib3
-import uuid
 
 import cloudregister.registerutils as utils
 
@@ -76,9 +75,9 @@ def register_modules(extensions, products, registered=[]):
                 '--product',
                 triplet
             ]
-            if os.path.exists(instance_data_filepath):
+            if os.path.exists(utils.get_instance_data_filepath()):
                 cmd.append('--instance-data')
-                cmd.append(instance_data_filepath)
+                cmd.append(utils.get_instance_data_filepath())
 
             logging.info('Registration: %s' % ' '.join(cmd))
             p = subprocess.Popen(
@@ -378,13 +377,7 @@ if not os.path.exists(utils.get_state_dir()):
 utils.set_as_current_smt(registration_target)
 
 # Check if we need to send along any instance data
-instance_data_filepath = utils.get_state_dir() + str(uuid.uuid4())
-instance_data = utils.get_instance_data(cfg)
-if instance_data:
-    inst_data_out = open(instance_data_filepath, 'w')
-    inst_data_out.write(instance_data)
-    inst_data_out.close()
-
+utils.get_instance_data(cfg)
 # Check if registration is supported
 if not utils.is_registration_supported(cfg):
     sys.exit(0)
@@ -416,9 +409,9 @@ while not base_registered:
         '--url',
         'https://%s' % registration_target.get_FQDN()
     ]
-    if os.path.exists(instance_data_filepath):
+    if os.path.exists(utils.get_instance_data_filepath()):
         cmd.append('--instance-data')
-        cmd.append(instance_data_filepath)
+        cmd.append(utils.get_instance_data_filepath())
     if args.email:
         cmd.append('--email')
         cmd.append(args.email)
@@ -509,8 +502,7 @@ if registration_returncode != 0:
 else:
     print('Registration succeeded')
 
-if os.path.exists(instance_data_filepath):
-    os.unlink(instance_data_filepath)
+utils.clear_instance_data_cache()
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():
