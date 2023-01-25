@@ -290,8 +290,10 @@ if not region_smt_servers:
         region_smt_servers.append(smt_server)
         # Write the available servers to cache as well
         utils.store_smt_data(
-            utils.get_state_dir() +
-            utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt,
+            os.path.join(
+                utils.get_state_dir(),
+                utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+            ),
             smt_server
         )
         cnt +=1
@@ -300,9 +302,11 @@ if not region_smt_servers:
 # find a server that is alive in this region
 if registration_smt:
     registration_smt_cache_file_name = (
-            utils.get_state_dir() +
+        os.path.join(
+            utils.get_state_dir(),
             utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
         )
+    )
     updated = utils.update_rmt_cert(registration_smt)
     alive = registration_smt.is_responsive()
     if alive:
@@ -378,7 +382,7 @@ if not os.path.exists(utils.get_state_dir()):
 utils.set_as_current_smt(registration_target)
 
 # Check if we need to send along any instance data
-instance_data_filepath = utils.get_state_dir() + str(uuid.uuid4())
+instance_data_filepath = os.path.join(utils.get_state_dir(), str(uuid.uuid4()))
 instance_data = utils.get_instance_data(cfg)
 if instance_data:
     inst_data_out = open(instance_data_filepath, 'w')

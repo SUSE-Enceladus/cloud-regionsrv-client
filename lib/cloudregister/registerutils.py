@@ -131,7 +131,7 @@ def clean_framework_identifier():
 def clean_smt_cache():
     """Clean the disk cache for SMT data"""
 
-    smt_data = glob.glob(get_state_dir() + '*SMTInfo*')
+    smt_data = glob.glob(os.path.join(get_state_dir(), '*SMTInfo*'))
     for cache_entry in smt_data:
         os.unlink(cache_entry)
 
@@ -140,7 +140,7 @@ def clean_smt_cache():
 def clear_new_registration_flag():
     """Clear the new registration marker"""
     try:
-        os.unlink(get_state_dir() + NEW_REGISTRATION_MARKER)
+        os.unlink(os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER))
     except FileNotFoundError:
         pass
 
@@ -149,7 +149,7 @@ def clear_new_registration_flag():
 def clear_rmt_as_scc_proxy_flag():
     """Clear the marker that indicates that RMT is used as SCC proxy"""
     try:
-        os.unlink(get_state_dir() + RMT_AS_SCC_PROXY_MARKER)
+        os.unlink(os.path.join(get_state_dir(), RMT_AS_SCC_PROXY_MARKER))
     except FileNotFoundError:
         pass
 
@@ -159,8 +159,8 @@ def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
     credentials_location = '/etc/zypp/credentials.d/'
-    credentials_base = credentials_location + 'SCCcredentials'
-    credentials_header = credentials_location + repo_credentials
+    credentials_base = os.path.join(credentials_location, 'SCCcredentials')
+    credentials_header = os.path.join(credentials_location, repo_credentials)
     ref_user, ref_pass = get_credentials(credentials_base)
     repo_user, repo_pass = get_credentials(credentials_header)
     if (ref_user != repo_user) or (ref_pass != repo_pass):
@@ -308,7 +308,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 srvName = str(srv)
                 if not quiet:
                     logging.info('\tUsing region server: %s' % srvName)
-                certFile = cert_dir + '/' + srvName + '.pem'
+                certFile = os.path.join(cert_dir, srvName + '.pem')
                 if not os.path.isfile(certFile):
                     logging.info(
                         '\tNo cert found: %s skip this server' % certFile
@@ -445,7 +445,7 @@ def get_available_smt_servers():
     if not os.path.exists(get_state_dir()):
         return available_smt_servers
     smt_data_files = glob.glob(
-        get_state_dir() + AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
+        os.path.join(get_state_dir(), AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*')
     )
     for smt_data in smt_data_files:
         available_smt_servers.append(get_smt_from_store(smt_data))
@@ -515,7 +515,7 @@ def get_credentials_file(update_server, service_name=None):
         credential_names.insert(0, '*' + service_name + '*')
 
     for entry in credential_names:
-        cred_files = glob.glob(credentials_loc + entry)
+        cred_files = glob.glob(os.path.join(credentials_loc, entry))
         if not cred_files:
             logging.info('No credentials entry for "%s"' % entry)
             continue
@@ -676,7 +676,7 @@ def get_installed_products():
             continue
         vers = child.attrib['version']
         arch = child.attrib['arch']
-        prod = name + "/" + vers + "/" + arch
+        prod = os.path.join(name, vers, arch)
         if prod not in products:
             products.append(prod)
 
@@ -861,9 +861,9 @@ def get_zypper_pid():
 def get_zypper_pid_cache():
     """Return the PID for zypper stored in cache"""
     zypper_pid = 0
-    if not os.path.exists(get_state_dir() + 'zypper_pid'):
+    if not os.path.exists(os.path.join(get_state_dir(), 'zypper_pid')):
         return zypper_pid
-    return open(get_state_dir() + 'zypper_pid').read()
+    return open(os.path.join(get_state_dir(), 'zypper_pid')).read()
 
 
 # ----------------------------------------------------------------------------
@@ -1034,7 +1034,7 @@ def is_new_registration():
     """Indicate whether a new registration is in process based on the
        marker file. Note it is the responsibility of the process to properly
        manage the marker file"""
-    return os.path.exists(get_state_dir() + NEW_REGISTRATION_MARKER)
+    return os.path.exists(os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER))
 
 
 # ----------------------------------------------------------------------------
@@ -1107,7 +1107,7 @@ def is_zypper_running():
 def refresh_zypper_pid_cache():
     """Write the current zypper pid to the cache file"""
     zypper_pid = get_zypper_pid()
-    with open(get_state_dir() + 'zypper_pid', 'w') as cache_file:
+    with open(os.path.join(get_state_dir(), 'zypper_pid'), 'w') as cache_file:
         cache_file.write(zypper_pid)
 
 
@@ -1163,7 +1163,7 @@ def set_new_registration_flag():
 # ----------------------------------------------------------------------------
 def set_rmt_as_scc_proxy_flag():
     """Set a marker that the RMT registration is a proxy for SCC"""
-    Path(get_state_dir() + RMT_AS_SCC_PROXY_MARKER).touch()
+    Path(get_state_dir(), RMT_AS_SCC_PROXY_MARKER).touch()
 
 
 # ----------------------------------------------------------------------------
@@ -1205,7 +1205,7 @@ def switch_services_to_plugin():
                             url.startswith('http://%s' % service_target) or
                             url.startswith('https://%s' % service_target)
                     ):
-                        link_dest = service_plugin_loc + section
+                        link_dest = os.path.join(service_plugin_loc, section)
                         # Assume /usr/sbin and /usr/lib/zypp/plugins are on the
                         # same filesystem
                         if os.path.exists(link_dest):
@@ -1378,7 +1378,7 @@ def update_rmt_cert(server):
 def uses_rmt_as_scc_proxy():
     """Check if the RMT registration is used as an SCC proxy"""
 
-    return os.path.isfile(get_state_dir() + RMT_AS_SCC_PROXY_MARKER)
+    return Path(get_state_dir(), RMT_AS_SCC_PROXY_MARKER).is_file()
 
 
 # ----------------------------------------------------------------------------
@@ -1467,7 +1467,7 @@ def __get_region_server_args(plugin):
 def __get_registered_smt_file_path():
     """Return the file path for the SMT infor stored for the registered
        server"""
-    return get_state_dir() + REGISTERED_SMT_SERVER_DATA_FILE_NAME
+    return os.path.join(get_state_dir(), REGISTERED_SMT_SERVER_DATA_FILE_NAME)
 
 
 # ----------------------------------------------------------------------------
@@ -1528,7 +1528,11 @@ def __populate_srv_cache():
         update_server = smt.SMT(child)
         server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
         store_smt_data(
-            get_state_dir() + server_cache_file_name, update_server
+            os.path.join(
+                get_state_dir(),
+                server_cache_file_name
+            ),
+            update_server
         )
         cnt += 1
 

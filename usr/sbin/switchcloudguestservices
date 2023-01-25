@@ -28,7 +28,8 @@ import cloudregister.registerutils as utils
 utils.start_logging()
 utils.set_proxy()
 
-service_revert_file = utils.REGISTRATION_DATA_DIR + 'installservice'
+service_revert_file = os.path.join(utils.REGISTRATION_DATA_DIR, 'installservice')
+
 if os.path.exists(service_revert_file):
     # Server side now provides the setup to use RIS service, we no longer
     # need the service plugin
@@ -97,7 +98,10 @@ if os.path.exists(service_revert_file):
             logging.info(
                 '[Serviceswitch] Adding RIS for "%s" failed' % service_url
             )
-            link_dest = '/usr/lib/zypp/plugins/services/' + service_name
+            link_dest = os.path.join(
+                '/usr/lib/zypp/plugins/services/',
+                service_name
+            )
             os.symlink('/usr/sbin/cloudguest-repo-service', link_dest)
             logging.info(
                 '[Serviceswitch] Re-created service plugin "%s"' % service_name
