@@ -203,6 +203,7 @@ fi
 %dir /usr/lib/regionService
 %dir /usr/lib/regionService/certs
 %config %{_sysconfdir}/regionserverclnt.cfg
+%config %{_sysconfdir}/logrotate.d/cloudregionsrvclient
 
 %files plugin-gce
 %defattr(-,root,root,-)

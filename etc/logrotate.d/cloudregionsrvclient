@@ -1,0 +1,10 @@
+/var/log/cloudregister {
+    compress
+    dateext
+    missingok
+    notifempty
+
+    maxage 30
+    rotate 5
+    size 10M
+}
