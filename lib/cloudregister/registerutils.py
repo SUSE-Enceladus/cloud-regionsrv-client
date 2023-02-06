@@ -1261,7 +1261,7 @@ def remove_registration_data():
         clean_hosts_file(domain_name)
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
-    elif is_scc_connected():
+    if is_scc_connected():
         logging.info('Removing system from SCC')
         try:
             response = requests.delete(
