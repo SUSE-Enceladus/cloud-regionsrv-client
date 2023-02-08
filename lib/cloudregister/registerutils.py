@@ -484,13 +484,13 @@ def get_credentials(credentials_file):
         return (username, password)
     with open(credentials_file) as cred_file:
         credentials = cred_file.readlines()
-    known_entries = ['system_token']
+    known_entries = ('system_token')
     for entry in credentials:
         if entry.startswith('username'):
             username = entry.split('=')[-1].strip()
         elif entry.startswith('password'):
             password = entry.split('=')[-1].strip()
-        elif entry not in known_entries:
+        elif not entry.startswith(known_entries):
             logging.warning('Found unknown entry in '
                             'credentials file "%s"' % entry)
 
