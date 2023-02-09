@@ -376,26 +376,30 @@ if not os.path.exists(utils.get_state_dir()):
 # Write the data of the current target server
 utils.set_as_current_smt(registration_target)
 
-# Check if we need to send along any instance data
-utils.get_instance_data(cfg)
 # Check if registration is supported
 if not utils.is_registration_supported(cfg):
     sys.exit(0)
+
+# Check if we need to send along any instance data
+utils.get_instance_data(cfg)
 
 # Check SUSE/SLES registration command to be present
 register_cmd = '/usr/sbin/SUSEConnect'
 if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
     logging.error('No registration executable found')
+    utils.clear_instance_data_cache()
     sys.exit(1)
 
 # get product list
 products = utils.get_installed_products()
 if products is None:
     logging.error('No products installed on system')
+    utils.clear_instance_data_cache()
     sys.exit(1)
 
 if not utils.import_smt_cert(registration_target):
     logging.error('SMT certificate import failed')
+    utils.clear_instance_data_cache()
     sys.exit(1)
 
 # Register the base product first
@@ -431,6 +435,7 @@ while not base_registered:
         if len(failed_smts) == len(region_smt_servers):
             logging.error('Baseproduct registration failed')
             logging.error('\t%s' % error_message)
+            utils.clear_instance_data_cache()
             sys.exit(1)
         for smt_srv in region_smt_servers:
             target_smt_ipv4 = registration_target.get_ipv4()
@@ -487,6 +492,7 @@ if res.status_code != 200:
         registration_target.get_ipv4(), registration_target.get_ipv6()
     )
     logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
+    utils.clear_instance_data_cache()
     sys.exit(1)
 
 prod_data = json.loads(res.text)
