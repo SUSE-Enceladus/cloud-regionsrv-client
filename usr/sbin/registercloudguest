@@ -189,15 +189,16 @@ if (args.email and not args.reg_code):
 
 time.sleep(int(args.delay_time))
 
-if args.clean_up:
-    cleanup()
-    sys.exit(0)
-
 config_file = args.config_file
 if config_file:
     config_file = os.path.expanduser(args.config_file)
 cfg = utils.get_config(config_file)
 utils.start_logging()
+
+if args.clean_up:
+    logging.info('Registration clean up initiated by user')
+    cleanup()
+    sys.exit(0)
 
 if not os.path.isdir(utils.get_state_dir()):
     os.makedirs(utils.get_state_dir())
@@ -442,6 +443,7 @@ while not base_registered:
         if len(failed_smts) == len(region_smt_servers):
             logging.error('Baseproduct registration failed')
             logging.error('\t%s' % error_message)
+            cleanup()
             sys.exit(1)
         for smt_srv in region_smt_servers:
             target_smt_ipv4 = registration_target.get_ipv4()
