@@ -13,6 +13,9 @@ endif
 tar:
 	mkdir "$(nv)"
 	cp -r $(dirs) lib $(files) "$(nv)"
+	find "$(nv)" -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
+	find "$(nv)" -path "*/lib/cloudregister.egg-info/*" -delete
+	find "$(nv)" -type d -name "cloudregister.egg-info" -delete
 	tar -cjf "$(nv).tar.bz2" "$(nv)"
 	rm -rf "$(nv)"
 

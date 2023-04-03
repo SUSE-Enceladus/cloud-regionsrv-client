@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.0.8
+%define base_version 10.1.0
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -203,6 +203,7 @@ fi
 %dir /usr/lib/regionService
 %dir /usr/lib/regionService/certs
 %config %{_sysconfdir}/regionserverclnt.cfg
+%config %{_sysconfdir}/logrotate.d/cloudregionsrvclient
 
 %files plugin-gce
 %defattr(-,root,root,-)
