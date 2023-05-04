@@ -67,11 +67,9 @@ class SMT:
     def get_cert(self):
         """Return the CA certificate for the SMT server"""
         if not self._cert:
-            cert_rq = self.__request_cert()
-            if cert_rq:
-                cert = cert_rq.text
-                if self.__is_cert_valid(cert):
-                    self._cert = cert
+            cert = self.__request_cert()
+            if cert and self.__is_cert_valid(cert):
+                self._cert = cert
 
         return self._cert
 
@@ -140,33 +138,35 @@ class SMT:
     def is_responsive(self):
         """Check if the SMT server is responsive"""
         # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-        if self.get_ipv6():
-            health_url = 'https://[%s]/api/health/status' % self.get_ipv6()
-            cert_url = '%s://[%s]/smt.crt' % (self._protocol, self.get_ipv6())
-        else:
-            health_url = 'https://%s/api/health/status' % self.get_ipv4()
-            cert_url = '%s://%s/smt.crt' % (self._protocol, self.get_ipv4())
+        ips = [self.get_ipv6(), self.get_ipv4]
+        for ip in filter(None, ips):
+            if ip == self.get_ipv6():
+                health_url = 'https://[%s]/api/health/status' % self.get_ipv6()
+                cert_url = '%s://[%s]/smt.crt' % (self._protocol, self.get_ipv6())
+            else:
+                health_url = 'https://%s/api/health/status' % self.get_ipv4()
+                cert_url = '%s://%s/smt.crt' % (self._protocol, self.get_ipv4())
 
-        # We cannot know if the server cert has been imported into the
-        # system cert hierarchy, nor do we know if the hostname is resolvable
-        # or if the IP address is built into the cert. Since we only want
-        # to know if the system is responsive we ignore cert validation
-        # Using the IP address protects us from hostname spoofing
-        try:
-            response = requests.get(health_url, timeout=2, verify=False)
-            if response.status_code == 200:
-                status = response.json()
-                return status.get('state') == 'online'
-            elif response.status_code == 404:
-                # We are pointing to an SMT server, the health status API
-                # is not available. Download the cert to at least make sure
-                # Apache is responsive
-                cert_response = requests.get(cert_url, verify=False)
-                if cert_response and cert_response.status_code == 200:
-                    return True
-        except Exception:
-            # Something is wrong with the server
-            pass
+            # We cannot know if the server cert has been imported into the
+            # system cert hierarchy, nor do we know if the hostname is resolvable
+            # or if the IP address is built into the cert. Since we only want
+            # to know if the system is responsive we ignore cert validation
+            # Using the IP address protects us from hostname spoofing
+            try:
+                response = requests.get(health_url, timeout=2, verify=False)
+                if response.status_code == 200:
+                    status = response.json()
+                    return status.get('state') == 'online'
+                elif response.status_code == 404:
+                    # We are pointing to an SMT server, the health status API
+                    # is not available. Download the cert to at least make sure
+                    # Apache is responsive
+                    cert_response = requests.get(cert_url, verify=False)
+                    if cert_response and cert_response.status_code == 200:
+                        return True
+            except Exception:
+                # Something is wrong with the server
+                pass
 
         return False
 
@@ -230,42 +230,46 @@ class SMT:
 
     # --------------------------------------------------------------------
     def __request_cert(self):
-        """Request the cert from the SMT server and return the request"""
+        """Request the cert from the SMT server and return the text
+        of the request if success, None otherwise"""
         cert_res = None
         attempts = 0
         retries = 3
         while attempts < retries:
             attempts += 1
             for cert_name in ('smt.crt', 'rmt.crt'):
-                try:
-                    ip = self.get_ipv4()
-                    if self.get_ipv6():
-                        try:
-                            # Per rfc3986 IPv6 addresses in a URI are
-                            # enclosed in []
+                ips = [self.get_ipv6(), self.get_ipv4()]
+                for ip in filter(None, ips):
+                    try:
+                        if ip == self.get_ipv6():
+                            try:
+                                # Per rfc3986 IPv6 addresses in a URI are
+                                # enclosed in []
+                                cert_res = requests.get(
+                                    '%s://[%s]/%s' % (
+                                        self._protocol, self.get_ipv6(), cert_name
+                                    ),
+                                    verify=False
+                                )
+                            except Exception:
+                                pass
+                        else:
                             cert_res = requests.get(
-                                '%s://[%s]/%s' % (
-                                    self._protocol, self.get_ipv6(), cert_name
-                                ),
+                                '%s://%s/%s' % (self._protocol, ip, cert_name),
                                 verify=False
                             )
-                        except Exception:
-                            pass
-                    else:
-                        cert_res = requests.get(
-                            '%s://%s/%s' % (self._protocol, ip, cert_name),
-                            verify=False
+                    except Exception:
+                        # No response from server
+                        logging.error('=' * 20)
+                        logging.error(
+                            'Attempt %s with %s of %s' % (
+                                attempts, cert_name, retries)
                         )
-                except Exception:
-                    # No response from server
-                    logging.error('=' * 20)
-                    logging.error(
-                        'Attempt %s with %s of %s' % (
-                            attempts, cert_name, retries)
-                    )
-                    logging.error('Server %s is unreachable' % ip)
-                if cert_res and cert_res.status_code == 200:
-                    attempts = retries
-                    break
+                        logging.error('Server %s is unreachable' % ip)
+                    if cert_res and cert_res.status_code == 200:
+                        attempts = retries
+                        break
 
+                if cert_res:
+                    return cert_res.text
         return cert_res
