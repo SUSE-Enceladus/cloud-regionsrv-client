@@ -15,6 +15,7 @@
    server."""
 
 import logging
+import ipaddr
 import requests
 
 from M2Crypto import X509
@@ -68,8 +69,10 @@ class SMT:
         """Return the CA certificate for the SMT server"""
         if not self._cert:
             cert = self.__request_cert()
-            if cert and self.__is_cert_valid(cert):
-                self._cert = cert
+            if cert_rq:
+                cert = cert_rq.text
+                if self.__is_cert_valid(cert):
+                    self._cert = cert
 
         return self._cert
 
@@ -140,7 +143,7 @@ class SMT:
         # Per rfc3986 IPv6 addresses in a URI are enclosed in []
         ips = [self.get_ipv6(), self.get_ipv4()]
         for ip in filter(None, ips):
-            if ip == self.get_ipv6():
+            if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
                 health_url = 'https://[%s]/api/health/status' % ip
                 cert_url = '%s://[%s]/smt.crt' % (self._protocol, ip)
             else:
@@ -230,8 +233,7 @@ class SMT:
 
     # --------------------------------------------------------------------
     def __request_cert(self):
-        """Request the cert from the SMT server and return the text
-        of the request if success, None otherwise"""
+        """Request the cert from the SMT server and return the request"""
         cert_res = None
         attempts = 0
         retries = 3
@@ -270,6 +272,4 @@ class SMT:
                         attempts = retries
                         break
 
-                if cert_res:
-                    return cert_res.text
         return cert_res
