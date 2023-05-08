@@ -138,14 +138,14 @@ class SMT:
     def is_responsive(self):
         """Check if the SMT server is responsive"""
         # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-        ips = [self.get_ipv6(), self.get_ipv4]
+        ips = [self.get_ipv6(), self.get_ipv4()]
         for ip in filter(None, ips):
             if ip == self.get_ipv6():
-                health_url = 'https://[%s]/api/health/status' % self.get_ipv6()
-                cert_url = '%s://[%s]/smt.crt' % (self._protocol, self.get_ipv6())
+                health_url = 'https://[%s]/api/health/status' % ip
+                cert_url = '%s://[%s]/smt.crt' % (self._protocol, ip)
             else:
-                health_url = 'https://%s/api/health/status' % self.get_ipv4()
-                cert_url = '%s://%s/smt.crt' % (self._protocol, self.get_ipv4())
+                health_url = 'https://%s/api/health/status' % ip
+                cert_url = '%s://%s/smt.crt' % (self._protocol, ip)
 
             # We cannot know if the server cert has been imported into the
             # system cert hierarchy, nor do we know if the hostname is resolvable
@@ -247,7 +247,7 @@ class SMT:
                                 # enclosed in []
                                 cert_res = requests.get(
                                     '%s://[%s]/%s' % (
-                                        self._protocol, self.get_ipv6(), cert_name
+                                        self._protocol, ip, cert_name
                                     ),
                                     verify=False
                                 )
