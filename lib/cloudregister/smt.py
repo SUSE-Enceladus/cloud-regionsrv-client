@@ -15,7 +15,7 @@
    server."""
 
 import logging
-import ipaddr
+import ipaddress
 import requests
 
 from M2Crypto import X509
@@ -68,7 +68,7 @@ class SMT:
     def get_cert(self):
         """Return the CA certificate for the SMT server"""
         if not self._cert:
-            cert = self.__request_cert()
+            cert_rq = self.__request_cert()
             if cert_rq:
                 cert = cert_rq.text
                 if self.__is_cert_valid(cert):
@@ -143,12 +143,21 @@ class SMT:
         # Per rfc3986 IPv6 addresses in a URI are enclosed in []
         ips = [self.get_ipv6(), self.get_ipv4()]
         for ip in filter(None, ips):
-            if isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address):
-                health_url = 'https://[%s]/api/health/status' % ip
-                cert_url = '%s://[%s]/smt.crt' % (self._protocol, ip)
-            else:
-                health_url = 'https://%s/api/health/status' % ip
-                cert_url = '%s://%s/smt.crt' % (self._protocol, ip)
+            try:
+                ipv6 = isinstance(
+                    ipaddress.ip_address(ip),
+                    ipaddress.IPv6Address
+                )
+            except ValueError as err:
+                logging.error(err)
+                continue
+
+            rmt_ip_addr = ip
+            if ipv6:
+                rmt_ip_addr = '[%s]' % ip
+
+            health_url = 'https://%s/api/health/status' % rmt_ip_addr
+            cert_url = '%s://%s/smt.crt' % (self._protocol, rmt_ip_addr)
 
             # We cannot know if the server cert has been imported into the
             # system cert hierarchy, nor do we know if the hostname is resolvable
@@ -243,7 +252,11 @@ class SMT:
                 ips = [self.get_ipv6(), self.get_ipv4()]
                 for ip in filter(None, ips):
                     try:
-                        if ip == self.get_ipv6():
+                        ipv6 = isinstance(
+                            ipaddress.ip_address(ip),
+                            ipaddress.IPv6Address
+                        )
+                        if ipv6:
                             try:
                                 # Per rfc3986 IPv6 addresses in a URI are
                                 # enclosed in []
