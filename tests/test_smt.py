@@ -1,4 +1,4 @@
-# Copyright (c) 2018 , SUSE LLC, All rights reserved.
+# Copyright (c) 2023, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -271,3 +271,32 @@ def test_is_responsive_server_error(mock_cert_pull):
     mock_cert_pull.return_value = response
     smt = SMT(etree.fromstring(smt_data_ipv46))
     assert not smt.is_responsive()
+
+# ----------------------------------------------------------------------------
+def test_check_urls_ipv4():
+    """Verify the correct urls are formed"""
+    smt = SMT(etree.fromstring(smt_data_ipv4))
+    assert \
+        smt._check_urls.get('https://192.168.1.1/api/health/status') == \
+        'http://192.168.1.1/'
+
+
+# ----------------------------------------------------------------------------
+def test_check_urls_ipv6():
+    """Verify the correct urls are formed"""
+    smt = SMT(etree.fromstring(smt_data_ipv6))
+    assert \
+        smt._check_urls.get('https://[fc00::1]/api/health/status') == \
+        'http://[fc00::1]/'
+
+
+# ----------------------------------------------------------------------------
+def test_check_urls_ipv46():
+    """Verify the correct urls are formed"""
+    smt = SMT(etree.fromstring(smt_data_ipv46))
+    assert \
+        smt._check_urls.get('https://192.168.1.1/api/health/status') == \
+        'http://192.168.1.1/'
+    assert \
+        smt._check_urls.get('https://[fc00::1]/api/health/status') == \
+        'http://[fc00::1]/'
