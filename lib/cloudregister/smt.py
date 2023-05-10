@@ -1,4 +1,4 @@
-# Copyright (c) 2020, SUSE LLC, All rights reserved.
+# Copyright (c) 2023, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -14,6 +14,7 @@
 """Class to hold the information we need to connect and identify an SMT
    server."""
 
+import ipaddress
 import logging
 import requests
 
@@ -40,9 +41,11 @@ class SMT:
         self._fqdn = smtXMLNode.attrib['SMTserverName']
         self._fingerprint = smtXMLNode.attrib['fingerprint']
         self._cert = None
+        self._cert_names = ('smt.crt', 'rmt.crt')
         self._protocol = 'http'
         if https_only:
             self._protocol = 'https'
+        self._check_urls = self._form_srv_check_urls()
 
     # --------------------------------------------------------------------
     def __eq__(self, other_smt):
@@ -139,34 +142,32 @@ class SMT:
     # --------------------------------------------------------------------
     def is_responsive(self):
         """Check if the SMT server is responsive"""
-        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-        if self.get_ipv6():
-            health_url = 'https://[%s]/api/health/status' % self.get_ipv6()
-            cert_url = '%s://[%s]/smt.crt' % (self._protocol, self.get_ipv6())
-        else:
-            health_url = 'https://%s/api/health/status' % self.get_ipv4()
-            cert_url = '%s://%s/smt.crt' % (self._protocol, self.get_ipv4())
-
+        
         # We cannot know if the server cert has been imported into the
         # system cert hierarchy, nor do we know if the hostname is resolvable
         # or if the IP address is built into the cert. Since we only want
         # to know if the system is responsive we ignore cert validation
         # Using the IP address protects us from hostname spoofing
-        try:
-            response = requests.get(health_url, timeout=2, verify=False)
-            if response.status_code == 200:
-                status = response.json()
-                return status.get('state') == 'online'
-            elif response.status_code == 404:
-                # We are pointing to an SMT server, the health status API
-                # is not available. Download the cert to at least make sure
-                # Apache is responsive
-                cert_response = requests.get(cert_url, verify=False)
-                if cert_response and cert_response.status_code == 200:
-                    return True
-        except Exception:
-            # Something is wrong with the server
-            pass
+        for health_url in self._check_urls.keys():
+            try:
+                response = requests.get(health_url, timeout=2, verify=False)
+                if response.status_code == 200:
+                    status = response.json()
+                    return status.get('state') == 'online'
+                elif response.status_code == 404:
+                    cert_url = self._check_urls.get(health_url)
+                    # We are pointing to an SMT server, the health status API
+                    # is not available. Download the cert to at least make sure
+                    # Apache is responsive
+                    for cert_name in self._cert_names:
+                        cert_response = requests.get(
+                            cert_url + cert_name, verify=False
+                        )
+                        if cert_response and cert_response.status_code == 200:
+                            return True
+            except Exception:
+                # Something is wrong with the server
+                pass
 
         return False
 
@@ -210,6 +211,23 @@ class SMT:
 
     # Private
     # --------------------------------------------------------------------
+    def _form_srv_check_urls(self):
+        """Form the access urls for server health checks"""
+        srv_ips = (self.get_ipv6(), self.get_ipv4())
+        check_urls = {}
+        for srv_ip in srv_ips:
+            if not srv_ip:
+                continue
+            rmt_ip = srv_ip
+            # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+            if isinstance(ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address):
+                rmt_ip = '[%s]' %srv_ip
+            health_url = 'https://%s/api/health/status' %rmt_ip
+            cert_url = '%s://%s/' % (self._protocol, rmt_ip)
+            check_urls[health_url] = cert_url
+
+        return check_urls
+        
     def __is_cert_valid(self, cert):
         """Verfify that the fingerprint of the given cert matches the
            expected fingerprint"""
@@ -236,36 +254,19 @@ class SMT:
         retries = 3
         while attempts < retries:
             attempts += 1
-            for cert_name in ('smt.crt', 'rmt.crt'):
-                try:
-                    ip = self.get_ipv4()
-                    if self.get_ipv6():
-                        try:
-                            # Per rfc3986 IPv6 addresses in a URI are
-                            # enclosed in []
-                            cert_res = requests.get(
-                                '%s://[%s]/%s' % (
-                                    self._protocol, self.get_ipv6(), cert_name
-                                ),
-                                verify=False
-                            )
-                        except Exception:
-                            pass
-                    else:
+            for cert_name in self._cert_names:
+                for cert_url in self._check_urls.values():
+                    try:
                         cert_res = requests.get(
-                            '%s://%s/%s' % (self._protocol, ip, cert_name),
-                            verify=False
+                                cert_url + cert_name, verify=False
+                            )
+                    except Exception:
+                        # No response from server
+                        logging.error('=' * 20)
+                        logging.error(
+                            'Attempt %s with %s of %s' % (
+                                attempts, cert_name, retries)
                         )
-                except Exception:
-                    # No response from server
-                    logging.error('=' * 20)
-                    logging.error(
-                        'Attempt %s with %s of %s' % (
-                            attempts, cert_name, retries)
-                    )
-                    logging.error('Server %s is unreachable' % ip)
-                if cert_res and cert_res.status_code == 200:
-                    attempts = retries
-                    break
-
-        return cert_res
+                        logging.error('Server %s is unreachable' % ip)
+                    if cert_res and cert_res.status_code == 200:
+                        return cert_res
