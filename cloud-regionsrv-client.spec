@@ -45,7 +45,11 @@ Requires:       regionsrv-certs
 Requires:       zypper
 BuildRequires:  systemd
 Conflicts:      container-suseconnect
+%if 0%{?suse_version} == 1315
 %{?systemd_requires}
+%else
+%{?systemd_ordering}
+%endif
 BuildRequires:  python-rpm-macros
 BuildRequires:  python3-M2Crypto
 BuildRequires:  python3-lxml
