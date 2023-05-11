@@ -45,13 +45,18 @@ Requires:       regionsrv-certs
 Requires:       zypper
 BuildRequires:  systemd
 Conflicts:      container-suseconnect
+%if 0%{?suse_version} == 1315
 %{?systemd_requires}
+%else
+%{?systemd_ordering}
+%endif
 BuildRequires:  python-rpm-macros
 BuildRequires:  python3-M2Crypto
 BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
 BuildRequires:  python3-zypp-plugin
+BuildRequires:  systemd-rpm-macros
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 BuildArch:      noarch
