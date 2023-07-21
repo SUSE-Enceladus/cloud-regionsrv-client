@@ -22,7 +22,7 @@ except ImportError:
     sys.stderr.write('Python setuptools required, please install.')
     sys.exit(1)
 
-from cloudregister.version import __VERSION__
+version = open('lib/cloudregister/VERSION').read().strip()
 
 if __name__ == '__main__':
      pkg = setuptools.find_packages('lib')
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         license='LGPL-3.0',
         author='SUSE',
         author_email='public-cloud-dev@susecloud.net',
-        version=__VERSION__,
+        version=version,
         packages=setuptools.find_packages('lib'),
         package_data={'cloudregister' : ['VERSION']},
         package_dir={

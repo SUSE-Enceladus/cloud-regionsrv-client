@@ -41,7 +41,7 @@ import uuid
 
 import cloudregister.registerutils as utils
 
-from cloudregister import smt, version
+from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
@@ -170,7 +170,14 @@ argparse.add_argument(
 argparse.add_argument(
     '-v', '--version',
     action='version',
-    version='{version}'.format(version=version.__VERSION__)
+    version='{version}'.format(
+        version=open(
+            os.path.join(
+                os.path.dirname(smt.__file__),
+                'VERSION'
+            )
+        ).read().strip()
+    )
 )
 
 
