@@ -41,7 +41,7 @@ import uuid
 
 import cloudregister.registerutils as utils
 
-from cloudregister import smt
+from cloudregister import smt, version
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
@@ -167,6 +167,12 @@ argparse.add_argument(
     dest='reg_code',
     help=help_msg
 )
+argparse.add_argument(
+    '-v', '--version',
+    action='version',
+    version='{version}'.format(version=version.__VERSION__)
+)
+
 
 args = argparse.parse_args()
 
