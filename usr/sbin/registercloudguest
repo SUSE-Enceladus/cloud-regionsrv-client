@@ -167,6 +167,19 @@ argparse.add_argument(
     dest='reg_code',
     help=help_msg
 )
+argparse.add_argument(
+    '-v', '--version',
+    action='version',
+    version='{version}'.format(
+        version=open(
+            os.path.join(
+                os.path.dirname(smt.__file__),
+                'VERSION'
+            )
+        ).read().strip()
+    )
+)
+
 
 args = argparse.parse_args()
 
