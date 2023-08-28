@@ -197,7 +197,7 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
             ip_addr=args.user_smt_ip,
             err=err
         )
-        print(msg)
+        print(msg, file=sys.stderr)
         sys.exit(1)
 
 
