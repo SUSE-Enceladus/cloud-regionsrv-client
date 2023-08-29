@@ -180,7 +180,7 @@ def enable_repository(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def exec_subprocess(cmd, return_output=False):
+def exec_subprocess(cmd, return_output=False, close_fds=True):
     """Execute the given command as a subprocess (blocking)
        Returns one off:
            - exit code of the command
@@ -190,8 +190,9 @@ def exec_subprocess(cmd, return_output=False):
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+            stderr=subprocess.PIPE,
+            close_fds=close_fds
+            )
         out, err = proc.communicate()
         if return_output:
             return (out, err)
@@ -593,16 +594,11 @@ def get_instance_data(config):
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                try:
-                    p = subprocess.Popen(
-                        instance_data_cmd.split(),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                    instance_data, errors = p.communicate()
-                    instance_data = instance_data.decode()
-                except OSError:
+                instance_data, errors = exec_subprocess(
+                    instance_data_cmd.split(),
+                    return_output=True
+                )
+                if instance_data == -1:
                     errMsg = 'Error collecting instance data with "%s"'
                     logging.error(errMsg % instance_data_cmd)
                 if errors:
@@ -614,6 +610,7 @@ def get_instance_data(config):
                     warn_msg += ' Metadata is empty, may result in '
                     warn_msg += 'registration failure.'
                     logging.warning(warn_msg)
+                instance_data = instance_data.decode()
 
     # Marker for the server to not return https:// formatted
     # service and repo information
