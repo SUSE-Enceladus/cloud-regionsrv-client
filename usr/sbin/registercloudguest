@@ -28,6 +28,7 @@
    3.) Register"""
 
 import argparse
+import ipaddress
 import json
 import logging
 import os
@@ -188,6 +189,17 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         msg = '--smt-ip, --smt-fqdn, and --smt-fp must be used together'
         print(msg, file=sys.stderr)
         sys.exit(1)
+
+    try:
+        ipaddress.ip_address(args.user_smt_ip)
+    except ValueError as err:
+        msg = "--smt-ip value '{ip_addr}' is not correct: {err}".format(
+            ip_addr=args.user_smt_ip,
+            err=err
+        )
+        print(msg, file=sys.stderr)
+        sys.exit(1)
+
 
 if args.clean_up and args.force_new_registration:
     msg = '--clean and --force-new are incompatible, use one or the other'
