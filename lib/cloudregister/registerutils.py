@@ -1407,6 +1407,40 @@ def write_framework_identifier(cfg):
         framework_file.write(json.dumps(identifier))
 
 
+# ----------------------------------------------------------------------------
+def is_user_smt_ip_enabled(arg_ip_addr):
+    cfg = get_config()
+    try:
+        data_provider = cfg['instance']['dataProvider']
+    except KeyError as err:
+        return False, err
+
+    cmd_list = data_provider.split()[:3]
+    if isinstance(ipaddress.ip_address(arg_ip_addr), ipaddress.IPv6Address):
+        cmd_list.append('--ipv6')
+    else:
+        cmd_list.append('--public-ipv4')
+
+    output, errors = exec_subprocess(cmd_list, return_output=True)
+    if output == -1:
+        msg = 'Could not find configured dataProvider: %s' % ' '.join(cmd_list)
+        return False, msg
+
+    if 'Error' in errors.decode():
+        # get 'ipv6' or 'ipv4' string from the command
+        ip_format = cmd_list[-1][-4:]
+        msg = 'This instance does not have {} enabled.'.format(ip_format)
+        return False, msg
+
+    metadata_ip_addr = output.decode().strip()
+    try:
+        return ipaddress.ip_address(metadata_ip_addr), None
+    except ValueError as err:
+        msg = 'This instance does not have {} enabled.'.format(ip_format)
+        return False, msg
+
+
+
 # Private
 # ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):

@@ -29,6 +29,7 @@
 
 import argparse
 import ipaddress
+from ipaddress import IPv4Address, IPv6Address
 import json
 import logging
 import os
@@ -200,6 +201,12 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
+    # check the instance has IPv6 or Ipv4 enabled
+    # so smt-ip can be either
+    is_enabled, error_msg = utils.is_user_smt_ip_enabled(args.user_smt_ip)
+    if not is_enabled:
+        print(error_msg, file=sys.stderr)
+        sys.exit(1)
 
 if args.clean_up and args.force_new_registration:
     msg = '--clean and --force-new are incompatible, use one or the other'
@@ -213,6 +220,7 @@ if (args.email and not args.reg_code):
     sys.exit(1)
 
 time.sleep(int(args.delay_time))
+
 
 config_file = args.config_file
 if config_file:
