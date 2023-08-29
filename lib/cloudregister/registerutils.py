@@ -589,14 +589,7 @@ def get_instance_data(config):
         cmd = instance_data_cmd.split()[0]
         if cmd != 'none':
             if not cmd.startswith('/'):
-                try:
-                    p = subprocess.Popen(
-                        ['which', cmd],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                except OSError:
+                if exec_subprocess(['which', cmd]) == -1:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
