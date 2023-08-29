@@ -591,7 +591,7 @@ def get_instance_data(config):
             if not cmd.startswith('/'):
                 try:
                     p = subprocess.Popen(
-                        ['which %s' % cmd],
+                        ['which', cmd],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         close_fds=True
