@@ -579,42 +579,50 @@ def get_framework_identifier_path():
 
 # ----------------------------------------------------------------------------
 def get_instance_data(config):
-    """Run the configured instance data collection command and return
-       the result or none."""
+    """
+    Run the configured instance data collection command and return
+    the result or '<repoformat>plugin:susecloud</repoformat>'.
+    """
+    server_marker = '<repoformat>plugin:susecloud</repoformat>\n'
+    try:
+        instance_data_cmd = config['instance']['dataProvider']
+    except KeyError as err:
+        logging.error(err)
+        return server_marker
+
     instance_data = ''
-    if (
-            config.has_section('instance') and
-            config.has_option('instance', 'dataProvider')
-    ):
-        instance_data_cmd = config.get('instance', 'dataProvider')
+    try:
         cmd = instance_data_cmd.split()[0]
-        if cmd != 'none':
-            if not cmd.startswith('/'):
-                if exec_subprocess(['which', cmd]) == -1:
-                    errMsg = 'Could not find configured dataProvider: %s' % cmd
-                    logging.error(errMsg)
-            if os.access(cmd, os.X_OK):
-                instance_data, errors = exec_subprocess(
-                    instance_data_cmd.split(),
-                    return_output=True
-                )
-                if instance_data == -1:
-                    errMsg = 'Error collecting instance data with "%s"'
-                    logging.error(errMsg % instance_data_cmd)
-                if errors:
-                    errMsg = 'Data collected from stderr for instance '
-                    errMsg += 'data collection "%s"' % errors
-                    logging.error(errMsg)
-                if not instance_data:
-                    warn_msg = 'Possible issue accessing the metadata service.'
-                    warn_msg += ' Metadata is empty, may result in '
-                    warn_msg += 'registration failure.'
-                    logging.warning(warn_msg)
-                instance_data = instance_data.decode()
+    except IndexError:
+        cmd = 'none'
+
+    if cmd != 'none':
+        if not cmd.startswith('/'):
+            if exec_subprocess(['which', cmd]) == -1:
+                errMsg = 'Could not find configured dataProvider: %s' % cmd
+                logging.error(errMsg)
+        if os.access(cmd, os.X_OK):
+            instance_data, errors = exec_subprocess(
+                instance_data_cmd.split(),
+                return_output=True
+            )
+            if instance_data == -1:
+                errMsg = 'Error collecting instance data with "%s"'
+                logging.error(errMsg % instance_data_cmd)
+            if errors:
+                errMsg = 'Data collected from stderr for instance '
+                errMsg += 'data collection "%s"' % errors
+                logging.error(errMsg)
+            if not instance_data:
+                warn_msg = 'Possible issue accessing the metadata service.'
+                warn_msg += ' Metadata is empty, may result in '
+                warn_msg += 'registration failure.'
+                logging.warning(warn_msg)
+            instance_data = instance_data.decode()
 
     # Marker for the server to not return https:// formatted
     # service and repo information
-    instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
+    instance_data += server_marker
 
     return instance_data
 
