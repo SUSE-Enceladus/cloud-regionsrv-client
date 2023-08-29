@@ -583,6 +583,8 @@ def get_instance_data(config):
     Run the configured instance data collection command and return
     the result or '<repoformat>plugin:susecloud</repoformat>'.
     """
+    # Marker for the server to not return https:// formatted
+    # service and repo information
     server_marker = '<repoformat>plugin:susecloud</repoformat>\n'
     try:
         instance_data_cmd = config['instance']['dataProvider']
@@ -620,8 +622,6 @@ def get_instance_data(config):
                 logging.warning(warn_msg)
             instance_data = instance_data.decode()
 
-    # Marker for the server to not return https:// formatted
-    # service and repo information
     instance_data += server_marker
 
     return instance_data
