@@ -878,22 +878,8 @@ def has_ipv6_access(smt):
        address and it can be accessed over IPv6"""
     if not smt.get_ipv6():
         return False
-    logging.info('Attempt to access update server over IPv6')
-    protocol = 'http'  # Default for backward compatibility
-    if https_only(get_config()):
-        protocol = 'https'
-    try:
-        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-        cert_res = requests.get(
-            '%s://[%s]/smt.crt' % (protocol, smt.get_ipv6()),
-            timeout=3,
-            verify=False
-        )
-    except Exception:
-        logging.info('Update server not reachable over IPv6')
-        return False
-    if cert_res and cert_res.status_code == 200:
-        return True
+    # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+    return __connection_check('[{}]'.format(smt.get_ipv6()), 'IPv6')
 
 
 # ----------------------------------------------------------------------------
@@ -1408,37 +1394,15 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def is_user_smt_ip_enabled(arg_ip_addr):
-    cfg = get_config()
-    try:
-        data_provider = cfg['instance']['dataProvider']
-    except KeyError as err:
-        return False, err
-
-    cmd_list = data_provider.split()[:3]
-    if isinstance(ipaddress.ip_address(arg_ip_addr), ipaddress.IPv6Address):
-        cmd_list.append('--ipv6')
-    else:
-        cmd_list.append('--public-ipv4')
-
-    output, errors = exec_subprocess(cmd_list, return_output=True)
-    if output == -1:
-        msg = 'Could not find configured dataProvider: %s' % ' '.join(cmd_list)
-        return False, msg
-
-    if 'Error' in errors.decode():
-        # get 'ipv6' or 'ipv4' string from the command
-        ip_format = cmd_list[-1][-4:]
-        msg = 'This instance does not have {} enabled.'.format(ip_format)
-        return False, msg
-
-    metadata_ip_addr = output.decode().strip()
-    try:
-        return ipaddress.ip_address(metadata_ip_addr), None
-    except ValueError as err:
-        msg = 'This instance does not have {} enabled.'.format(ip_format)
-        return False, msg
-
+def is_user_smt_ip_enabled(ip_format):
+    for rmt_server in get_available_smt_servers():
+        if 'ipv6' in ip_format:
+            if has_ipv6_access(rmt_server):
+                return True
+        else:
+            # check IPv4
+            if __connection_check(rmt_server.get_ipv4(), 'IPv4'):
+                return True
 
 
 # Private
@@ -1669,3 +1633,25 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
+
+
+# -----------------------------------------------------------------------------
+def __connection_check(smt_ip_addr, ip_format):
+    if not smt_ip_addr:
+        # in case RMT ever dropped IPv4 support
+        return False
+    logging.info('Attempt to access update server over {}'.format(ip_format))
+    protocol = 'http'  # Default for backward compatibility
+    if https_only(get_config()):
+        protocol = 'https'
+    try:
+        cert_res = requests.get(
+            '%s://%s/smt.crt' % (protocol, smt_ip_addr),
+            timeout=3,
+            verify=False
+        )
+    except Exception:
+        logging.info('Update server not reachable over %s' % ip_format)
+        return False
+    if cert_res and cert_res.status_code == 200:
+        return True

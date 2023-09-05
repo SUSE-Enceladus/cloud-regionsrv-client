@@ -203,9 +203,14 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
 
     # check the instance has IPv6 or Ipv4 enabled
     # so smt-ip can be either
-    is_enabled, error_msg = utils.is_user_smt_ip_enabled(args.user_smt_ip)
+    ip_format = ['ipv4']
+    if isinstance(ipaddress.ip_address(arg_ip_addr), ipaddress.IPv6Address):
+        ip_format = ['ipv6']
+
+    is_enabled = utils.is_user_smt_ip_enabled(ip_format)
     if not is_enabled:
-        print(error_msg, file=sys.stderr)
+        msg = 'Instance does not have {} enabled'.format(ip_format[0])
+        print(msg, file=sys.stderr)
         sys.exit(1)
 
 if args.clean_up and args.force_new_registration:
