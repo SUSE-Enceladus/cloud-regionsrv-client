@@ -1043,7 +1043,9 @@ def is_new_registration():
     """Indicate whether a new registration is in process based on the
        marker file. Note it is the responsibility of the process to properly
        manage the marker file"""
-    return os.path.exists(os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER))
+    return os.path.exists(
+        os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER)
+    )
 
 
 # ----------------------------------------------------------------------------
