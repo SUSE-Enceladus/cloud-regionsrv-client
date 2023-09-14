@@ -24,6 +24,7 @@ import pickle
 import random
 import re
 import requests
+import site
 import socket
 import stat
 import subprocess
@@ -1034,6 +1035,16 @@ def import_smt_cert(smt):
     if not import_result:
         logging.error('SMT certificate import failed')
         return None
+    # Check if the underlying Python packages use certs that are built in
+    # bsc#1214801
+    for site_path in site.getsitepackages():
+        py_pack_certs = glob.glob(os.path.join(site_path, 'certifi/*.pem'))
+        if py_pack_certs:
+            logging.warning(
+                'SMT certificate imported, but "%s" exist. '
+                'This may lead to registration failure' % ' '.join(
+                    py_pack_certs)
+            )
 
     return 1
 
