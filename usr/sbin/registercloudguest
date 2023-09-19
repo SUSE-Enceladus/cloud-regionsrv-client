@@ -531,17 +531,19 @@ prod_data = json.loads(res.text)
 extensions = prod_data.get('extensions')
 register_modules(extensions, products)
 
+
+if os.path.exists(instance_data_filepath):
+    os.unlink(instance_data_filepath)
+
 if registration_returncode != 0:
     cleanup()
     print(
         'Registration failed, see /var/log/cloudregister for details',
         file=sys.stderr
     )
-else:
-    print('Registration succeeded')
+    sys.exit(1)
 
-if os.path.exists(instance_data_filepath):
-    os.unlink(instance_data_filepath)
+print('Registration succeeded')
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():
