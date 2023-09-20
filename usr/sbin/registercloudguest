@@ -541,7 +541,7 @@ if registration_returncode != 0:
         'Registration failed, see /var/log/cloudregister for details',
         file=sys.stderr
     )
-    sys.exit(1)
+    sys.exit(registration_returncode)
 
 print('Registration succeeded')
 
