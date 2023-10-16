@@ -558,8 +558,9 @@ else:
 
 if failed_extensions:
     print(
-        'There are products that were not installed because they need '
-        'an additional registration code, to install them please call'
+        'There are products that were not registered because they need '
+        'an additional registration code, to register them please run '
+        'the following command:'
     )
     activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
     for failed_extension in failed_extensions:
