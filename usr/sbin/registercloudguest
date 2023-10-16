@@ -103,7 +103,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
                     # 67: Server responded with error: see log output
                     failed.append(triplet)
                     # the registration should not be considered failed
-                    # because of extra modules installed
+                    # because of extra modules registered
                     registration_returncode = 0
                 else:
                     logging.error('\tRegistration failed: %s' % error_message)
