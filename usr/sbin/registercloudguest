@@ -53,7 +53,7 @@ urllib3.disable_warnings()
 registration_returncode = 0
 
 # ----------------------------------------------------------------------------
-def register_modules(extensions, products, registered=[]):
+def register_modules(extensions, products, registered=[], failed=[]):
     """Register modules obeying dependencies"""
     global registration_returncode
     for extension in extensions:
@@ -61,7 +61,7 @@ def register_modules(extensions, products, registered=[]):
         # baseproduct registration. No need to run another registration
         if extension.get('recommended'):
             register_modules(
-                extension.get('extensions'), products, registered
+                extension.get('extensions'), products, registered, failed
             )
             continue
         arch = extension.get('arch')
@@ -91,10 +91,25 @@ def register_modules(extensions, products, registered=[]):
             if p.returncode != 0:
                 registration_returncode = p.returncode
                 error_message = res[0].decode()
-                logging.error('\tRegistration failed: %s' % error_message)
+                if (
+                    registration_returncode == 67 and
+                    'registration code' in error_message.lower()
+                ):
+                    # SUSEConnect sets the following exit codes:
+                    # 0:  Registration successful
+                    # 64: Connection refused
+                    # 65: Access error, e.g. files not readable
+                    # 66: Parser error: Server JSON response was not parseable
+                    # 67: Server responded with error: see log output
+                    failed.append(triplet)
+                    # the registration should not be considered failed
+                    # because of extra modules registered
+                    registration_returncode = 0
+                else:
+                    logging.error('\tRegistration failed: %s' % error_message)
 
         register_modules(
-            extension.get('extensions'), products, registered
+            extension.get('extensions'), products, registered, failed
         )
 
 def cleanup():
@@ -529,7 +544,8 @@ if res.status_code != 200:
 
 prod_data = json.loads(res.text)
 extensions = prod_data.get('extensions')
-register_modules(extensions, products)
+failed_extensions = []
+register_modules(extensions, products, failed=failed_extensions)
 
 if registration_returncode != 0:
     cleanup()
@@ -539,6 +555,16 @@ if registration_returncode != 0:
     )
 else:
     print('Registration succeeded')
+
+if failed_extensions:
+    print(
+        'There are products that were not registered because they need '
+        'an additional registration code, to register them please run '
+        'the following command:'
+    )
+    activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
+    for failed_extension in failed_extensions:
+        print(activate_prod_cmd.format(failed_extension))
 
 if os.path.exists(instance_data_filepath):
     os.unlink(instance_data_filepath)
