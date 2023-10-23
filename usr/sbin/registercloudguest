@@ -559,7 +559,6 @@ if registration_returncode != 0:
     )
     sys.exit(registration_returncode)
 
-
 print('Registration succeeded')
 
 if failed_extensions:
@@ -574,7 +573,6 @@ if failed_extensions:
 
 if os.path.exists(instance_data_filepath):
     os.unlink(instance_data_filepath)
-
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():
