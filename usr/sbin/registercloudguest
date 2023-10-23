@@ -50,12 +50,12 @@ from requests.auth import HTTPBasicAuth
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
 urllib3.disable_warnings()
-registration_failed = False
+registration_returncode = 0
 
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[]):
     """Register modules obeying dependencies"""
-    global registration_failed
+    global registration_returncode
     for extension in extensions:
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
