@@ -88,7 +88,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
                 stderr=subprocess.PIPE
             )
             res = p.communicate()
-            if p.returncode != 0:
+            if p.returncode:
                 registration_returncode = p.returncode
                 error_message = res[0].decode()
                 if (
@@ -475,7 +475,7 @@ while not base_registered:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     res = p.communicate()
-    if p.returncode != 0:
+    if p.returncode:
         registration_returncode = p.returncode
         # Even on error SUSEConnect writes messages to stdout, go figure
         error_message = res[0].decode()
@@ -547,11 +547,10 @@ extensions = prod_data.get('extensions')
 failed_extensions = []
 register_modules(extensions, products, failed=failed_extensions)
 
-
 if os.path.exists(instance_data_filepath):
     os.unlink(instance_data_filepath)
 
-if registration_returncode != 0:
+if registration_returncode:
     cleanup()
     print(
         'Registration failed, see /var/log/cloudregister for details',
@@ -570,9 +569,6 @@ if failed_extensions:
     activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
     for failed_extension in failed_extensions:
         print(activate_prod_cmd.format(failed_extension))
-
-if os.path.exists(instance_data_filepath):
-    os.unlink(instance_data_filepath)
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():
