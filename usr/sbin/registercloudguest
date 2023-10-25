@@ -203,13 +203,17 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
 
     # check the instance has IPv6 or Ipv4 enabled
     # so smt-ip can be either
-    ip_format = ['ipv4']
-    if isinstance(ipaddress.ip_address(arg_ip_addr), ipaddress.IPv6Address):
-        ip_format = ['ipv6']
+    ip_format = ['IPv4']
+    if isinstance(ipaddress.ip_address(args.user_smt_ip), IPv6Address):
+        ip_format = ['IPv6']
 
-    is_enabled = utils.is_user_smt_ip_enabled(ip_format)
-    if not is_enabled:
-        msg = 'Instance does not have {} enabled'.format(ip_format[0])
+    if utils.does_rmt_serve_ip(ip_format):
+        if not utils.is_user_smt_ip_enabled(ip_format):
+            msg = 'Instance does not have {} enabled'.format(ip_format[0])
+            print(msg, file=sys.stderr)
+            sys.exit(1)
+    else:
+        msg = 'RMT does not serve {} addresses'.format(ip_format[0])
         print(msg, file=sys.stderr)
         sys.exit(1)
 

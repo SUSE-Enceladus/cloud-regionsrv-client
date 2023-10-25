@@ -1405,6 +1405,19 @@ def is_user_smt_ip_enabled(ip_format):
                 return True
 
 
+# -----------------------------------------------------------------------------
+def does_rmt_serve_ip(ip_format):
+    try:
+        rmt_server = get_available_smt_servers()[0]
+    except IndexError:
+        logging.error('No RMT servers available')
+        return False
+
+    if 'IPv6' in ip_format:
+        return rmt_server.has_ipv6()
+
+    return rmt_server.has_ipv4()
+
 # Private
 # ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):
