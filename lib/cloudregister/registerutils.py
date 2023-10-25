@@ -1397,12 +1397,10 @@ def write_framework_identifier(cfg):
 def is_user_smt_ip_enabled(ip_format):
     for rmt_server in get_available_smt_servers():
         if 'ipv6' in ip_format:
-            if has_ipv6_access(rmt_server):
-                return True
+            return has_ipv6_access(rmt_server)
         else:
             # check IPv4
-            if __connection_check(rmt_server.get_ipv4(), 'IPv4'):
-                return True
+            return __connection_check(rmt_server.get_ipv4(), 'IPv4')
 
 
 # -----------------------------------------------------------------------------
@@ -1666,5 +1664,5 @@ def __connection_check(smt_ip_addr, ip_format):
     except Exception:
         logging.info('Update server not reachable over %s' % ip_format)
         return False
-    if cert_res and cert_res.status_code == 200:
-        return True
+
+    return cert_res and cert_res.status_code == 200
