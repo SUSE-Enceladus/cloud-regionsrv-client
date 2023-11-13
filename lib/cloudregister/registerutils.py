@@ -878,8 +878,7 @@ def has_ipv6_access(smt):
        address and it can be accessed over IPv6"""
     if not smt.get_ipv6():
         return False
-    # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-    return __connection_check('[{}]'.format(smt.get_ipv6()), 'IPv6')
+    return __connection_check(smt.get_ipv6())
 
 
 # ----------------------------------------------------------------------------
@@ -1394,27 +1393,33 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def is_user_smt_ip_enabled(ip_format):
-    for rmt_server in get_available_smt_servers():
-        if 'ipv6' in ip_format:
-            return has_ipv6_access(rmt_server)
-        else:
-            # check IPv4
-            return __connection_check(rmt_server.get_ipv4(), 'IPv4')
-
-
-# -----------------------------------------------------------------------------
-def does_rmt_serve_ip(ip_format):
+def can_reach_infra(rmt_ip):
+    """Check if the RMT server with the provided IP address is reachable."""
     try:
-        rmt_server = get_available_smt_servers()[0]
-    except IndexError:
-        logging.error('No RMT servers available')
-        return False
+        if not __connection_check(rmt_ip, True):
+            # instance could make Ipv4 or IPv6 request
+            # but connection failed
+            return False, 'Instance could not connect to {}'.format(rmt_ip)
+    except requests.exceptions.ConnectionError as err:
+        if ('Failed to establish a new connection' in str(err) and
+            'Network is unreachable' in str(err)
+        ):
+            # could not establish a connection to IPv4 or IPv6
+            ip_format = 'IPv4'
+            if isinstance(ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address):
+                ip_format = 'IPv6'
+            message = (
+                'Connection error: Could not establish a connection to {ip}.'
+                'Check {ip_format} is enabled and working properly'.format(
+                    ip=rmt_ip, ip_format=ip_format
+                )
+            )
+            return False, message
+        elif 'Connection to {} timed out.'.format(rmt_ip) in str(err):
+            return False, 'Connection to {} timed out'.format(rmt_ip)
 
-    if 'IPv6' in ip_format:
-        return rmt_server.has_ipv6()
+    return True, None
 
-    return rmt_server.has_ipv4()
 
 # Private
 # ----------------------------------------------------------------------------
@@ -1647,11 +1652,11 @@ def __replace_url_target(config_files, new_smt):
 
 
 # -----------------------------------------------------------------------------
-def __connection_check(smt_ip_addr, ip_format):
-    if not smt_ip_addr:
-        # in case RMT ever dropped IPv4 support
-        return False
-    logging.info('Attempt to access update server over {}'.format(ip_format))
+def __connection_check(smt_ip_addr, propagate=False):
+    if isinstance(smt_ip_addr, ipaddress.IPv6Address):
+        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+        smt_ip_addr= "[{}]".format(smt_ip_addr)
+
     protocol = 'http'  # Default for backward compatibility
     if https_only(get_config()):
         protocol = 'https'
@@ -1661,8 +1666,12 @@ def __connection_check(smt_ip_addr, ip_format):
             timeout=3,
             verify=False
         )
+    except requests.exceptions.ConnectionError as err:
+        if propagate:
+            raise
+        logging.error(err)
     except Exception:
-        logging.info('Update server not reachable over %s' % ip_format)
+        logging.error('Update server not reachable for %s' % smt_ip_addr)
         return False
 
     return cert_res and cert_res.status_code == 200

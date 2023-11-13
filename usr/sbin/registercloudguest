@@ -29,7 +29,6 @@
 
 import argparse
 import ipaddress
-from ipaddress import IPv4Address, IPv6Address
 import json
 import logging
 import os
@@ -201,21 +200,14 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
-    # check the instance has IPv6 or Ipv4 enabled
-    # so smt-ip can be either
-    ip_format = ['IPv4']
-    if isinstance(ipaddress.ip_address(args.user_smt_ip), IPv6Address):
-        ip_format = ['IPv6']
-
-    if utils.does_rmt_serve_ip(ip_format):
-        if not utils.is_user_smt_ip_enabled(ip_format):
-            msg = 'Instance does not have {} enabled'.format(ip_format[0])
-            print(msg, file=sys.stderr)
-            sys.exit(1)
-    else:
-        msg = 'RMT does not serve {} addresses'.format(ip_format[0])
-        print(msg, file=sys.stderr)
+    logging.info(
+        'Attempt to access update server with IP {}'.format(args.user_smt_ip)
+    )
+    can_reach_infra, error_message = utils.can_reach_infra(args.user_smt_ip)
+    if not can_reach_infra:
+        print(error_message, file=sys.stderr)
         sys.exit(1)
+
 
 if args.clean_up and args.force_new_registration:
     msg = '--clean and --force-new are incompatible, use one or the other'
