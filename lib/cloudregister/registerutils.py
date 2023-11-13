@@ -1396,10 +1396,7 @@ def write_framework_identifier(cfg):
 def can_reach_infra(rmt_ip):
     """Check if the RMT server with the provided IP address is reachable."""
     try:
-        if not __connection_check(rmt_ip, True):
-            # instance could make Ipv4 or IPv6 request
-            # but connection failed
-            return False, 'Instance could not connect to {}'.format(rmt_ip)
+        check = __connection_check(rmt_ip, True)
     except requests.exceptions.ConnectionError as err:
         if ('Failed to establish a new connection' in str(err) and
             'Network is unreachable' in str(err)
@@ -1418,7 +1415,10 @@ def can_reach_infra(rmt_ip):
         elif 'Connection to {} timed out.'.format(rmt_ip) in str(err):
             return False, 'Connection to {} timed out'.format(rmt_ip)
 
-    return True, None
+    # if check failed, it means
+    # instance could make Ipv4 or IPv6 request
+    # but connection failed
+    return check, 'Instance could not connect to {}'.format(rmt_ip)
 
 
 # Private
