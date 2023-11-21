@@ -203,8 +203,12 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
     logging.info(
         'Attempt to access update server with IP {}'.format(args.user_smt_ip)
     )
-    can_reach_infra, error_message = utils.can_reach_infra(args.user_smt_ip)
-    if not can_reach_infra:
+    if not utils.can_make_ip_request(args.user_smt_ip):
+        error_message = (
+            'Connection error: Could not establish a connection to {ip}.'
+            'Please, make sure the instance has that IP format enabled '
+            'and working properly'.format(ip=args.user_smt_ip)
+        )
         print(error_message, file=sys.stderr)
         sys.exit(1)
 
