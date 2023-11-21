@@ -878,7 +878,22 @@ def has_ipv6_access(smt):
        address and it can be accessed over IPv6"""
     if not smt.get_ipv6():
         return False
-    return __connection_check(smt.get_ipv6())
+    logging.info('Attempt to access update server over IPv6')
+    protocol = 'http'  # Default for backward compatibility
+    if https_only(get_config()):
+        protocol = 'https'
+    try:
+        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+        cert_res = requests.get(
+            '%s://[%s]/smt.crt' % (protocol, smt.get_ipv6()),
+            timeout=3,
+            verify=False
+        )
+    except Exception:
+        logging.info('Update server not reachable over IPv6')
+        return False
+    if cert_res and cert_res.status_code == 200:
+        return True
 
 
 # ----------------------------------------------------------------------------
@@ -1393,22 +1408,15 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def can_make_ip_request(rmt_ip):
+def instance_has_ip_enabled(rmt_ip):
     """Check if the instance can make IPv4 or IPv6 requests."""
     try:
-        __connection_check(rmt_ip, True)
-    except requests.exceptions.ConnectionError as err:
-        if ('Failed to establish a new connection' in str(err) and
-            'Network is unreachable' in str(err)
-        ):
-            # could not establish a connection to IPv4 or IPv6
-            return False
-        # something went wrong with the request (i.e. connection timed out)
-        # but a request was made
-        pass
-    # if check failed, it means
-    # instance could make Ipv4 or IPv6 request
-    # but request went wrong or its status code was not 200
+        socket.create_connection((rmt_ip, 443), timeout=2)
+    except OSError as e:
+        # check socket connection produced
+        # Network is unreachable error
+        return e.errno != errno.ENETUNREACH
+
     return True
 
 
@@ -1640,29 +1648,3 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
-
-
-# -----------------------------------------------------------------------------
-def __connection_check(smt_ip_addr, propagate=False):
-    if isinstance(smt_ip_addr, ipaddress.IPv6Address):
-        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-        smt_ip_addr= "[{}]".format(smt_ip_addr)
-
-    protocol = 'http'  # Default for backward compatibility
-    if https_only(get_config()):
-        protocol = 'https'
-    try:
-        cert_res = requests.get(
-            '%s://%s/smt.crt' % (protocol, smt_ip_addr),
-            timeout=3,
-            verify=False
-        )
-    except requests.exceptions.ConnectionError as err:
-        if propagate:
-            raise
-        logging.error(err)
-    except Exception:
-        logging.error('Update server not reachable for %s' % smt_ip_addr)
-        return False
-
-    return cert_res and cert_res.status_code == 200
