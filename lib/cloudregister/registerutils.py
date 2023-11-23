@@ -754,6 +754,8 @@ def get_smt(cache_refreshed=None):
                             (new_target.get_ipv4(), new_target.get_ipv6())
                         )
                     )
+                    # Fetch cert for new target server
+                    import_smt_cert(new_target)
                     # Verify the new target server has our credentials
                     credentials_file_path = get_credentials_file(new_target)
                     user, password = get_credentials(credentials_file_path)
