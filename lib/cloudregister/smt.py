@@ -18,6 +18,7 @@ import ipaddress
 import logging
 import requests
 
+from urllib.parse import urlparse
 from M2Crypto import X509
 
 
@@ -267,6 +268,9 @@ class SMT:
                             'Attempt %s with %s of %s' % (
                                 attempts, cert_name, retries)
                         )
-                        logging.error('Server %s is unreachable' % ip)
+                        parsed_cert_url = urlparse(cert_url)
+                        logging.error(
+                            'Server %s is unreachable' % parsed_cert_url.netloc
+                        )
                     if cert_res and cert_res.status_code == 200:
                         return cert_res
