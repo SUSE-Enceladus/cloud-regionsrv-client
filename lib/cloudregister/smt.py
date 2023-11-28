@@ -206,6 +206,9 @@ class SMT:
             errMsg = 'Could not store SMT certificate'
             logging.error(errMsg)
             return 0
+        except TypeError as err:
+            logging.error(err)
+            return 0
 
         return ca_file_path
 
