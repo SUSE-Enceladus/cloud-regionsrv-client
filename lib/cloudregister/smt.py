@@ -17,6 +17,7 @@
 import ipaddress
 import logging
 import requests
+import os
 
 from urllib.parse import urlparse
 from M2Crypto import X509
@@ -195,9 +196,9 @@ class SMT:
             ipv6 = self.get_ipv6()
             if ipv6:
                 cert_id = ipv6.replace(':', '_')
-        ca_file_path = (
-            target_dir +
-            '/registration_server_%s.pem' % cert_id
+        ca_file_path = os.path.join(
+            target_dir,
+            'registration_server_%s.pem' % cert_id
         )
         try:
             with open(ca_file_path, 'w') as smt_ca_file:
@@ -207,7 +208,7 @@ class SMT:
             logging.error(errMsg)
             return 0
         except TypeError as err:
-            logging.error(err)
+            logging.error(str(err))
             return 0
 
         return ca_file_path
@@ -230,7 +231,7 @@ class SMT:
             check_urls[health_url] = cert_url
 
         return check_urls
-        
+
     def __is_cert_valid(self, cert):
         """Verfify that the fingerprint of the given cert matches the
            expected fingerprint"""
@@ -257,6 +258,7 @@ class SMT:
         retries = 3
         while attempts < retries:
             attempts += 1
+            print('eeee')
             for cert_name in self._cert_names:
                 for cert_url in self._check_urls.values():
                     try:

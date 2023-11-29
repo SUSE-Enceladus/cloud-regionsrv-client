@@ -135,6 +135,52 @@ def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):
 
 
 # ----------------------------------------------------------------------------
+@patch('smt.os.path.join')
+@patch('smt.logging')
+@patch('smt.requests.get')
+def test_write_cert_exception(
+    mock_request_get,
+    mock_logging,
+    mock_os_path_join
+):
+    """Handle exception when writing the cert and it failed fetching."""
+    mock_request_get.side_effect = Exception('FOO')
+    smt = SMT(etree.fromstring(smt_data_ipv46))
+    mock_os_path_join.return_value = '/tmp/registration_server_fc00__1.pem'
+    assert not smt.get_cert()
+    assert mock_logging.error.called
+    mock_logging.error.assert_called_with('Server 192.168.1.1 is unreachable')
+    assert not smt.write_cert('tmp')
+    os.remove('/tmp/registration_server_fc00__1.pem')
+    msg = 'write() argument must be str, not None'
+    mock_logging.error.assert_called_with(msg)
+
+
+# ----------------------------------------------------------------------------
+@patch.object(SMT, 'get_cert')
+@patch('smt.os.path.join')
+@patch('smt.logging')
+@patch('smt.requests.get')
+def test_write_cert(
+    mock_request_get,
+    mock_logging,
+    mock_os_path_join,
+    mock_get_cert
+):
+    """Write the fetched cert."""
+    response = Response()
+    response.status_code = 200
+    response.text = 'Not a cert'
+    mock_request_get.return_value = response
+    smt = SMT(etree.fromstring(smt_data_ipv46))
+    mock_os_path_join.return_value = '/tmp/registration_server_fc00__1.pem'
+    mock_get_cert.return_value = 'what a cert'
+    assert smt.write_cert('tmp') == '/tmp/registration_server_fc00__1.pem'
+    os.remove('/tmp/registration_server_fc00__1.pem')
+    assert not mock_logging.called
+
+
+# ----------------------------------------------------------------------------
 @patch('smt.X509.load_cert_string')
 @patch('smt.logging')
 @patch('smt.requests.get')
