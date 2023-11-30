@@ -16,6 +16,7 @@
 
 import ipaddress
 import logging
+import os
 import requests
 
 from M2Crypto import X509
@@ -49,18 +50,15 @@ class SMT:
 
     # --------------------------------------------------------------------
     def __eq__(self, other_smt):
-        if not isinstance(other_smt, SMT):
-            return False
-        if (
-                self.get_ipv4() == other_smt.get_ipv4() and
-                self.get_ipv6() == other_smt.get_ipv6() and
-                self.get_FQDN() == other_smt.get_FQDN() and
-                self.get_fingerprint() == other_smt.get_fingerprint() and
-                self.get_region() == other_smt.get_region()
-        ):
-            return True
+        return (
+            isinstance(other_smt, SMT) and
+            self.get_ipv4() == other_smt.get_ipv4() and
+            self.get_ipv6() == other_smt.get_ipv6() and
+            self.get_FQDN() == other_smt.get_FQDN() and
+            self.get_fingerprint() == other_smt.get_fingerprint() and
+            self.get_region() == other_smt.get_region()
+        )
 
-        return False
 
     # --------------------------------------------------------------------
     def __ne__(self, other_smt):
@@ -142,7 +140,6 @@ class SMT:
     # --------------------------------------------------------------------
     def is_responsive(self):
         """Check if the SMT server is responsive"""
-        
         # We cannot know if the server cert has been imported into the
         # system cert hierarchy, nor do we know if the hostname is resolvable
         # or if the IP address is built into the cert. Since we only want
@@ -195,9 +192,9 @@ class SMT:
             ipv6 = self.get_ipv6()
             if ipv6:
                 cert_id = ipv6.replace(':', '_')
-        ca_file_path = (
-            target_dir +
-            '/registration_server_%s.pem' % cert_id
+        ca_file_path = os.path.join(
+            target_dir,
+            'registration_server_%s.pem' % cert_id
         )
         try:
             with open(ca_file_path, 'w') as smt_ca_file:
