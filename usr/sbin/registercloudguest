@@ -547,14 +547,18 @@ extensions = prod_data.get('extensions')
 failed_extensions = []
 register_modules(extensions, products, failed=failed_extensions)
 
+if os.path.exists(instance_data_filepath):
+    os.unlink(instance_data_filepath)
+
 if registration_returncode:
     cleanup()
     print(
         'Registration failed, see /var/log/cloudregister for details',
         file=sys.stderr
     )
-else:
-    print('Registration succeeded')
+    sys.exit(registration_returncode)
+
+print('Registration succeeded')
 
 if failed_extensions:
     print(
@@ -565,9 +569,6 @@ if failed_extensions:
     activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
     for failed_extension in failed_extensions:
         print(activate_prod_cmd.format(failed_extension))
-
-if os.path.exists(instance_data_filepath):
-    os.unlink(instance_data_filepath)
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():
