@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
+import glob
 import inspect
 import os
 import sys
@@ -135,51 +136,29 @@ def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.os.path.join')
 @patch('smt.logging')
 @patch('smt.requests.get')
-def test_write_cert_exception(
-    mock_request_get,
-    mock_logging,
-    mock_os_path_join
-):
-    """Handle exception when writing the cert and it failed fetching."""
+def test_get_cert_access_exception_ipv4(mock_request_get, mock_logging):
+    """Test the exception path for cert retrieval when we cannot reach
+       an update server with IPv4 adddress"""
     mock_request_get.side_effect = Exception('FOO')
-    smt = SMT(etree.fromstring(smt_data_ipv46))
-    mock_os_path_join.return_value = '/tmp/registration_server_fc00__1.pem'
+    smt = SMT(etree.fromstring(smt_data_ipv4))
     assert not smt.get_cert()
-    assert mock_logging.error.called
-    mock_logging.error.assert_called_with('Server 192.168.1.1 is unreachable')
-    assert not smt.write_cert('tmp')
-    os.remove('/tmp/registration_server_fc00__1.pem')
-    msg = 'write() argument must be str, not None'
-    mock_logging.error.assert_called_with(msg)
+    mock_logging.warning.assert_called_with('Server 192.168.1.1 is unreachable')
 
 
 # ----------------------------------------------------------------------------
-@patch.object(SMT, 'get_cert')
-@patch('smt.os.path.join')
 @patch('smt.logging')
 @patch('smt.requests.get')
-def test_write_cert(
-    mock_request_get,
-    mock_logging,
-    mock_os_path_join,
-    mock_get_cert
-):
-    """Write the fetched cert."""
-    response = Response()
-    response.status_code = 200
-    response.text = 'Not a cert'
-    mock_request_get.return_value = response
-    smt = SMT(etree.fromstring(smt_data_ipv46))
-    mock_os_path_join.return_value = '/tmp/registration_server_fc00__1.pem'
-    mock_get_cert.return_value = 'what a cert'
-    assert smt.write_cert('tmp') == '/tmp/registration_server_fc00__1.pem'
-    os.remove('/tmp/registration_server_fc00__1.pem')
-    assert not mock_logging.called
-
-
+def test_get_cert_access_exception_ipv6(mock_request_get, mock_logging):
+    """Test the exception path for cert retrieval when we cannot reach
+       an update server with IPv6 adddress"""
+    mock_request_get.side_effect = Exception('FOO')
+    smt = SMT(etree.fromstring(smt_data_ipv6))
+    assert not smt.get_cert()
+    mock_logging.warning.assert_called_with('Server fc00::1 is unreachable')
+    
+    
 # ----------------------------------------------------------------------------
 @patch('smt.X509.load_cert_string')
 @patch('smt.logging')
@@ -324,7 +303,6 @@ def test_is_equivalent_on_ipv6():
     assert smt1.is_equivalent(smt2)
 
 
-
 # ----------------------------------------------------------------------------
 def test_is_equivalent_fails_differ_ipv():
     """Test two SMT servers with different network config are not equivalent"""
@@ -368,6 +346,7 @@ def test_is_responsive_server_error(mock_cert_pull):
     mock_cert_pull.return_value = response
     smt = SMT(etree.fromstring(smt_data_ipv46))
     assert not smt.is_responsive()
+
 
 # ----------------------------------------------------------------------------
 @patch('smt.requests.get')
@@ -442,3 +421,63 @@ def test_check_urls_ipv46():
     assert \
         smt._check_urls.get('https://[fc00::1]/api/health/status') == \
         'http://[fc00::1]/'
+
+
+# ----------------------------------------------------------------------------
+@patch.object(SMT, 'get_cert')
+def test_write_cert_ipv4_only(mock_get_cert):
+    """Check we write the cert for the IPv4 address if the update server
+       has an IPv4 only configuration"""
+    mock_get_cert.return_value = 'what a cert'
+    smt = SMT(etree.fromstring(smt_data_ipv4))
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        smt.write_cert(tmpdirname)
+        certs = glob.glob('%s/*.pem' %tmpdirname)
+        assert len(certs) == 1
+        assert certs[0] == '%s/registration_server_192_168_1_1.pem' %tmpdirname
+
+
+# ----------------------------------------------------------------------------
+@patch.object(SMT, 'get_cert')
+def test_write_cert_ipv6_only(mock_get_cert):
+    """Check we write the cert for the IPv6 address if the update server
+       has an IPv6 only configuration"""
+    mock_get_cert.return_value = 'what a cert'
+    smt = SMT(etree.fromstring(smt_data_ipv6))
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        smt.write_cert(tmpdirname)
+        certs = glob.glob('%s/*.pem' %tmpdirname)
+        assert len(certs) == 1
+        assert certs[0] == '%s/registration_server_fc00__1.pem' %tmpdirname
+
+
+# ----------------------------------------------------------------------------
+@patch.object(SMT, 'get_cert')
+def test_write_cert_dual_stack(mock_get_cert):
+    """Check we write the cert for the IPv4 and IPv6 address if the update
+       server has an IPv4 and IPv6 configuration"""
+    mock_get_cert.return_value = 'what a cert'
+    smt = SMT(etree.fromstring(smt_data_ipv46))
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        smt.write_cert(tmpdirname)
+        certs = glob.glob('%s/*.pem' %tmpdirname)
+        assert len(certs) == 2
+        assert '%s/registration_server_fc00__1.pem' %tmpdirname in certs
+        assert '%s/registration_server_192_168_1_1.pem' %tmpdirname in certs
+
+
+# ----------------------------------------------------------------------------
+@patch.object(SMT, 'get_cert')
+@patch('smt.logging')
+def test_write_cert_no_write_perm(mock_logging, mock_get_cert):
+    """Check that we properly handle the exception if we cannot write the
+       cert."""
+    mock_get_cert.return_value = 'what a cert'
+    smt = SMT(etree.fromstring(smt_data_ipv46))
+    result = smt.write_cert('fussball')
+    assert result == 0
+    mock_logging.error.assert_called_with(
+        'Could not store update server certificate'
+    )
+
+
