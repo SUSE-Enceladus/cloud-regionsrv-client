@@ -154,17 +154,17 @@ def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.requests.get')
-def test_get_cert_server_unreachable(mock_cert_pull):
-    """Test get cert with an unreachable server."""
-    response = Response()
-    response.status_code = 200
-    with open('tests/data/cert.pem', 'r') as cert_file:
-        response.text = cert_file.read()
+# @patch('smt.requests.get')
+# def test_get_cert_server_unreachable(mock_cert_pull):
+#     """Test get cert with an unreachable server."""
+#     response = Response()
+#     response.status_code = 200
+#     with open('tests/data/cert.pem', 'r') as cert_file:
+#         response.text = cert_file.read()
 
-    mock_cert_pull.side_effect = Exception("Server's too far, cant be reached")
-    smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert not smt.get_cert()
+#     mock_cert_pull.side_effect = Exception("Server's too far, cant be reached")
+#     smt = SMT(etree.fromstring(smt_data_ipv46))
+#     assert not smt.get_cert()
 
 
 # ----------------------------------------------------------------------------

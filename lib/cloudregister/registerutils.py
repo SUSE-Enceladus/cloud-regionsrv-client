@@ -164,10 +164,7 @@ def credentials_files_are_equal(repo_credentials):
     credentials_header = os.path.join(credentials_location, repo_credentials)
     ref_user, ref_pass = get_credentials(credentials_base)
     repo_user, repo_pass = get_credentials(credentials_header)
-    if (ref_user != repo_user) or (ref_pass != repo_pass):
-        return False
-
-    return True
+    return (ref_user == repo_user) and (ref_pass == repo_pass)
 
 
 # ----------------------------------------------------------------------------
@@ -384,18 +381,17 @@ def find_equivalent_smt_server(configured_smt, known_smt_servers):
 
 
 # ----------------------------------------------------------------------------
-def find_repos(contains_name):
+def find_repos(search_for):
     """Find all repos that contain the given name (case insensitive) in
        the repo name"""
     repo_names = []
-    search_for = contains_name.lower()
     repos = glob.glob('/etc/zypp/repos.d/*.repo')
     for repo in repos:
         repo_cfg = get_config(repo)
         for section in repo_cfg.sections():
             cfg_repo_name = repo_cfg.get(section, 'name')
             repo_name = cfg_repo_name
-            if search_for in repo_name.lower():
+            if search_for.lower() in repo_name.lower():
                 repo_names.append(cfg_repo_name)
 
     return repo_names
@@ -404,7 +400,7 @@ def find_repos(contains_name):
 # ----------------------------------------------------------------------------
 def get_activations():
     """Get the activated products from the update server"""
-    activations = {}
+    empty_activations = {}
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
     if not (user and password):
@@ -412,7 +408,7 @@ def get_activations():
             'Unable to extract username and password '
             'for "%s"' % update_server.get_FQDN()
         )
-        return activations
+        return empty_activations
 
     auth_creds = HTTPBasicAuth(user, password)
 
@@ -434,7 +430,7 @@ def get_activations():
         )
         logging.error('\tReason: "%s"' % res.reason)
         logging.error('\tCode: %d', res.status_code)
-        return activations
+        return empty_activations
 
     return res.json()
 
@@ -573,7 +569,7 @@ def get_current_smt():
 
 # ----------------------------------------------------------------------------
 def get_framework_identifier_path():
-    """Return the path for the frmework identifier file"""
+    """Return the path for the framework identifier file."""
     return os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
 
 
