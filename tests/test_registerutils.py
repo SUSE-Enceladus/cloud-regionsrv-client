@@ -1748,6 +1748,10 @@ def test_update_rmt_cert(
     ]
 
 
+def test_uses_rmt_as_scc_proxy():
+    assert utils.uses_rmt_as_scc_proxy() == False
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
