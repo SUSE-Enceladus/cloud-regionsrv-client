@@ -1642,6 +1642,24 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
            ).write.assert_called_once_with(expected_content)
 
 
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_update_ca_chain(mock_exec_subprocess, mock_logging):
+    mock_exec_subprocess.return_value = 314
+    utils.update_ca_chain(['cmd']) == 1
+    assert mock_logging.error.call_args_list == [
+        call('Certificate update failed attempt 1'),
+        call('Certificate update failed attempt 2'),
+        call('Certificate update failed attempt 3')
+    ]
+
+
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_update_ca_chain_failed(mock_exec_subprocess):
+    mock_exec_subprocess.return_value = 0
+    utils.update_ca_chain(['cmd']) == 1
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
