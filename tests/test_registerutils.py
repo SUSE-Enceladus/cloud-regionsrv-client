@@ -1437,6 +1437,211 @@ def test_rmt_as_scc_proxy_flag(mock_path):
     )
 
 
+@patch('cloudregister.registerutils.get_available_smt_servers')
+def test_switch_services_to_plugin_no_servers(mock_get_available_smt_servers):
+    mock_get_available_smt_servers.return_value = []
+    assert utils.switch_services_to_plugin() == None
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.configparser.RawConfigParser.read')
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+def test_switch_services_to_plugin_config_parse_error(
+    mock_get_available_smt_servers,
+    mock_glob,
+    mock_raw_config_parser_read,
+    mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_available_smt_servers.return_value = [smt_server]
+    mock_glob.return_value = ['foo']
+    mock_raw_config_parser_read.side_effect = configparser.Error('foo')
+    utils.switch_services_to_plugin()
+    mock_logging.warning.assert_called_once_with(
+        'Unable to parse "foo" skipping'
+    )
+
+
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.os.symlink')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+def test_switch_services_to_plugin_unlink_service(
+    mock_get_available_smt_servers,
+    mock_glob,
+    mock_logging,
+    mock_os_symlink,
+    mock_os_unlink,
+    mock_os_path_exists
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_available_smt_servers.return_value = [smt_server]
+    mock_glob.return_value = ['tests/data/service.service']
+    mock_os_path_exists.return_value = True
+    utils.switch_services_to_plugin()
+    mock_os_symlink.assert_called_once_with(
+        '/usr/sbin/cloudguest-repo-service',
+        '/usr/lib/zypp/plugins/services/Public_Cloud_Module_x86_64'
+    )
+    assert mock_os_unlink.call_args_list == [
+        call('/usr/lib/zypp/plugins/services/Public_Cloud_Module_x86_64'),
+        call('tests/data/service.service')
+    ]
+
+
+def test_remove_registration_data():
+    pass
+
+
+@patch('cloudregister.registerutils.add_hosts_entry')
+@patch('cloudregister.registerutils.clean_hosts_file')
+def test_replace_hosts_entry(mock_clean_hosts_file, mock_add_hosts_entry):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    utils.replace_hosts_entry(smt_server, 'new_smt')
+    mock_clean_hosts_file.assert_called_once_with('smt-foo.susecloud.net')
+    mock_add_hosts_entry.assert_called_once_with('new_smt')
+
+
+@patch('builtins.print')
+@patch('cloudregister.registerutils.sys.exit')
+@patch('cloudregister.registerutils.logging')
+def test_start_logging(mock_logging, mock_sys_exit, mock_print):
+    mock_logging.basicConfig.side_effect = IOError('foo')
+    utils.start_logging()
+    mock_logging.basicConfig.assert_called_once_with(
+        filename='/var/log/cloudregister',
+        level=mock_logging.INFO,
+        format='%(asctime)s %(levelname)s:%(message)s'
+    )
+    mock_sys_exit.assert_called_once_with(1)
+    mock_print.assert_called_once_with(
+        'Could not open log file "',
+        '/var/log/cloudregister',
+        '" for writing.'
+    )
+
+
+@patch('cloudregister.registerutils.pickle.dump')
+@patch('cloudregister.registerutils.pickle')
+@patch('cloudregister.registerutils.os.fchmod')
+def test_store_smt_data(mock_os_fchmod, mock_pickle, mock_dump):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    utils.store_smt_data('foo', smt_server)
+    mock_os_fchmod.assert_called_once_with(11, 384)
+    mock_pickle.Pickler.assert_called_once()
+
+
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_switch_smt_repos(mock_get_current_smt, mock_glob):
+    new_smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="111.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="ANOTHER_NAME"
+         region="antarctica-1"/>''')
+    new_smt_server = SMT(etree.fromstring(new_smt_data_ipv46))
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="111.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="plugin:/susecloud"
+         region="antarctica-1"/>''')
+    current_smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = current_smt_server
+    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    file_azo = ""
+    with open('tests/data/repo_foo.repo') as f:
+        file_azo = ' '.join(f.readlines())
+    open_mock = mock.mock_open(read_data=file_azo)
+    def open_f(filename, *args, **kwargs):
+        return open_mock()
+
+    with patch('builtins.open', create=True) as mock_open:
+           mock_open.side_effect = open_f
+           utils.switch_smt_repos(new_smt_server)
+           assert mock_open.call_args_list == [
+               call('tests/data/repo_foo.repo', 'r'),
+               call('tests/data/repo_foo.repo', 'w')
+           ]
+           expected_content = file_azo.replace(
+               'plugin:/susecloud',
+               new_smt_server.get_FQDN()
+           )
+           mock_open(
+               'tests/data/repo_foo.repo', 'w'
+           ).write.assert_called_once_with(expected_content)
+
+
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_switch_smt_service(mock_get_current_smt, mock_glob):
+    new_smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="111.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="ANOTHER_NAME"
+         region="antarctica-1"/>''')
+    new_smt_server = SMT(etree.fromstring(new_smt_data_ipv46))
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="111.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="plugin:/susecloud"
+         region="antarctica-1"/>''')
+    current_smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = current_smt_server
+    mock_glob.return_value = ['tests/data/service.service']
+    file_azo = ""
+    with open('tests/data/repo_foo.repo') as f:
+        file_azo = ' '.join(f.readlines())
+    open_mock = mock.mock_open(read_data=file_azo)
+    def open_f(filename, *args, **kwargs):
+        return open_mock()
+
+    with patch('builtins.open', create=True) as mock_open:
+           mock_open.side_effect = open_f
+           utils.switch_smt_service(new_smt_server)
+           assert mock_open.call_args_list == [
+               call('tests/data/service.service', 'r'),
+               call('tests/data/service.service', 'w')
+           ]
+           expected_content = file_azo.replace(
+               'plugin:/susecloud',
+               new_smt_server.get_FQDN()
+           )
+           mock_open(
+               'tests/data/repo_foo.repo', 'w'
+           ).write.assert_called_once_with(expected_content)
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
