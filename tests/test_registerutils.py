@@ -1660,6 +1660,94 @@ def test_update_ca_chain_failed(mock_exec_subprocess):
     utils.update_ca_chain(['cmd']) == 1
 
 
+@patch('cloudregister.registerutils.is_new_registration')
+def test_update_rmt_cert_new_registration(mock_is_new_registration):
+    mock_is_new_registration.return_value = True
+    assert utils.update_rmt_cert('foo') == None
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.import_smt_cert')
+@patch('cloudregister.registerutils.fetch_smt_data')
+@patch('cloudregister.registerutils.set_proxy')
+@patch('cloudregister.registerutils.is_new_registration')
+def test_update_rmt_cert_no_cert_change(
+    mock_is_new_registration,
+    mock_set_proxy,
+    mock_fetch_smt_data,
+    mock_import_smt_cert,
+    mock_config,
+    mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="111.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="ANOTHER_NAME"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    region_smt_data = etree.fromstring(smt_xml)
+
+    mock_is_new_registration.return_value = False
+    mock_set_proxy.return_value = True
+    mock_fetch_smt_data.return_value = region_smt_data
+    assert utils.update_rmt_cert(smt_server) == False
+    assert mock_logging.info.call_args_list == [
+        call('Check for cert update'),
+        call('No cert change')
+    ]
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.import_smt_cert')
+@patch('cloudregister.registerutils.fetch_smt_data')
+@patch('cloudregister.registerutils.set_proxy')
+@patch('cloudregister.registerutils.is_new_registration')
+def test_update_rmt_cert(
+    mock_is_new_registration,
+    mock_set_proxy,
+    mock_fetch_smt_data,
+    mock_import_smt_cert,
+    mock_config,
+    mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="111.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="ANOTHER_NAME"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="111.168.1.1"
+        SMTserverIPv6="fc00::1"
+        SMTserverName="foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    region_smt_data = etree.fromstring(smt_xml)
+
+    mock_is_new_registration.return_value = False
+    mock_set_proxy.return_value = True
+    mock_fetch_smt_data.return_value = region_smt_data
+    assert utils.update_rmt_cert(smt_server) == True
+    assert mock_logging.info.call_args_list == [
+        call('Check for cert update'),
+        call('Update server cert updated')
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
