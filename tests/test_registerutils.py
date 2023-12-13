@@ -741,6 +741,12 @@ def test_get_credentials_two_files(mock_logging, mock_glob):
     ]  # TODO: check this warning
 
 
+@patch('cloudregister.registerutils.get_smt_from_store')
+def test_get_current_smt_no_smt(mock_get_smt_from_store):
+    mock_get_smt_from_store.return_value = None
+    assert utils.get_current_smt() == None
+
+
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.get_smt_from_store')
 def test_get_current_smt_no_match(mock_get_smt_from_store, mock_os_unlink):
