@@ -1889,6 +1889,36 @@ def test_get_system_mfg(mock_exec_subprocess):
     assert utils.__get_system_mfg() == 'unknown'
 
 
+@patch('cloudregister.registerutils.__get_referenced_credentials')
+@patch('cloudregister.registerutils.glob.glob')
+def test_has_credentials_in_system(mock_glob, mock_get_referenced_creds):
+    mock_glob.return_value = ['/etc/zypp/credentials.d/SCCcredentials']
+    assert utils.__has_credentials('foo') == True
+
+
+@patch('cloudregister.registerutils.__get_referenced_credentials')
+@patch('cloudregister.registerutils.glob.glob')
+def test_has_credentials_in_service(mock_glob, mock_get_referenced_creds):
+    mock_glob.return_value = ['/etc/zypp/credentials.d/service']
+    mock_get_referenced_creds.return_value = ['service']
+    assert utils.__has_credentials('foo') == True
+
+
+@patch('cloudregister.registerutils.__get_referenced_credentials')
+@patch('cloudregister.registerutils.glob.glob')
+def test_has_credentials_in_service(mock_glob, mock_get_referenced_creds):
+    mock_glob.return_value = ['/etc/zypp/credentials.d/service']
+    mock_get_referenced_creds.return_value = ['service']
+    assert utils.__has_credentials('foo') == True
+
+
+@patch('cloudregister.registerutils.__get_referenced_credentials')
+@patch('cloudregister.registerutils.glob.glob')
+def test_has_credentials_not_found(mock_glob, mock_get_referenced_creds):
+    mock_glob.return_value = []
+    assert utils.__has_credentials('foo') == False
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
