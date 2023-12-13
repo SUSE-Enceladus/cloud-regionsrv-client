@@ -2040,6 +2040,40 @@ def test_remove_repos_removed_nothing(mock_os_unlink, mock_logging, mock_glob):
     mock_logging.info.not_called()
 
 
+@patch('cloudregister.registerutils.__get_service_plugins')
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.unlink')
+def test_remove_service_not_plugins(
+    mock_os_unlink,
+    mock_logging,
+        mock_glob,
+    mock_get_service_plugin
+):
+    mock_glob.return_value = ['tests/data/service.service']
+    mock_get_service_plugin.return_value = []
+    assert utils.__remove_service('192') == 1
+    mock_os_unlink.assert_called_once_with('tests/data/service.service')
+    mock_logging.info.called_once_with('Removing repo: service.service')
+
+
+@patch('cloudregister.registerutils.__get_service_plugins')
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.unlink')
+def test_remove_service(
+    mock_os_unlink,
+    mock_logging,
+    mock_glob,
+    mock_get_service_plugins
+):
+    mock_glob.return_value = []
+    mock_get_service_plugins.return_value = ['foo']
+    assert utils.__remove_service('192') == 1
+    mock_os_unlink.assert_called_once_with('foo')
+    mock_logging.info.not_called()
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
