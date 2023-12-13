@@ -2019,6 +2019,27 @@ def test_remove_artifacts_no_remove_etc_scccreds(
     mock_os_path_exists.assert_called_once_with('/etc/SUSEConnect')
     mock_os_unlink.assert_not_called
 
+
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.unlink')
+def test_remove_repos(mock_os_unlink, mock_logging, mock_glob):
+    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    assert utils.__remove_repos('foo') == 1
+    mock_os_unlink.assert_called_once_with('tests/data/repo_foo.repo')
+    mock_logging.info.called_once_with('Removing repo: repo_foo.repo')
+
+
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.unlink')
+def test_remove_repos_removed_nothing(mock_os_unlink, mock_logging, mock_glob):
+    mock_glob.return_value = ['tests/data/scc_repo.repo']
+    assert utils.__remove_repos('foo') == 1
+    mock_os_unlink.not_called()
+    mock_logging.info.not_called()
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
