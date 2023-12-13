@@ -1919,6 +1919,45 @@ def test_has_credentials_not_found(mock_glob, mock_get_referenced_creds):
     assert utils.__has_credentials('foo') == False
 
 
+@patch('cloudregister.registerutils.store_smt_data')
+@patch('cloudregister.registerutils.fetch_smt_data')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.set_proxy')
+def test_populate_srv_cache(
+    mock_set_proxy,
+    mock_get_config,
+    mock_logging,
+    mock_fetch_smt_data,
+    mock_store_smt_data
+):
+    mock_set_proxy.return_value = True
+    mock_get_config.return_value = cfg
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    region_smt_data = etree.fromstring(smt_xml)
+    mock_fetch_smt_data.return_value = region_smt_data
+    utils.__populate_srv_cache()
+    mock_logging.info.assert_called_once_with('Populating server cache')
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_store_smt_data.assert_called_once_with(
+        '/var/cache/cloudregister/availableSMTInfo_1.obj',
+        smt_server
+    )
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
