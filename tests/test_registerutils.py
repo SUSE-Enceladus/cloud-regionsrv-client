@@ -1828,6 +1828,26 @@ def test_get_framework_plugin():
     cfg.set('instance', 'instanceArgs', 'none')
 
 
+@patch('cloudregister.registerutils.glob.glob')
+def test_get_referenced_credentials(mock_glob):
+    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    assert utils.__get_referenced_credentials('foo') == [
+        'SUSE_Linux_Enterprise_Live_Foo_x86_64'
+    ]
+
+
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.glob.glob')
+def test_get_referenced_credentials_not_found(mock_glob, mock_get_config):
+    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    cfg.set('server', 'baseurl', 'bar')
+    cfg.set('instance', 'baseurl', 'bar')
+    cfg.set('service', 'baseurl', 'bar')
+    mock_get_config.return_value = cfg
+    assert utils.__get_referenced_credentials('foo') == []
+    del cfg['server']['baseurl']
+    del cfg['instance']['baseurl']
+    del cfg['service']['baseurl']
 
 
 # ---------------------------------------------------------------------------
