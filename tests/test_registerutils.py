@@ -1874,6 +1874,15 @@ def test_get_region_server_args_not_region_srv_args(
     mock_logging.assert_not_called
 
 
+
+@patch('cloudregister.registerutils.os.path.basename')
+@patch('cloudregister.registerutils.glob.glob')
+def test_get_service_plugins(mock_glob, mock_os_path_basename):
+    mock_glob.return_value = ['tests/data/service.service']
+    mock_os_path_basename.return_value = 'cloudguest-repo-service'
+    assert utils.__get_service_plugins() == ['tests/data/service.service']
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
