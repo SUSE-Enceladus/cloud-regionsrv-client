@@ -1811,6 +1811,23 @@ def test_write_framework_identifier_non_existing_path(
         utils.write_framework_identifier('foo')
 
 
+@patch('cloudregister.registerutils.logging')
+def test_get_framework_plugin_no_existing(mock_logging):
+    cfg.set('instance', 'instanceArgs', 'foo')
+    assert utils.__get_framework_plugin(cfg) == None
+    mock_logging.warning.assert_called_once_with(
+        'Configured instanceArgs module could not be loaded. '
+        'Continuing without additional arguments.'
+    )
+
+
+def test_get_framework_plugin():
+    cfg.set('instance', 'instanceArgs', 'amazonec2')
+    expected_mod = __import__('cloudregister.amazonec2', fromlist=[''])
+    assert utils.__get_framework_plugin(cfg) == expected_mod
+    cfg.set('instance', 'instanceArgs', 'none')
+
+
 
 
 # ---------------------------------------------------------------------------
