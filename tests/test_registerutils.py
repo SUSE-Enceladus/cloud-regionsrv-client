@@ -1850,6 +1850,30 @@ def test_get_referenced_credentials_not_found(mock_glob, mock_get_config):
     del cfg['service']['baseurl']
 
 
+@patch('cloudregister.registerutils.logging')
+def test_get_region_server_args_exception(
+    mock_logging
+):
+    mod = __import__('cloudregister.smt', fromlist=[''])
+    assert utils.__get_region_server_args(mod) == ''
+    mock_logging.error.assert_called_once_with(
+        'Configured and loaded module "{}" does not provide the required '
+        'generateRegionSrvArgs function.'.format(mod.__file__)
+    )
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.amazonec2.generateRegionSrvArgs')
+def test_get_region_server_args_not_region_srv_args(
+    mock_amazon_generate_region_args,
+    mock_logging
+):
+    mock_amazon_generate_region_args.return_value = None
+    mod = __import__('cloudregister.amazonec2', fromlist=[''])
+    assert utils.__get_region_server_args(mod) == None
+    mock_logging.assert_not_called
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
