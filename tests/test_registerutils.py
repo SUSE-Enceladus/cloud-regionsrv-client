@@ -1883,6 +1883,12 @@ def test_get_service_plugins(mock_glob, mock_os_path_basename):
     assert utils.__get_service_plugins() == ['tests/data/service.service']
 
 
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_get_system_mfg(mock_exec_subprocess):
+    mock_exec_subprocess.side_effect = TypeError('foo')
+    assert utils.__get_system_mfg() == 'unknown'
+
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
