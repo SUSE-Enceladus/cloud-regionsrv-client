@@ -1978,6 +1978,47 @@ def test_remove_credentials(
         '/etc/zypp/credentials.d/SCCcredentials'
     )
 
+
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.__remove_service')
+@patch('cloudregister.registerutils.__remove_repos')
+@patch('cloudregister.registerutils.__remove_credentials')
+def test_remove_artifacts(
+    mock_remove_creds,
+    mock_remove_repos,
+    mock_remove_service,
+    mock_os_path_exists,
+    mock_os_unlink
+):
+    mock_os_path_exists.return_value = True
+    assert utils.__remove_repo_artifacts('foo') == None
+    mock_remove_creds.assert_called_once_with('foo')
+    mock_remove_repos.assert_called_once_with('foo')
+    mock_remove_service.assert_called_once_with('foo')
+    mock_os_path_exists.assert_called_once_with('/etc/SUSEConnect')
+    mock_os_unlink.assert_called_once_with('/etc/SUSEConnect')
+
+
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.__remove_service')
+@patch('cloudregister.registerutils.__remove_repos')
+@patch('cloudregister.registerutils.__remove_credentials')
+def test_remove_artifacts_no_remove_etc_scccreds(
+    mock_remove_creds,
+    mock_remove_repos,
+    mock_remove_service,
+    mock_os_path_exists,
+    mock_os_unlink
+):
+    assert utils.__remove_repo_artifacts('foo') == None
+    mock_remove_creds.assert_called_once_with('foo')
+    mock_remove_repos.assert_called_once_with('foo')
+    mock_remove_service.assert_called_once_with('foo')
+    mock_os_path_exists.assert_called_once_with('/etc/SUSEConnect')
+    mock_os_unlink.assert_not_called
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
