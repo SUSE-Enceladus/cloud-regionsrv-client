@@ -1958,6 +1958,26 @@ def test_populate_srv_cache(
     )
 
 
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.__get_referenced_credentials')
+@patch('cloudregister.registerutils.glob.glob')
+def test_remove_credentials(
+    mock_glob,
+    mock_get_referenced_creds,
+    mock_logging,
+    mock_os_unlink
+):
+    mock_glob.return_value = ['/etc/zypp/credentials.d/SCCcredentials']
+    mock_get_referenced_creds.return_value = ['SCCcredentials']
+    assert utils.__remove_credentials('foo') == 1
+    mock_logging.info.assert_called_once_with(
+        'Removing credentials: /etc/zypp/credentials.d/SCCcredentials'
+    )
+    mock_os_unlink.assert_called_once_with(
+        '/etc/zypp/credentials.d/SCCcredentials'
+    )
+
 # ---------------------------------------------------------------------------
 # Helper functions
 class Response():
