@@ -19,20 +19,38 @@ def generateRegionSrvArgs():
     """
     Generate arguments to be sent to the region server.
     """
-    token_url = 'http://169.254.169.254/latest/api/token'
+    # IPv4 first as IPv6 IMDs access requires a special flag whne the instance
+    # gets launched which is not as likely to be set.
+    # Yes, we know the standard says IPv6 should be first...
+    imds_ips = ('169.254.169.254', 'fd00:ec2::254')
+    token_url = 'http://%s/latest/api/token'
     token_header = {'X-aws-ec2-metadata-token-ttl-seconds': '21600'}
 
     zone_req_header = {}
 
-    try:
-        token_resp = requests.put(token_url, headers=token_header)
-        if token_resp.status_code == 200:
-            zone_req_header = {'X-aws-ec2-metadata-token': token_resp.text}
-    except requests.exceptions.RequestException:
-        msg = 'Unable to retrieve IMDSv2 token falling back to IMDSv1'
-        logging.warning(msg)
+    imds_addr = ''
+    for imds_ip in imds_ips:
+        imds_addr = imds_ip
+        if ':' in imds_ip:
+            imds_addr = '[%s]' %imds_ip
+        try:
+            token_resp = requests.put(
+                token_url %imds_addr,
+                headers=token_header
+            )
+            if token_resp.status_code == 200:
+                zone_req_header = {'X-aws-ec2-metadata-token': token_resp.text}
+            else:
+                continue
+        except requests.exceptions.RequestException:
+            msg = 'Unable to retrieve IMDSv2 token using %s' %imds_ip
+            logging.warning(msg)
+            continue
+        break
+    else:
+        logging.warning('Falling back to IMDSv1')
 
-    metadata_url = 'http://169.254.169.254/latest/meta-data/'
+    metadata_url = 'http://%s/latest/meta-data/' %imds_addr
     zone_info = 'placement/availability-zone'
 
     try:
