@@ -2119,8 +2119,201 @@ def test_switch_services_to_plugin_unlink_service(
     ]
 
 
-def test_remove_registration_data():
-    pass
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+def test_remove_registration_data_no_user(
+    mock_get_registered_smt_file_path,
+    mock_get_creds,
+    mock_logging
+):
+    mock_get_creds.return_value = None, None
+    assert utils.remove_registration_data() == None
+    mock_logging.info.assert_called_once_with(
+        'No credentials, nothing to do server side'
+    )
+
+
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.is_scc_connected')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+def test_remove_registration_data_no_registration(
+    mock_get_registered_smt_file_path,
+    mock_get_creds,
+    mock_logging,
+    mock_is_scc_connected,
+    mock_os_path_exists,
+):
+    mock_get_creds.return_value = 'foo', 'bar'
+    mock_is_scc_connected.return_value = False
+    mock_os_path_exists.return_value = False
+    assert utils.remove_registration_data() == None
+    mock_logging.info.assert_called_once_with(
+        'No current registration server set.'
+    )
+
+
+@patch('cloudregister.registerutils.is_scc_connected')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.__remove_repo_artifacts')
+@patch('cloudregister.registerutils.clean_hosts_file')
+@patch('cloudregister.registerutils.requests.delete')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.HTTPBasicAuth')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+def test_remove_registration_data(
+    mock_get_registered_smt_file_path,
+    mock_get_creds,
+    mock_logging,
+    mock_http_basic_auth,
+    mock_os_path_exists,
+    mock_get_smt_from_store,
+    mock_request_delete,
+    mock_clean_hosts_file,
+    mock_remove_repo_artifacts,
+    mock_os_unlink,
+    mock_is_scc_connected
+):
+    mock_get_creds.return_value = 'foo', 'bar'
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_os_path_exists.return_value = True
+    mock_http_basic_auth.return_value = 'http basic auth'
+    response = Response()
+    response.status_code = 204
+    mock_request_delete.return_value = response
+    mock_is_scc_connected.return_value = True
+    assert utils.remove_registration_data() == None
+    print(mock_logging.info.call_args_list)
+    assert mock_logging.info.call_args_list == [
+        call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
+        call('System successfully removed from update infrastructure'),
+        call('Removing system from SCC'),
+        call('System successfully removed from SCC')
+    ]
+
+
+@patch('cloudregister.registerutils.is_scc_connected')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.__remove_repo_artifacts')
+@patch('cloudregister.registerutils.clean_hosts_file')
+@patch('cloudregister.registerutils.requests.delete')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.HTTPBasicAuth')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+def test_remove_registration_data_request_not_OK(
+    mock_get_registered_smt_file_path,
+    mock_get_creds,
+    mock_logging,
+    mock_http_basic_auth,
+    mock_os_path_exists,
+    mock_get_smt_from_store,
+    mock_request_delete,
+    mock_clean_hosts_file,
+    mock_remove_repo_artifacts,
+    mock_os_unlink,
+    mock_is_scc_connected
+):
+    mock_get_creds.return_value = 'foo', 'bar'
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_os_path_exists.return_value = True
+    mock_http_basic_auth.return_value = 'http basic auth'
+    response = Response()
+    response.status_code = 504
+    mock_request_delete.return_value = response
+    mock_is_scc_connected.return_value = True
+    assert utils.remove_registration_data() == None
+    print(mock_logging.info.call_args_list)
+    assert mock_logging.info.call_args_list == [
+        call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
+        call(
+            'System unknown to update infrastructure, '
+            'continue with local changes'
+        ),
+        call('Removing system from SCC'),
+        call('System not found in SCC. The system may still be tracked '
+             'against your subscription. It is recommended to investigate '
+             'the issue. System user name: "foo". '
+             'Local registration artifacts removed.'
+        )
+    ]
+
+
+@patch('cloudregister.registerutils.is_scc_connected')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.__remove_repo_artifacts')
+@patch('cloudregister.registerutils.clean_hosts_file')
+@patch('cloudregister.registerutils.requests.delete')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.HTTPBasicAuth')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+def test_remove_registration_data_request_exception(
+    mock_get_registered_smt_file_path,
+    mock_get_creds,
+    mock_logging,
+    mock_http_basic_auth,
+    mock_os_path_exists,
+    mock_get_smt_from_store,
+    mock_request_delete,
+    mock_clean_hosts_file,
+    mock_remove_repo_artifacts,
+    mock_os_unlink,
+    mock_is_scc_connected
+):
+    mock_get_creds.return_value = 'foo', 'bar'
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_os_path_exists.return_value = True
+    mock_http_basic_auth.return_value = 'http basic auth'
+    response = Response()
+    response.status_code = 504
+    exception = requests.exceptions.RequestException('foo')
+    mock_request_delete.side_effect = exception
+    mock_is_scc_connected.return_value = True
+    assert utils.remove_registration_data() == None
+    print(mock_logging.error.call_args_list)
+    assert mock_logging.warning.call_args_list == [
+        call('Unable to remove client registration from server'),
+        call(exception),
+        call(exception)
+    ]
+    mock_logging.error.assert_called_with(
+        'Unable to remove client registration from SCC. '
+        'The system is most likely still tracked against your '
+        'subscription. Please inform your SCC administrator that '
+        'the system with "foo" user should be removed from SCC. '
+        'Registration artifacts removed locally.'
+    )
 
 
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -2487,7 +2680,6 @@ def test_get_region_server_args_not_region_srv_args(
     mod = __import__('cloudregister.amazonec2', fromlist=[''])
     assert utils.__get_region_server_args(mod) == None
     mock_logging.assert_not_called
-
 
 
 @patch('cloudregister.registerutils.os.path.basename')
