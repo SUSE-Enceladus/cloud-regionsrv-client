@@ -606,18 +606,18 @@ def get_instance_data(config):
                     )
                     instance_data, errors = p.communicate()
                     instance_data = instance_data.decode()
+                    if errors:
+                        errMsg = 'Data collected from stderr for instance '
+                        errMsg += 'data collection "%s"' % errors
+                        logging.error(errMsg)
+                    if not instance_data:
+                        warn_msg = 'Possible issue accessing the metadata '
+                        warn_msg += 'service. Metadata is empty, may result '
+                        warn_msg += 'in registration failure.'
+                        logging.warning(warn_msg)
                 except OSError:
                     errMsg = 'Error collecting instance data with "%s"'
                     logging.error(errMsg % instance_data_cmd)
-                if errors:
-                    errMsg = 'Data collected from stderr for instance '
-                    errMsg += 'data collection "%s"' % errors
-                    logging.error(errMsg)
-                if not instance_data:
-                    warn_msg = 'Possible issue accessing the metadata service.'
-                    warn_msg += ' Metadata is empty, may result in '
-                    warn_msg += 'registration failure.'
-                    logging.warning(warn_msg)
 
     # Marker for the server to not return https:// formatted
     # service and repo information

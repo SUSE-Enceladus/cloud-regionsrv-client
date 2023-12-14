@@ -1216,8 +1216,67 @@ def test_get_framework_identifier_path():
         '/var/cache/cloudregister/framework_info'
 
 
-def test_get_instance_data():
-    pass
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_instance_data_errors_OK(
+    mock_popen,
+    mock_os_access,
+    mock_logging
+):
+    cfg.set('instance', 'dataProvider', 'ec2metadata')
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('metadata'), str.encode('stderr')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    assert utils.get_instance_data(cfg) == \
+        'metadata<repoformat>plugin:susecloud</repoformat>\n'
+    mock_logging.error.assert_called_once_with(
+        'Data collected from stderr for instance data collection "b\'stderr\'"'
+    )
+    cfg.set('instance', 'dataProvider', 'none')
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+def test_get_instance_data_exception(
+    mock_os_access,
+    mock_logging
+):
+    cfg.set('instance', 'dataProvider', 'no_command_really')
+    assert utils.get_instance_data(cfg) == \
+        '<repoformat>plugin:susecloud</repoformat>\n'
+    assert mock_logging.error.call_args_list == [
+        call('Could not find configured dataProvider: no_command_really'),
+        call('Error collecting instance data with "no_command_really"')
+    ]
+    cfg.set('instance', 'dataProvider', 'none')
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_instance_data_no_data(
+    mock_popen,
+    mock_os_access,
+    mock_logging
+):
+    cfg.set('instance', 'dataProvider', 'ec2metadata')
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    assert utils.get_instance_data(cfg) == \
+        '<repoformat>plugin:susecloud</repoformat>\n'
+    mock_logging.warning.assert_called_once_with(
+        'Possible issue accessing the metadata service. '
+        'Metadata is empty, may result in registration failure.'
+    )
+    cfg.set('instance', 'dataProvider', 'none')
 
 
 def test_get_installed_products():
