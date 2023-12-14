@@ -660,10 +660,6 @@ def test_find_equivalent_smt_server(mock_is_responsive):
     assert utils.find_equivalent_smt_server(smt_a, [smt_a]) == None
 
 
-def test_fetch_smt_data():
-    pass
-
-
 @patch('cloudregister.registerutils.glob.glob')
 def test_find_repos(mock_glob):
     mock_glob.return_value = ['tests/data/repo_foo.repo']
@@ -833,214 +829,214 @@ def test_get_repo_url_no_repos(mock_glob):
     assert utils.get_repo_url('') == ''
 
 
-# @patch('cloudregister.registerutils.logging')
-# @patch.object(SMT, 'is_responsive')
-# @patch('cloudregister.registerutils.is_registered')
-# @patch('cloudregister.registerutils.get_available_smt_servers')
-# @patch('cloudregister.registerutils.get_current_smt')
-# def test_get_smt_network_issue(
-#         mock_get_current_smt,
-#         mock_get_available_smt_servers,
-#         mock_is_registered,
-#         mock_smt_is_responsive,
-#         mock_logging
-# ):
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="192.168.1.1"
-#          SMTserverIPv6="fc00::1"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     mock_get_current_smt.return_value = smt_server
-#     mock_is_registered.return_value = True
-#     mock_smt_is_responsive.side_effect = [False, True]
-#     assert utils.get_smt() == smt_server
-#     assert mock_logging.info.call_args_list == [
-#         call('Waiting for current server to show up for 5 s'),
-#         call('No failover needed, system access recovered')
-#     ]
+@patch('cloudregister.registerutils.logging')
+@patch.object(SMT, 'is_responsive')
+@patch('cloudregister.registerutils.is_registered')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_get_smt_network_issue(
+        mock_get_current_smt,
+        mock_get_available_smt_servers,
+        mock_is_registered,
+        mock_smt_is_responsive,
+        mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_is_registered.return_value = True
+    mock_smt_is_responsive.side_effect = [False, True]
+    assert utils.get_smt() == smt_server
+    assert mock_logging.info.call_args_list == [
+        call('Waiting for current server to show up for 5 s'),
+        call('No failover needed, system access recovered')
+    ]
 
 
-# @patch('cloudregister.registerutils.logging')
-# @patch.object(SMT, 'is_responsive')
-# @patch('cloudregister.registerutils.is_registered')
-# @patch('cloudregister.registerutils.get_available_smt_servers')
-# @patch('cloudregister.registerutils.get_current_smt')
-# def test_get_smt_registered_no_network(
-#         mock_get_current_smt,
-#         mock_get_available_smt_servers,
-#         mock_is_registered,
-#         mock_smt_is_responsive,
-#         mock_logging
-# ):
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="192.168.1.1"
-#          SMTserverIPv6="fc00::1"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     mock_get_current_smt.return_value = smt_server
-#     mock_is_registered.return_value = True
-#     mock_smt_is_responsive.return_value = True
-#     assert utils.get_smt() == smt_server
-#     mock_logging.info.assert_called_once_with(
-#         'Current update server will be used: "(\'192.168.1.1\', \'fc00::1\')"'
-#     )
+@patch('cloudregister.registerutils.logging')
+@patch.object(SMT, 'is_responsive')
+@patch('cloudregister.registerutils.is_registered')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_get_smt_registered_no_network(
+        mock_get_current_smt,
+        mock_get_available_smt_servers,
+        mock_is_registered,
+        mock_smt_is_responsive,
+        mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_is_registered.return_value = True
+    mock_smt_is_responsive.return_value = True
+    assert utils.get_smt() == smt_server
+    mock_logging.info.assert_called_once_with(
+        'Current update server will be used: "(\'192.168.1.1\', \'fc00::1\')"'
+    )
 
 
-# @patch('cloudregister.registerutils.set_as_current_smt')
-# @patch('cloudregister.registerutils.replace_hosts_entry')
-# @patch('cloudregister.registerutils.has_smt_access')
-# @patch('cloudregister.registerutils.get_credentials')
-# @patch('cloudregister.registerutils.get_credentials_file')
-# @patch('cloudregister.registerutils.import_smt_cert')
-# @patch('cloudregister.registerutils.logging')
-# @patch.object(SMT, 'is_responsive')
-# @patch('cloudregister.registerutils.find_equivalent_smt_server')
-# @patch('cloudregister.registerutils.is_registered')
-# @patch('cloudregister.registerutils.get_available_smt_servers')
-# @patch('cloudregister.registerutils.get_current_smt')
-# def test_get_smt_find_equivalent(
-#         mock_get_current_smt,
-#         mock_get_available_smt_servers,
-#         mock_is_registered,
-#         mock_find_equivalent_smt_server,
-#         mock_smt_is_responsive,
-#         mock_logging,
-#         mock_import_smt_cert,
-#         mock_get_credentials_file,
-#         mock_get_credentials,
-#         mock_has_smt_access,
-#         mock_replace_hosts_entry,
-#         mock_set_as_current_smt
-# ):
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="192.168.1.1"
-#          SMTserverIPv6="fc00::1"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="42.168.1.1"
-#          SMTserverIPv6="fc00::7"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     equivalent_smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     mock_get_current_smt.return_value = smt_server
-#     mock_is_registered.return_value = True
-#     mock_smt_is_responsive.side_effect = [False, False, False, False]
-#     mock_find_equivalent_smt_server.return_value = equivalent_smt_server
-#     mock_has_smt_access.return_value = True
-#     mock_get_credentials.return_value = 'foo', 'bar'
-#     assert utils.get_smt() == equivalent_smt_server
-#     assert mock_logging.info.call_args_list == [
-#         call('Waiting for current server to show up for 5 s'),
-#         call('Waiting for current server to show up for 3 s'),
-#         call('Waiting for current server to show up for 1 s'),
-#         call('Using equivalent update server: "(\'42.168.1.1\', \'fc00::7\')"')
-#     ]
+@patch('cloudregister.registerutils.set_as_current_smt')
+@patch('cloudregister.registerutils.replace_hosts_entry')
+@patch('cloudregister.registerutils.has_smt_access')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.import_smt_cert')
+@patch('cloudregister.registerutils.logging')
+@patch.object(SMT, 'is_responsive')
+@patch('cloudregister.registerutils.find_equivalent_smt_server')
+@patch('cloudregister.registerutils.is_registered')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_get_smt_find_equivalent(
+        mock_get_current_smt,
+        mock_get_available_smt_servers,
+        mock_is_registered,
+        mock_find_equivalent_smt_server,
+        mock_smt_is_responsive,
+        mock_logging,
+        mock_import_smt_cert,
+        mock_get_credentials_file,
+        mock_get_credentials,
+        mock_has_smt_access,
+        mock_replace_hosts_entry,
+        mock_set_as_current_smt
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="42.168.1.1"
+         SMTserverIPv6="fc00::7"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    equivalent_smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_is_registered.return_value = True
+    mock_smt_is_responsive.side_effect = [False, False, False, False]
+    mock_find_equivalent_smt_server.return_value = equivalent_smt_server
+    mock_has_smt_access.return_value = True
+    mock_get_credentials.return_value = 'foo', 'bar'
+    assert utils.get_smt() == equivalent_smt_server
+    assert mock_logging.info.call_args_list == [
+        call('Waiting for current server to show up for 5 s'),
+        call('Waiting for current server to show up for 3 s'),
+        call('Waiting for current server to show up for 1 s'),
+        call('Using equivalent update server: "(\'42.168.1.1\', \'fc00::7\')"')
+    ]
 
 
-# @patch('cloudregister.registerutils.set_as_current_smt')
-# @patch('cloudregister.registerutils.replace_hosts_entry')
-# @patch('cloudregister.registerutils.has_smt_access')
-# @patch('cloudregister.registerutils.get_credentials')
-# @patch('cloudregister.registerutils.get_credentials_file')
-# @patch('cloudregister.registerutils.import_smt_cert')
-# @patch('cloudregister.registerutils.logging')
-# @patch.object(SMT, 'is_responsive')
-# @patch('cloudregister.registerutils.find_equivalent_smt_server')
-# @patch('cloudregister.registerutils.is_registered')
-# @patch('cloudregister.registerutils.get_available_smt_servers')
-# @patch('cloudregister.registerutils.get_current_smt')
-# def test_get_smt_equivalent_smt_no_access(
-#         mock_get_current_smt,
-#         mock_get_available_smt_servers,
-#         mock_is_registered,
-#         mock_find_equivalent_smt_server,
-#         mock_smt_is_responsive,
-#         mock_logging,
-#         mock_import_smt_cert,
-#         mock_get_credentials_file,
-#         mock_get_credentials,
-#         mock_has_smt_access,
-#         mock_replace_hosts_entry,
-#         mock_set_as_current_smt
-# ):
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="192.168.1.1"
-#          SMTserverIPv6="fc00::1"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="42.168.1.1"
-#          SMTserverIPv6="fc00::7"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     equivalent_smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     mock_get_current_smt.return_value = smt_server
-#     mock_is_registered.return_value = True
-#     mock_smt_is_responsive.side_effect = [False, False, False, False]
-#     mock_find_equivalent_smt_server.return_value = equivalent_smt_server
-#     mock_has_smt_access.return_value = False
-#     mock_get_credentials.return_value = 'foo', 'bar'
-#     assert utils.get_smt() == smt_server
-#     assert mock_logging.info.call_args_list == [
-#         call('Waiting for current server to show up for 5 s'),
-#         call('Waiting for current server to show up for 3 s'),
-#         call('Waiting for current server to show up for 1 s'),
-#         call('Using equivalent update server: "(\'42.168.1.1\', \'fc00::7\')"')
-#     ]
-#     mock_logging.error.assert_called_once_with(
-#         "Sibling update server, ('42.168.1.1', 'fc00::7'), does not have system credentials "
-#         "cannot failover. Retaining current, ('192.168.1.1', 'fc00::1'), target update server."
-#         'Try again later.'
-#     )
+@patch('cloudregister.registerutils.set_as_current_smt')
+@patch('cloudregister.registerutils.replace_hosts_entry')
+@patch('cloudregister.registerutils.has_smt_access')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.import_smt_cert')
+@patch('cloudregister.registerutils.logging')
+@patch.object(SMT, 'is_responsive')
+@patch('cloudregister.registerutils.find_equivalent_smt_server')
+@patch('cloudregister.registerutils.is_registered')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_get_smt_equivalent_smt_no_access(
+        mock_get_current_smt,
+        mock_get_available_smt_servers,
+        mock_is_registered,
+        mock_find_equivalent_smt_server,
+        mock_smt_is_responsive,
+        mock_logging,
+        mock_import_smt_cert,
+        mock_get_credentials_file,
+        mock_get_credentials,
+        mock_has_smt_access,
+        mock_replace_hosts_entry,
+        mock_set_as_current_smt
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="42.168.1.1"
+         SMTserverIPv6="fc00::7"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    equivalent_smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_is_registered.return_value = True
+    mock_smt_is_responsive.side_effect = [False, False, False, False]
+    mock_find_equivalent_smt_server.return_value = equivalent_smt_server
+    mock_has_smt_access.return_value = False
+    mock_get_credentials.return_value = 'foo', 'bar'
+    assert utils.get_smt() == smt_server
+    assert mock_logging.info.call_args_list == [
+        call('Waiting for current server to show up for 5 s'),
+        call('Waiting for current server to show up for 3 s'),
+        call('Waiting for current server to show up for 1 s'),
+        call('Using equivalent update server: "(\'42.168.1.1\', \'fc00::7\')"')
+    ]
+    mock_logging.error.assert_called_once_with(
+        "Sibling update server, ('42.168.1.1', 'fc00::7'), does not have system credentials "
+        "cannot failover. Retaining current, ('192.168.1.1', 'fc00::1'), target update server."
+        'Try again later.'
+    )
 
 
-# @patch('cloudregister.registerutils.set_as_current_smt')
-# @patch('cloudregister.registerutils.add_hosts_entry')
-# @patch('cloudregister.registerutils.import_smt_cert')
-# @patch('cloudregister.registerutils.logging')
-# @patch.object(SMT, 'is_responsive')
-# @patch('cloudregister.registerutils.clean_hosts_file')
-# @patch('cloudregister.registerutils.get_available_smt_servers')
-# @patch('cloudregister.registerutils.get_current_smt')
-# def test_get_smt_alternative_server(
-#         mock_get_current_smt,
-#         mock_get_available_smt_servers,
-#         mock_clean_hosts_file,
-#         mock_smt_is_responsive,
-#         mock_logging,
-#         mock_import_smt_cert,
-#         mock_add_hosts_entry,
-#         mock_set_as_current_smt
-# ):
-#     smt_data_ipv46 = dedent('''\
-#         <smtInfo fingerprint="00:11:22:33"
-#          SMTserverIP="192.168.1.1"
-#          SMTserverIPv6="fc00::1"
-#          SMTserverName="smt-foo.susecloud.net"
-#          region="antarctica-1"/>''')
-#     alternative_smt_server = SMT(etree.fromstring(smt_data_ipv46))
-#     mock_get_available_smt_servers.return_value = [alternative_smt_server]
-#     mock_get_current_smt.return_value = None
-#     mock_smt_is_responsive.return_value = True
-#     assert utils.get_smt() == alternative_smt_server
-#     mock_logging.info.assert_called_once_with(
-#         'Found alternate update server: "(\'192.168.1.1\', \'fc00::1\')"'
-#     )
-#     mock_add_hosts_entry.assert_called_once_with(alternative_smt_server)
-#     mock_set_as_current_smt.assert_called_once_with(alternative_smt_server)
-#     mock_set_as_current_smt.assert_called_once_with(alternative_smt_server)
-#     mock_clean_hosts_file.assert_called_once_with('smt-foo.susecloud.net')
+@patch('cloudregister.registerutils.set_as_current_smt')
+@patch('cloudregister.registerutils.add_hosts_entry')
+@patch('cloudregister.registerutils.import_smt_cert')
+@patch('cloudregister.registerutils.logging')
+@patch.object(SMT, 'is_responsive')
+@patch('cloudregister.registerutils.clean_hosts_file')
+@patch('cloudregister.registerutils.get_available_smt_servers')
+@patch('cloudregister.registerutils.get_current_smt')
+def test_get_smt_alternative_server(
+        mock_get_current_smt,
+        mock_get_available_smt_servers,
+        mock_clean_hosts_file,
+        mock_smt_is_responsive,
+        mock_logging,
+        mock_import_smt_cert,
+        mock_add_hosts_entry,
+        mock_set_as_current_smt
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="smt-foo.susecloud.net"
+         region="antarctica-1"/>''')
+    alternative_smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_available_smt_servers.return_value = [alternative_smt_server]
+    mock_get_current_smt.return_value = None
+    mock_smt_is_responsive.return_value = True
+    assert utils.get_smt() == alternative_smt_server
+    mock_logging.info.assert_called_once_with(
+        'Found alternate update server: "(\'192.168.1.1\', \'fc00::1\')"'
+    )
+    mock_add_hosts_entry.assert_called_once_with(alternative_smt_server)
+    mock_set_as_current_smt.assert_called_once_with(alternative_smt_server)
+    mock_set_as_current_smt.assert_called_once_with(alternative_smt_server)
+    mock_clean_hosts_file.assert_called_once_with('smt-foo.susecloud.net')
 
 
 @patch('cloudregister.registerutils.__populate_srv_cache')
