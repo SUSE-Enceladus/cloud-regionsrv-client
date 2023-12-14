@@ -962,8 +962,122 @@ def test_find_repos(mock_glob):
     assert utils.find_repos('Foo') == ['SLE-Module-Live-Foo15-SP5-Source-Pool']
 
 
-def test_get_activations():
-    pass
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_smt')
+def test_get_activations_no_user_pass(
+    mock_get_smt,
+    mock_get_creds,
+    mock_get_creds_file,
+    mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt.return_value = smt_server
+    mock_get_creds.return_value = None, 'foo'
+    assert utils.get_activations() == {}
+    mock_logging.error.assert_called_once_with(
+        'Unable to extract username and password for "fantasy.example.com"'
+    )
+
+
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.get_instance_data')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.HTTPBasicAuth')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_smt')
+def test_get_activations_request_wrong(
+    mock_get_smt,
+    mock_get_creds,
+    mock_get_creds_file,
+    mock_logging,
+    mock_http_basic_auth,
+    mock_config,
+    mock_get_instance_data,
+    mock_request_get
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt.return_value = smt_server
+    mock_get_creds.return_value = 'foo', 'bar'
+    mock_http_basic_auth.return_value = 'foobar'
+    mock_get_instance_data.return_value = 'super_instance_data'
+    response = Response()
+    response.status_code = 422
+    response.reason = 'no reason'
+    mock_request_get.return_value = response
+    assert utils.get_activations() == {}
+    assert mock_logging.error.call_args_list == [
+        call(
+            'Unable to get product info from update server: '
+            '"(\'192.168.1.1\', \'fc00::1\')"'
+        ),
+        call('\tReason: "no reason"'),
+        call('\tCode: %d', 422)
+    ]
+    mock_request_get.assert_called_once_with(
+        'https://fantasy.example.com/connect/systems/activations',
+        auth='foobar',
+        headers={'X-Instance-Data': b'c3VwZXJfaW5zdGFuY2VfZGF0YQ=='}
+    )
+
+
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.get_instance_data')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.HTTPBasicAuth')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_smt')
+def test_get_activations_request_OK(
+    mock_get_smt,
+    mock_get_creds,
+    mock_get_creds_file,
+    mock_logging,
+    mock_http_basic_auth,
+    mock_config,
+    mock_get_instance_data,
+    mock_request_get
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt.return_value = smt_server
+    mock_get_creds.return_value = 'foo', 'bar'
+    mock_http_basic_auth.return_value = 'foobar'
+    mock_get_instance_data.return_value = 'super_instance_data'
+    response = Response()
+    response.status_code = 200
+    json_mock = Mock()
+    json_mock.return_value = {"foo": "bar"}
+    response.json = json_mock
+    mock_request_get.return_value = response
+    assert utils.get_activations() == {'foo': 'bar'}
+    assert mock_logging.error.not_called
+    mock_request_get.assert_called_once_with(
+        'https://fantasy.example.com/connect/systems/activations',
+        auth='foobar',
+        headers={'X-Instance-Data': b'c3VwZXJfaW5zdGFuY2VfZGF0YQ=='}
+    )
 
 
 @patch('cloudregister.registerutils.configparser.RawConfigParser.read')
@@ -2376,7 +2490,8 @@ def test_remove_service(
 # Helper functions
 class Response():
     """Fake a request response object"""
-    pass
+    def json(self):
+        pass
 
 def get_servers_data():
     """The XML data matching the data pickled server objects"""
