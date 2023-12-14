@@ -653,8 +653,8 @@ def get_installed_products():
             errMsg = 'zypper product query returned with zypper code %d'
             logging.error(errMsg % cmd.returncode)
             return products
-    except OSError:
-        errMsg = 'Could not get product list %s' % cmd[1]
+    except OSError as err:
+        errMsg = 'Could not get product list: %s' % err
         logging.error(errMsg)
         return products
 

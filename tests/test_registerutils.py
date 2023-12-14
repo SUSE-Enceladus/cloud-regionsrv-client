@@ -1279,8 +1279,152 @@ def test_get_instance_data_no_data(
     cfg.set('instance', 'dataProvider', 'none')
 
 
-def test_get_installed_products():
-    pass
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.is_zypper_running')
+def test_get_installed_products_no_zypper_lock(
+    mock_is_zypper_running,
+    mock_logging,
+    mock_time_sleep
+):
+    # mock_is_zypper_running.side_effect = [True, False]
+    mock_is_zypper_running.return_value = True
+    assert utils.get_installed_products() == []
+    mock_logging.error.assert_called_once_with(
+        'Wait time expired could not acquire zypper lock file'
+    )
+
+
+@patch('cloudregister.registerutils.subprocess.Popen')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.is_zypper_running')
+def test_get_installed_products_cmd_error(
+    mock_is_zypper_running,
+    mock_logging,
+    mock_time_sleep,
+    mock_popen
+):
+    mock_is_zypper_running.side_effect = [True, False]
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 1
+    mock_popen.return_value = mock_process
+    assert utils.get_installed_products() == []
+    mock_logging.error.assert_called_once_with(
+        'zypper product query returned with zypper code 1'
+    )
+
+
+@patch('cloudregister.registerutils.subprocess.Popen')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.is_zypper_running')
+def test_get_installed_products_cmd_oserror_exception(
+    mock_is_zypper_running,
+    mock_logging,
+    mock_time_sleep,
+    mock_popen
+):
+    mock_is_zypper_running.side_effect = [True, False]
+    mock_popen.side_effect = OSError('No such file or directory')
+    assert utils.get_installed_products() == []
+    mock_logging.error.assert_called_once_with(
+        'Could not get product list: No such file or directory'
+    )
+
+
+@patch('cloudregister.registerutils.os.path.realpath')
+@patch('cloudregister.registerutils.os.path.islink')
+@patch('cloudregister.registerutils.subprocess.Popen')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.is_zypper_running')
+def test_get_installed_products_OK(
+    mock_is_zypper_running,
+    mock_logging,
+    mock_time_sleep,
+    mock_popen,
+    mock_os_path_islink,
+    mock_os_path_realpath,
+):
+    prod = dedent('''<?xml version="1.0"?>\n<stream>\n<message type="info">foo\
+    \n</message><product-list><product name="sle-super-prod" version="12"\
+    arch="x86_64">foo</product></product-list></stream>''')
+    mock_is_zypper_running.side_effect = [True, False]
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[prod.encode(), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_os_path_islink.return_value = True
+    mock_os_path_realpath.return_value = '/real/path/to/base/prod'
+    assert utils.get_installed_products() == ['sle-super-prod/12/x86_64']
+    assert mock_logging.error.not_called
+
+
+@patch('cloudregister.registerutils.os.path.realpath')
+@patch('cloudregister.registerutils.os.path.islink')
+@patch('cloudregister.registerutils.subprocess.Popen')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.is_zypper_running')
+def test_get_installed_products_baseprod(
+    mock_is_zypper_running,
+    mock_logging,
+    mock_time_sleep,
+    mock_popen,
+    mock_os_path_islink,
+    mock_os_path_realpath,
+):
+    prod = dedent('''<?xml version="1.0"?>\n<stream>\n<message type="info">foo\
+    \n</message><product-list><product name="prod" version="12"\
+    arch="x86_64">foo</product></product-list></stream>''')
+    mock_is_zypper_running.side_effect = [True, False]
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[prod.encode(), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_os_path_islink.return_value = True
+    mock_os_path_realpath.return_value = '/real/path/to/base/prod'
+    assert utils.get_installed_products() == []
+    assert mock_logging.error.not_called
+
+
+@patch('cloudregister.registerutils.os.path.realpath')
+@patch('cloudregister.registerutils.os.path.islink')
+@patch('cloudregister.registerutils.subprocess.Popen')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.is_zypper_running')
+def test_get_installed_products_no_link(
+    mock_is_zypper_running,
+    mock_logging,
+    mock_time_sleep,
+    mock_popen,
+    mock_os_path_islink,
+    mock_os_path_realpath,
+):
+    prod = dedent('''<?xml version="1.0"?>\n<stream>\n<message type="info">foo\
+    \n</message><product-list><product name="sle-super-prod" version="12"\
+    arch="x86_64">foo</product></product-list></stream>''')
+    mock_is_zypper_running.side_effect = [True, False]
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[prod.encode(), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_os_path_islink.return_value = False
+    assert utils.get_installed_products() == []
+    mock_logging.error.assert_called_once_with(
+        'No baseproduct installed system cannot be registered'
+    )
 
 
 @patch('cloudregister.registerutils.glob.glob')
