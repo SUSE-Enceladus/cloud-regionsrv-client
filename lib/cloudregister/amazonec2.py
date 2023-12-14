@@ -44,7 +44,7 @@ def generateRegionSrvArgs():
                 continue
         except requests.exceptions.RequestException:
             msg = 'Unable to retrieve IMDSv2 token using %s' %imds_ip
-            logging.warning(msg)
+            logging.info(msg)
             continue
         break
     else:
