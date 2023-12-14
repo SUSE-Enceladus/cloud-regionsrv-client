@@ -16,6 +16,7 @@ import inspect
 import io
 import os
 import pickle
+import requests
 import sys
 import tempfile
 from pytest import raises
@@ -633,8 +634,303 @@ def test_exec_subprocess(mock_popen):
     assert utils.exec_subprocess(['foo']) == 1
 
 
-def test_fetch_smt_data():
-    pass
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.requests.get')
+def test_fetch_smt_data_not_200_exception(
+    mock_request_get,
+    mock_logging,
+):
+    response = Response()
+    response.status_code = 422
+    mock_request_get.return_value = response
+    with raises(SystemExit) as pytest_wrapped_e:
+        utils.fetch_smt_data(cfg, None)
+    assert mock_logging.error.call_args_list == [
+        call('===================='),
+        call('Metadata server returned 422'),
+        call('Unable to obtain SMT server information, exiting')
+    ]
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.requests.get')
+def test_fetch_smt_data_no_response_text(
+    mock_request_get,
+    mock_logging,
+):
+    response = Response()
+    response.status_code = 200
+    response.text = "{}"
+    mock_request_get.return_value = response
+    with raises(SystemExit) as pytest_wrapped_e:
+        utils.fetch_smt_data(cfg, None)
+    assert mock_logging.error.call_args_list == [
+        call('Metadata server did not supply a value for "fingerprint"'),
+        call('Cannot proceed, exiting registration code')
+    ]
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.requests.get')
+def test_fetch_smt_data_metadata_server(
+    mock_request_get,
+    mock_logging,
+):
+    response = Response()
+    response.status_code = 200
+    response.text = (
+        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar"}'
+    )
+    mock_request_get.return_value = response
+    smt_data_fetched = dedent('''\
+    <regionSMTdata><smtInfo fingerprint="foo" SMTserverIP="bar" \
+    SMTserverName="foobar" /></regionSMTdata>''')
+    smt_server = etree.fromstring(smt_data_fetched)
+    fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    assert etree.tostring(fetched_smt_data, encoding='utf-8') == \
+        etree.tostring(smt_server, encoding='utf-8')
+
+
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_no_answered(
+    mock_logging,
+    mock_time_sleep
+):
+    original_value = cfg.get('server', 'regionsrv')
+    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', '1.1.1.1')
+    with raises(SystemExit) as pytest_wrapped_e:
+        fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    assert mock_logging.info.call_args_list == [
+        call('Using API: regionInfo'),
+        call('Getting update server information, attempt 1'),
+        call('\tUsing region server: 1.1.1.1'),
+        call(
+            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            'skip this server'
+        ),
+        call('Waiting 20 seconds before next attempt'),
+        call('Getting update server information, attempt 2'),
+        call('\tUsing region server: 1.1.1.1'),
+        call(
+            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            'skip this server'
+        ),
+        call('Waiting 10 seconds before next attempt'),
+        call('Getting update server information, attempt 3'),
+        call('\tUsing region server: 1.1.1.1'),
+        call(
+            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            'skip this server'
+        )
+    ]
+
+    assert mock_logging.error.call_args_list == [
+        call('Request not answered by any server after 3 attempts'),
+        call('Exiting without registration')
+    ]
+    cfg.set('server', 'regionsrv', original_value)
+    cfg.set('server', 'metadata_server', original_value_metadata_srv)
+
+
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.os.path.isfile')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_answered(
+    mock_logging,
+    mock_time_sleep,
+    mock_os_path_isfile,
+    mock_request_get
+):
+    original_value = cfg.get('server', 'regionsrv')
+    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', '1.1.1.1')
+    mock_os_path_isfile.return_value = True
+    response = Response()
+    response.status_code = 200
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    response.text = smt_xml
+    mock_request_get.return_value = response
+    fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    assert mock_logging.info.call_args_list == [
+        call('Using API: regionInfo'),
+        call('Getting update server information, attempt 1'),
+        call('\tUsing region server: 1.1.1.1'),
+    ]
+    cfg.set('server', 'regionsrv', original_value)
+    cfg.set('server', 'metadata_server', original_value_metadata_srv)
+
+
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.os.path.isfile')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_error_response(
+    mock_logging,
+    mock_time_sleep,
+    mock_os_path_isfile,
+    mock_request_get
+):
+    original_value = cfg.get('server', 'regionsrv')
+    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', '1.1.1.1')
+    mock_os_path_isfile.return_value = True
+    response = Response()
+    response.status_code = 422
+    response.reason = 'well, you shall not pass'
+    mock_request_get.return_value = response
+    with raises(SystemExit) as pytest_wrapped_e:
+        fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    assert mock_logging.info.call_args_list == [
+        call('Using API: regionInfo'),
+        call('Getting update server information, attempt 1'),
+        call('\tUsing region server: 1.1.1.1'),
+        call('Waiting 20 seconds before next attempt'),
+        call('Getting update server information, attempt 2'),
+        call('\tUsing region server: 1.1.1.1'),
+        call('Waiting 10 seconds before next attempt'),
+        call('Getting update server information, attempt 3'),
+        call('\tUsing region server: 1.1.1.1')
+    ]
+    assert mock_logging.error.call_args_list == [
+        call('===================='),
+        call('Server returned: 422'),
+        call('Server error: "well, you shall not pass"'),
+        call('===================='),
+        call('\tAll servers reported an error'),
+        call('===================='),
+        call('Server returned: 422'),
+        call('Server error: "well, you shall not pass"'),
+        call('===================='),
+        call('\tAll servers reported an error'),
+        call('===================='),
+        call('Server returned: 422'),
+        call('Server error: "well, you shall not pass"'),
+        call('===================='),
+        call('\tAll servers reported an error'),
+        call('Request not answered by any server after 3 attempts'),
+        call('Exiting without registration')
+    ]
+    cfg.set('server', 'regionsrv', original_value)
+    cfg.set('server', 'metadata_server', original_value_metadata_srv)
+
+
+@patch.object(SMT, 'is_responsive')
+def test_find_equivalent_smt_server(mock_is_responsive):
+    """Test hosts entry has a new entry added by us."""
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         region="antarctica-1"/>''')
+    smt_data_ipv46_2 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.2.1"
+         SMTserverIPv6="fc00::2"
+         SMTserverName="fantasy.example.net"
+         region="antarctica-1"/>''')
+    smt_a = SMT(etree.fromstring(smt_data_ipv46))
+    smt_b = SMT(etree.fromstring(smt_data_ipv46_2))
+    mock_is_responsive.return_value = True
+
+    assert utils.find_equivalent_smt_server(smt_a, [smt_a, smt_b]) == smt_b
+    assert utils.find_equivalent_smt_server(smt_a, [smt_a]) == None
+
+
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.os.path.isfile')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_exception(
+    mock_logging,
+    mock_time_sleep,
+    mock_os_path_isfile,
+    mock_request_get
+):
+    original_value = cfg.get('server', 'regionsrv')
+    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', 'fc00::11')
+    mock_os_path_isfile.return_value = True
+    response = Response()
+    response.status_code = 422
+    response.reason = 'well, you shall not pass'
+    mock_request_get.side_effect = requests.exceptions.RequestException('foo')
+    with raises(SystemExit) as pytest_wrapped_e:
+        fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    assert mock_logging.info.call_args_list == [
+        call('Using API: regionInfo'),
+        call('Getting update server information, attempt 1'),
+        call('\tUsing region server: fc00::11'),
+        call('Waiting 20 seconds before next attempt'),
+        call('Getting update server information, attempt 2'),
+        call('\tUsing region server: fc00::11'),
+        call('Waiting 10 seconds before next attempt'),
+        call('Getting update server information, attempt 3'),
+        call('\tUsing region server: fc00::11')
+    ]
+    assert mock_logging.error.call_args_list == [
+        call('\tNo response from: fc00::11'),
+        call('\tNone of the servers responded'),
+        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call('\tNo response from: fc00::11'),
+        call('\tNone of the servers responded'),
+        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call('\tNo response from: fc00::11'),
+        call('\tNone of the servers responded'),
+        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call('Request not answered by any server after 3 attempts'),
+        call('Exiting without registration')
+    ]
+    cfg.set('server', 'regionsrv', original_value)
+    cfg.set('server', 'metadata_server', original_value_metadata_srv)
+
+
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.os.path.isfile')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_exception_quiet(
+    mock_logging,
+    mock_time_sleep,
+    mock_os_path_isfile,
+    mock_request_get
+):
+    original_value = cfg.get('server', 'regionsrv')
+    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', '1.1.1.1')
+    mock_os_path_isfile.return_value = True
+    response = Response()
+    response.status_code = 422
+    response.reason = 'well, you shall not pass'
+    mock_request_get.side_effect = requests.exceptions.RequestException('foo')
+    with raises(SystemExit) as pytest_wrapped_e:
+        fetched_smt_data = utils.fetch_smt_data(cfg, 'foo', quiet=True)
+    assert mock_logging.info.call_args_list == [
+        call('Using API: regionInfo'),
+        call('Waiting 20 seconds before next attempt'),
+        call('Waiting 10 seconds before next attempt'),
+    ]
+    assert mock_logging.error.call_args_list == [
+        call('Request not answered by any server after 3 attempts'),
+        call('Exiting without registration')
+    ]
+    cfg.set('server', 'regionsrv', original_value)
+    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch.object(SMT, 'is_responsive')

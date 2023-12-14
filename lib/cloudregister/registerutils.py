@@ -218,7 +218,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 )
         except Exception as e:
             logging.error('=' * 20)
-            logging.error(e.message)
+            logging.error(str(e))
             logging.error('Unable to obtain SMT server information, exiting')
             sys.exit(1)
         smt_info = json.loads(response.text)
@@ -233,7 +233,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 logging.error('Cannot proceed, exiting registration code')
                 sys.exit(1)
             smt_info_xml += '%s="%s" ' % (attr, value)
-            smt_info_xml += '/></regionSMTdata>'
+        smt_info_xml += '/></regionSMTdata>'
         smt_data_root = etree.fromstring(smt_info_xml)
     else:
         # Get the API to use
