@@ -735,6 +735,7 @@ def test_fetch_smt_data_api_no_answered(
     cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
+@patch('cloudregister.registerutils.socket.has_ipv6', False)
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -743,7 +744,7 @@ def test_fetch_smt_data_api_answered(
     mock_logging,
     mock_time_sleep,
     mock_os_path_isfile,
-    mock_request_get
+    mock_request_get,
 ):
     original_value = cfg.get('server', 'regionsrv')
     original_value_metadata_srv = cfg.get('server', 'metadata_server')
@@ -762,12 +763,50 @@ def test_fetch_smt_data_api_answered(
     </regionSMTdata>''')
     response.text = smt_xml
     mock_request_get.return_value = response
-    fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    utils.fetch_smt_data(cfg, None)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
         call('\tUsing region server: 1.1.1.1'),
     ]
+    cfg.set('server', 'regionsrv', original_value)
+    cfg.set('server', 'metadata_server', original_value_metadata_srv)
+
+
+@patch('cloudregister.registerutils.ipaddress.ip_address')
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.os.path.isfile')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_no_valid_ip(
+    mock_logging,
+    mock_time_sleep,
+    mock_os_path_isfile,
+    mock_request_get,
+    mock_ipaddress_ip_address
+):
+    original_value = cfg.get('server', 'regionsrv')
+    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', 'foo')
+    mock_os_path_isfile.return_value = True
+    response = Response()
+    response.status_code = 200
+    response.text = (
+        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar"}'
+    )
+    response2 = Response()
+    response2.status_code = 200
+    smt_xml = dedent(
+        '''<regionSMTdata><smtInfo fingerprint="99:88:77:66" '''
+        '''SMTserverIP="1.2.3.4" SMTserverIPv6="fc11::2" '''
+        '''SMTserverName="foo.susecloud.net"/></regionSMTdata>'''
+    )
+    response2.text = smt_xml
+    mock_request_get.side_effect = [response2, response2]
+    mock_ipaddress_ip_address.side_effect = ValueError('foo')
+    fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    assert etree.tostring(fetched_smt_data, encoding='utf-8') == smt_xml.encode()
     cfg.set('server', 'regionsrv', original_value)
     cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
@@ -780,7 +819,7 @@ def test_fetch_smt_data_api_error_response(
     mock_logging,
     mock_time_sleep,
     mock_os_path_isfile,
-    mock_request_get
+    mock_request_get,
 ):
     original_value = cfg.get('server', 'regionsrv')
     original_value_metadata_srv = cfg.get('server', 'metadata_server')
@@ -825,29 +864,6 @@ def test_fetch_smt_data_api_error_response(
     ]
     cfg.set('server', 'regionsrv', original_value)
     cfg.set('server', 'metadata_server', original_value_metadata_srv)
-
-
-@patch.object(SMT, 'is_responsive')
-def test_find_equivalent_smt_server(mock_is_responsive):
-    """Test hosts entry has a new entry added by us."""
-    smt_data_ipv46 = dedent('''\
-        <smtInfo fingerprint="00:11:22:33"
-         SMTserverIP="192.168.1.1"
-         SMTserverIPv6="fc00::1"
-         SMTserverName="fantasy.example.com"
-         region="antarctica-1"/>''')
-    smt_data_ipv46_2 = dedent('''\
-        <smtInfo fingerprint="00:11:22:33"
-         SMTserverIP="192.168.2.1"
-         SMTserverIPv6="fc00::2"
-         SMTserverName="fantasy.example.net"
-         region="antarctica-1"/>''')
-    smt_a = SMT(etree.fromstring(smt_data_ipv46))
-    smt_b = SMT(etree.fromstring(smt_data_ipv46_2))
-    mock_is_responsive.return_value = True
-
-    assert utils.find_equivalent_smt_server(smt_a, [smt_a, smt_b]) == smt_b
-    assert utils.find_equivalent_smt_server(smt_a, [smt_a]) == None
 
 
 @patch('cloudregister.registerutils.requests.get')
@@ -931,6 +947,29 @@ def test_fetch_smt_data_api_exception_quiet(
     ]
     cfg.set('server', 'regionsrv', original_value)
     cfg.set('server', 'metadata_server', original_value_metadata_srv)
+
+
+@patch.object(SMT, 'is_responsive')
+def test_find_equivalent_smt_server(mock_is_responsive):
+    """Test hosts entry has a new entry added by us."""
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         region="antarctica-1"/>''')
+    smt_data_ipv46_2 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.2.1"
+         SMTserverIPv6="fc00::2"
+         SMTserverName="fantasy.example.net"
+         region="antarctica-1"/>''')
+    smt_a = SMT(etree.fromstring(smt_data_ipv46))
+    smt_b = SMT(etree.fromstring(smt_data_ipv46_2))
+    mock_is_responsive.return_value = True
+
+    assert utils.find_equivalent_smt_server(smt_a, [smt_a, smt_b]) == smt_b
+    assert utils.find_equivalent_smt_server(smt_a, [smt_a]) == None
 
 
 @patch.object(SMT, 'is_responsive')
