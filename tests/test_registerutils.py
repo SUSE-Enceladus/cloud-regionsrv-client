@@ -1143,7 +1143,7 @@ def test_get_config_exception(mock_configparser):
 
 @patch('cloudregister.registerutils.glob.glob')
 @patch('cloudregister.registerutils.logging')
-def test_get_credentials_no_file(mock_logging, mock_glob):
+def test_get_credentials_file_no_file(mock_logging, mock_glob):
     mock_glob.return_value = []
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="00:11:22:33"
@@ -2400,7 +2400,11 @@ def test_store_smt_data(mock_os_fchmod, mock_pickle, mock_dump):
          SMTserverName="smt-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-    utils.store_smt_data('foo', smt_server)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        utils.store_smt_data(
+            os.path.join(tmpdirname, 'foo'),
+            smt_server
+        )
     mock_os_fchmod.assert_called_once_with(11, 384)
     mock_pickle.Pickler.assert_called_once()
 
