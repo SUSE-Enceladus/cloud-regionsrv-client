@@ -1371,7 +1371,8 @@ def test_get_installed_products_cmd_oserror_exception(
     mock_popen.side_effect = OSError('No such file or directory')
     assert utils.get_installed_products() == []
     mock_logging.error.assert_called_once_with(
-        'Could not get product list: No such file or directory'
+        'Could not get product list %s',
+        'zypper --no-remote -x products'
     )
 
 

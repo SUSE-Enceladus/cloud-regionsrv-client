@@ -642,19 +642,19 @@ def get_installed_products():
         logging.error(errMsg)
         return products
 
+    zypper_products_cmd = ["zypper", "--no-remote", "-x", "products"]
     try:
-        cmd = subprocess.Popen(
-            ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
-        )
+        cmd = subprocess.Popen(zypper_products_cmd, stdout=subprocess.PIPE)
         product_xml = cmd.communicate()
         # Just in case something else started zypper again
         if cmd.returncode != 0:
             errMsg = 'zypper product query returned with zypper code %d'
             logging.error(errMsg % cmd.returncode)
             return products
-    except OSError as err:
-        errMsg = 'Could not get product list: %s' % err
-        logging.error(errMsg)
+    except OSError:
+        logging.error(
+            'Could not get product list %s', ' '.join(zypper_products_cmd)
+        )
         return products
 
     # Determine the base product
