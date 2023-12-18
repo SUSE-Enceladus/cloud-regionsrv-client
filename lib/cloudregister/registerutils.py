@@ -381,17 +381,17 @@ def find_equivalent_smt_server(configured_smt, known_smt_servers):
 
 
 # ----------------------------------------------------------------------------
-def find_repos(search_for):
+def find_repos(contains_name):
     """Find all repos that contain the given name (case insensitive) in
        the repo name"""
     repo_names = []
     repos = glob.glob('/etc/zypp/repos.d/*.repo')
+    search_for = contains_name.lower()
     for repo in repos:
         repo_cfg = get_config(repo)
         for section in repo_cfg.sections():
             cfg_repo_name = repo_cfg.get(section, 'name')
-            repo_name = cfg_repo_name
-            if search_for.lower() in repo_name.lower():
+            if search_for in cfg_repo_name.lower():
                 repo_names.append(cfg_repo_name)
 
     return repo_names
@@ -400,7 +400,6 @@ def find_repos(search_for):
 # ----------------------------------------------------------------------------
 def get_activations():
     """Get the activated products from the update server"""
-    empty_activations = {}
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
     if not (user and password):
@@ -408,7 +407,7 @@ def get_activations():
             'Unable to extract username and password '
             'for "%s"' % update_server.get_FQDN()
         )
-        return empty_activations
+        return {}
 
     auth_creds = HTTPBasicAuth(user, password)
 
@@ -430,7 +429,7 @@ def get_activations():
         )
         logging.error('\tReason: "%s"' % res.reason)
         logging.error('\tCode: %d', res.status_code)
-        return empty_activations
+        return {}
 
     return res.json()
 
