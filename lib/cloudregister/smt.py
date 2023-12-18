@@ -188,9 +188,9 @@ class SMT:
             ipv6 = self.get_ipv6()
             if ipv6:
                 cert_id = ipv6.replace(':', '_')
-        ca_file_path = os.path.join(
-            target_dir,
-            'registration_server_%s.pem' % cert_id
+        ca_file_path = (
+            target_dir +
+            '/registration_server_%s.pem' % cert_id
         )
         try:
             with open(ca_file_path, 'w') as smt_ca_file:
