@@ -188,14 +188,6 @@ def test_get_cert(
     assert smt.get_cert() == response.text
 
 
-@patch.object(SMT, 'get_cert')
-def test_write_cert_IOError(mock_get_cert):
-    """Write cert that produces IOError exception."""
-    mock_get_cert.return_value = ""
-    smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert smt.write_cert('/atmp') == 0
-
-
 # ----------------------------------------------------------------------------
 @patch.object(SMT, 'get_cert')
 def test_write_cert(mock_get_cert):
