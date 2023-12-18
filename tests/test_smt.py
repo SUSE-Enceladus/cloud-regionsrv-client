@@ -14,6 +14,7 @@
 import inspect
 import os
 import sys
+import tempfile
 
 from lxml import etree
 from mock import patch, Mock
@@ -203,8 +204,9 @@ def test_write_cert(mock_get_cert):
         mock_get_cert.return_value = cert_file.read()
 
     smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert smt.write_cert('/tmp') == '/tmp/registration_server_fc00__1.pem'
-    os.remove('/tmp/registration_server_fc00__1.pem')
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        assert smt.write_cert(tmpdirname) == \
+            os.path.join(tmpdirname, 'registration_server_fc00__1.pem')
 
 
 # ----------------------------------------------------------------------------
