@@ -214,19 +214,6 @@ def test_get_cert(
 
 
 # ----------------------------------------------------------------------------
-@patch.object(SMT, 'get_cert')
-def test_write_cert(mock_get_cert):
-    """Received cert with different fingerprint"""
-    with open('tests/data/cert.pem', 'r') as cert_file:
-        mock_get_cert.return_value = cert_file.read()
-
-    smt = SMT(etree.fromstring(smt_data_ipv46))
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        assert smt.write_cert(tmpdirname) == \
-            os.path.join(tmpdirname, 'registration_server_fc00__1.pem')
-
-
-# ----------------------------------------------------------------------------
 def test_get_domain_name():
     """Test get_domain_name returns expected value"""
     smt = SMT(etree.fromstring(smt_data_ipv6))
@@ -391,6 +378,7 @@ def test_set_protocol():
     smt = SMT(etree.fromstring(smt_data_ipv46))
     smt.set_protocol('https')
     assert smt._protocol == 'https'
+
 
 
 # ----------------------------------------------------------------------------

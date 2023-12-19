@@ -19,7 +19,7 @@ def generateRegionSrvArgs():
     """
     Generate arguments to be sent to the region server.
     """
-    # IPv4 first as IPv6 IMDs access requires a special flag whne the instance
+    # IPv4 first as IPv6 IMDs access requires a special flag when the instance
     # gets launched which is not as likely to be set.
     # Yes, we know the standard says IPv6 should be first...
     imds_ips = ('169.254.169.254', 'fd00:ec2::254')

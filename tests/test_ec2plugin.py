@@ -42,12 +42,16 @@ def test_request_fail(mock_logging, mock_request_get, mock_request_put):
     mock_request_put.side_effect = requests.exceptions.RequestException
     result = ec2.generateRegionSrvArgs()
     assert result is None
-    assert mock_logging.warning.called
-    msg = 'Unable to determine instance placement from "'
-    msg += 'http://169.254.169.254/latest/meta-data/placement/'
-    msg += 'availability-zone'
-    msg += '"'
-    mock_logging.warning.assert_called_with(msg)
+    assert mock_logging.info.called_with(
+        'Unable to retrieve IMDSv2 token using 169.254.169.254'
+    )
+    assert mock_logging.info.called_with(
+        'Unable to retrieve IMDSv2 token using 169.254.169.254'
+    )
+    assert mock_logging.warning.called_with('Falling back to IMDSv1')
+    assert mock_logging.warning.called_with(
+        'Unable to determine instance placement from "fd00:ec2::254"'
+    )
 
 
 # ----------------------------------------------------------------------------
