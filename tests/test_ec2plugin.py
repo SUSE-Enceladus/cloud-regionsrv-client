@@ -71,6 +71,7 @@ def test_request_fail_response_error(
 @patch('amazonec2.requests.get')
 def test_request_succeed(mock_request_get, mock_request_put):
     """Test behavior with expected return value"""
+    mock_request_put.return_value = _get_expected_response()
     mock_request_get.return_value = _get_expected_response()
     result = ec2.generateRegionSrvArgs()
     assert 'regionHint=us-east-1' == result

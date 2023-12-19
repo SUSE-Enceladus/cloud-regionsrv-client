@@ -142,7 +142,6 @@ class SMT:
     # --------------------------------------------------------------------
     def is_responsive(self):
         """Check if the SMT server is responsive"""
-        
         # We cannot know if the server cert has been imported into the
         # system cert hierarchy, nor do we know if the hostname is resolvable
         # or if the IP address is built into the cert. Since we only want

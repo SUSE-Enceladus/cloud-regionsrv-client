@@ -1,0 +1,4 @@
+[Public_Cloud_Module_x86_64]
+enabled=1
+autorefresh=1
+url = https://192.168.1.1

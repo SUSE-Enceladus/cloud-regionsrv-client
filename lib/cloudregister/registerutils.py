@@ -1,4 +1,4 @@
-# Copyright (c) 2022, SUSE LLC, All rights reserved.
+# Copyright (c) 2023, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -221,7 +221,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 )
         except Exception as e:
             logging.error('=' * 20)
-            logging.error(e.message)
+            logging.error(str(e))
             logging.error('Unable to obtain SMT server information, exiting')
             sys.exit(1)
         smt_info = json.loads(response.text)
@@ -236,7 +236,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 logging.error('Cannot proceed, exiting registration code')
                 sys.exit(1)
             smt_info_xml += '%s="%s" ' % (attr, value)
-            smt_info_xml += '/></regionSMTdata>'
+        smt_info_xml += '/></regionSMTdata>'
         smt_data_root = etree.fromstring(smt_info_xml)
     else:
         # Get the API to use
@@ -394,8 +394,7 @@ def find_repos(contains_name):
         repo_cfg = get_config(repo)
         for section in repo_cfg.sections():
             cfg_repo_name = repo_cfg.get(section, 'name')
-            repo_name = cfg_repo_name
-            if search_for in repo_name.lower():
+            if search_for in cfg_repo_name.lower():
                 repo_names.append(cfg_repo_name)
 
     return repo_names
@@ -404,7 +403,6 @@ def find_repos(contains_name):
 # ----------------------------------------------------------------------------
 def get_activations():
     """Get the activated products from the update server"""
-    activations = {}
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
     if not (user and password):
@@ -412,7 +410,7 @@ def get_activations():
             'Unable to extract username and password '
             'for "%s"' % update_server.get_FQDN()
         )
-        return activations
+        return {}
 
     auth_creds = HTTPBasicAuth(user, password)
 
@@ -434,7 +432,7 @@ def get_activations():
         )
         logging.error('\tReason: "%s"' % res.reason)
         logging.error('\tCode: %d', res.status_code)
-        return activations
+        return {}
 
     return res.json()
 
@@ -573,7 +571,7 @@ def get_current_smt():
 
 # ----------------------------------------------------------------------------
 def get_framework_identifier_path():
-    """Return the path for the frmework identifier file"""
+    """Return the path for the framework identifier file."""
     return os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
 
 
@@ -581,7 +579,7 @@ def get_framework_identifier_path():
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
-    instance_data = ''
+    instance_data = b''
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -590,44 +588,29 @@ def get_instance_data(config):
         cmd = instance_data_cmd.split()[0]
         if cmd != 'none':
             if not cmd.startswith('/'):
-                try:
-                    p = subprocess.Popen(
-                        ['which %s' % cmd],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                except OSError:
+                cmd_lookup = exec_subprocess(['which', cmd])
+                if cmd_lookup:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                try:
-                    p = subprocess.Popen(
-                        instance_data_cmd.split(),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                    instance_data, errors = p.communicate()
-                    instance_data = instance_data.decode()
-                except OSError:
-                    errMsg = 'Error collecting instance data with "%s"'
-                    logging.error(errMsg % instance_data_cmd)
+                instance_data, errors = exec_subprocess(
+                    instance_data_cmd.split(), True
+                )
                 if errors:
                     errMsg = 'Data collected from stderr for instance '
-                    errMsg += 'data collection "%s"' % errors
+                    errMsg += 'data collection "%s"' % errors.decode()
                     logging.error(errMsg)
                 if not instance_data:
-                    warn_msg = 'Possible issue accessing the metadata service.'
-                    warn_msg += ' Metadata is empty, may result in '
-                    warn_msg += 'registration failure.'
+                    warn_msg = 'Possible issue accessing the metadata '
+                    warn_msg += 'service. Metadata is empty, may result '
+                    warn_msg += 'in registration failure.'
                     logging.warning(warn_msg)
 
     # Marker for the server to not return https:// formatted
     # service and repo information
-    instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
+    inst_data = instance_data.decode()
 
-    return instance_data
+    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
 
 
 # ----------------------------------------------------------------------------
@@ -647,10 +630,9 @@ def get_installed_products():
         logging.error(errMsg)
         return products
 
+    zypper_products_cmd = ["zypper", "--no-remote", "-x", "products"]
     try:
-        cmd = subprocess.Popen(
-            ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
-        )
+        cmd = subprocess.Popen(zypper_products_cmd, stdout=subprocess.PIPE)
         product_xml = cmd.communicate()
         # Just in case something else started zypper again
         if cmd.returncode != 0:
@@ -658,8 +640,9 @@ def get_installed_products():
             logging.error(errMsg % cmd.returncode)
             return products
     except OSError:
-        errMsg = 'Could not get product list %s' % cmd[1]
-        logging.error(errMsg)
+        logging.error(
+            'Could not get product list %s', ' '.join(zypper_products_cmd)
+        )
         return products
 
     # Determine the base product
