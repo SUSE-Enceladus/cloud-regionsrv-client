@@ -29,15 +29,12 @@ from lxml import etree
 test_path = os.path.abspath(
     os.path.dirname(inspect.getfile(inspect.currentframe())))
 code_path = os.path.abspath('%s/../lib' % test_path)
-config_path = os.path.abspath('%s/../etc' % test_path)
 data_path = test_path + os.sep + 'data/'
 
 sys.path.insert(0, code_path)
 
 import cloudregister.registerutils as utils
 from cloudregister.smt import SMT
-
-cfg = utils.get_config(config_path + '/regionserverclnt.cfg')
 
 CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
 
@@ -96,6 +93,7 @@ def test_has_region_changed_no_change(subproc, id_path, plugin, srvargs):
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-central1-d'
+    cfg = get_test_config()
     assert False == utils.has_region_changed(cfg)
 
 
@@ -104,6 +102,7 @@ def test_has_region_changed_no_change(subproc, id_path, plugin, srvargs):
 def test_has_region_changed_no_dmidecode(plugin, mfg):
     plugin.return_value = False
     mfg.return_value = False
+    cfg = get_test_config()
     assert False == utils.has_region_changed(cfg)
 
 
@@ -112,6 +111,7 @@ def test_has_region_changed_no_dmidecode(plugin, mfg):
 def test_has_region_changed_no_plugin(plugin, mfg):
     plugin.return_value = False
     mfg.return_value = 'Google'
+    cfg = get_test_config()
     assert False == utils.has_region_changed(cfg)
 
 
@@ -120,6 +120,7 @@ def test_has_region_changed_no_plugin(plugin, mfg):
 @patch('cloudregister.registerutils.get_framework_identifier_path')
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_region_changed_provider_change(subproc, id_path, plugin, srvargs):
+    cfg = get_test_config()
     subproc.return_value = (b'Amazon EC2', b'')
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
@@ -138,6 +139,7 @@ def test_has_region_changed_provider_and_region_change(
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-east-1'
+    cfg = get_test_config()
     assert True == utils.has_region_changed(cfg)
 
 
@@ -152,6 +154,7 @@ def test_has_region_changed_region_change(
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-east2-f'
+    cfg = get_test_config()
     assert True == utils.has_region_changed(cfg)
 
 
@@ -173,15 +176,20 @@ def test_has_region_changed_provider_and_region_change_exception(
     mock_srvargs.return_value = 'regionHint=us-east-1'
     mock_srvargs.return_value = 'regionHint=us-east-1'
     mock_json_loads.side_effect = Exception('foo')
+    cfg = get_test_config()
     assert utils.has_region_changed(cfg) == False
 
 
 def test_is_registration_supported_SUSE_Family():
+    cfg = get_test_config()
+    cfg.add_section('service')
     cfg.set('service', 'packageBackend', 'zypper')
     assert utils.is_registration_supported(cfg) is True
 
 
 def test_is_registration_supported_RHEL_Family():
+    cfg = get_test_config()
+    cfg.add_section('service')
     cfg.set('service', 'packageBackend', 'dnf')
     assert utils.is_registration_supported(cfg) is False
 
@@ -540,6 +548,7 @@ def test_add_region_server_args_to_URL(
     mock_get_framework_plugin,
     mock_generate_region_srv_args
 ):
+    cfg = get_test_config()
     api = cfg.get('server', 'api')
     mock_get_framework_plugin.return_value = __import__(
         'cloudregister.amazonec2', fromlist=['']
@@ -551,6 +560,7 @@ def test_add_region_server_args_to_URL(
 
 @patch('cloudregister.registerutils.__get_framework_plugin')
 def test_add_region_server_args_to_URL_no_module(mock_get_framework_plugin):
+    cfg = get_test_config()
     mock_get_framework_plugin.return_value = None
     utils.add_region_server_args_to_URL(None, cfg)
 
@@ -640,6 +650,7 @@ def test_fetch_smt_data_not_200_exception(
     mock_request_get,
     mock_logging,
 ):
+    cfg = get_test_config()
     response = Response()
     response.status_code = 422
     mock_request_get.return_value = response
@@ -658,6 +669,7 @@ def test_fetch_smt_data_no_response_text(
     mock_request_get,
     mock_logging,
 ):
+    cfg = get_test_config()
     response = Response()
     response.status_code = 200
     response.text = "{}"
@@ -676,6 +688,7 @@ def test_fetch_smt_data_metadata_server(
     mock_request_get,
     mock_logging,
 ):
+    cfg = get_test_config()
     response = Response()
     response.status_code = 200
     response.text = (
@@ -697,8 +710,7 @@ def test_fetch_smt_data_api_no_answered(
     mock_logging,
     mock_time_sleep
 ):
-    original_value = cfg.get('server', 'regionsrv')
-    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', '1.1.1.1')
     with raises(SystemExit) as pytest_wrapped_e:
@@ -731,8 +743,6 @@ def test_fetch_smt_data_api_no_answered(
         call('Request not answered by any server after 3 attempts'),
         call('Exiting without registration')
     ]
-    cfg.set('server', 'regionsrv', original_value)
-    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch('cloudregister.registerutils.socket.has_ipv6', False)
@@ -746,8 +756,7 @@ def test_fetch_smt_data_api_answered(
     mock_os_path_isfile,
     mock_request_get,
 ):
-    original_value = cfg.get('server', 'regionsrv')
-    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', '1.1.1.1')
     mock_os_path_isfile.return_value = True
@@ -769,8 +778,6 @@ def test_fetch_smt_data_api_answered(
         call('Getting update server information, attempt 1'),
         call('\tUsing region server: 1.1.1.1'),
     ]
-    cfg.set('server', 'regionsrv', original_value)
-    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch('cloudregister.registerutils.ipaddress.ip_address')
@@ -785,8 +792,7 @@ def test_fetch_smt_data_api_no_valid_ip(
     mock_request_get,
     mock_ipaddress_ip_address
 ):
-    original_value = cfg.get('server', 'regionsrv')
-    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', 'foo')
     mock_os_path_isfile.return_value = True
@@ -807,8 +813,6 @@ def test_fetch_smt_data_api_no_valid_ip(
     mock_ipaddress_ip_address.side_effect = ValueError('foo')
     fetched_smt_data = utils.fetch_smt_data(cfg, None)
     assert etree.tostring(fetched_smt_data, encoding='utf-8') == smt_xml.encode()
-    cfg.set('server', 'regionsrv', original_value)
-    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch('cloudregister.registerutils.requests.get')
@@ -821,8 +825,7 @@ def test_fetch_smt_data_api_error_response(
     mock_os_path_isfile,
     mock_request_get,
 ):
-    original_value = cfg.get('server', 'regionsrv')
-    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', '1.1.1.1')
     mock_os_path_isfile.return_value = True
@@ -862,8 +865,6 @@ def test_fetch_smt_data_api_error_response(
         call('Request not answered by any server after 3 attempts'),
         call('Exiting without registration')
     ]
-    cfg.set('server', 'regionsrv', original_value)
-    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch('cloudregister.registerutils.requests.get')
@@ -876,8 +877,7 @@ def test_fetch_smt_data_api_exception(
     mock_os_path_isfile,
     mock_request_get
 ):
-    original_value = cfg.get('server', 'regionsrv')
-    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', 'fc00::11')
     mock_os_path_isfile.return_value = True
@@ -911,8 +911,6 @@ def test_fetch_smt_data_api_exception(
         call('Request not answered by any server after 3 attempts'),
         call('Exiting without registration')
     ]
-    cfg.set('server', 'regionsrv', original_value)
-    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch('cloudregister.registerutils.requests.get')
@@ -925,8 +923,7 @@ def test_fetch_smt_data_api_exception_quiet(
     mock_os_path_isfile,
     mock_request_get
 ):
-    original_value = cfg.get('server', 'regionsrv')
-    original_value_metadata_srv = cfg.get('server', 'metadata_server')
+    cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', '1.1.1.1')
     mock_os_path_isfile.return_value = True
@@ -945,8 +942,6 @@ def test_fetch_smt_data_api_exception_quiet(
         call('Request not answered by any server after 3 attempts'),
         call('Exiting without registration')
     ]
-    cfg.set('server', 'regionsrv', original_value)
-    cfg.set('server', 'metadata_server', original_value_metadata_srv)
 
 
 @patch.object(SMT, 'is_responsive')
@@ -1121,7 +1116,7 @@ def test_get_activations_request_OK(
 
 @patch('cloudregister.registerutils.configparser.RawConfigParser.read')
 def test_get_config(mock_config_parser):
-    mock_config_parser.return_value = config_path + '/regionserverclnt.cfg'
+    mock_config_parser.return_value = data_path + '/regionserverclnt.cfg'
     assert type(utils.get_config()) == configparser.RawConfigParser
 
 
@@ -1255,67 +1250,104 @@ def test_get_framework_identifier_path():
         '/var/cache/cloudregister/framework_info'
 
 
+def test_get_instance_no_instance_section():
+    """The configuration has no instance section configured"""
+    cfg = get_test_config()
+    expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
+
+
+def test_get_instance_no_data_provider_option():
+    """The configuration has no dataProvider configured"""
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
+
+
+def test_get_instance_data_provider_option_none():
+    """The configuration has a dataProvider option but it is set to none"""
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    cfg.set('instance', 'dataProvider', 'none')
+    expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
+    
+    
 @patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.os.access')
-@patch('cloudregister.registerutils.subprocess.Popen')
-def test_get_instance_data_errors_OK(
-    mock_popen,
-    mock_os_access,
-    mock_logging
-):
-    cfg.set('instance', 'dataProvider', 'ec2metadata')
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode('metadata'), str.encode('stderr')]
-    )
-    mock_process.returncode = 0
-    mock_popen.return_value = mock_process
-    assert utils.get_instance_data(cfg) == \
-        'metadata<repoformat>plugin:susecloud</repoformat>\n'
+def test_get_instance_data_cmd_not_found(mock_logging):
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    # Let's assume we run on a system where the fussball command does not exist
+    cfg.set('instance', 'dataProvider', 'fussball')
+    expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
     mock_logging.error.assert_called_once_with(
-        'Data collected from stderr for instance data collection "b\'stderr\'"'
+        'Could not find configured dataProvider: fussball'
     )
-    cfg.set('instance', 'dataProvider', 'none')
 
 
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.access')
-def test_get_instance_data_exception(
-    mock_os_access,
-    mock_logging
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_get_instance_data_cmd_error(
+        mock_exec_sub,
+        mock_access,
+        mock_logging
 ):
-    cfg.set('instance', 'dataProvider', 'no_command_really')
-    assert utils.get_instance_data(cfg) == \
-        '<repoformat>plugin:susecloud</repoformat>\n'
-    assert mock_logging.error.call_args_list == [
-        call('Could not find configured dataProvider: no_command_really'),
-        call('Error collecting instance data with "no_command_really"')
-    ]
-    cfg.set('instance', 'dataProvider', 'none')
+    """Test instance data gathering with the specified command
+       returning an error"""
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    cfg.set('instance', 'dataProvider', '/foo')
+    mock_exec_sub.return_value = (b'', b'bar')
+    mock_access.return_value = True
+    expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
+    mock_logging.error.assert_called_once_with(
+        'Data collected from stderr for instance data collection "bar"'
+    )
 
 
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.access')
-@patch('cloudregister.registerutils.subprocess.Popen')
+@patch('cloudregister.registerutils.exec_subprocess')
 def test_get_instance_data_no_data(
-    mock_popen,
-    mock_os_access,
-    mock_logging
+        mock_exec_sub,
+        mock_access,
+        mock_logging
 ):
-    cfg.set('instance', 'dataProvider', 'ec2metadata')
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode(''), str.encode('')]
-    )
-    mock_process.returncode = 0
-    mock_popen.return_value = mock_process
-    assert utils.get_instance_data(cfg) == \
-        '<repoformat>plugin:susecloud</repoformat>\n'
+    """Test instance data gathering with the specified command
+       returning no data"""
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    cfg.set('instance', 'dataProvider', '/foo')
+    mock_exec_sub.return_value = (b'', b'')
+    mock_access.return_value = True
+    expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
     mock_logging.warning.assert_called_once_with(
-        'Possible issue accessing the metadata service. '
-        'Metadata is empty, may result in registration failure.'
+        'Possible issue accessing the metadata service. Metadata is empty, '
+        'may result in registration failure.'
     )
-    cfg.set('instance', 'dataProvider', 'none')
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.exec_subprocess')
+def test_get_instance_data_instance_data(
+        mock_exec_sub,
+        mock_access,
+        mock_logging
+):
+    """Test instance data gathering with the specified command"""
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    cfg.set('instance', 'dataProvider', '/foo')
+    mock_exec_sub.return_value = (b'<mydata>', b'')
+    mock_access.return_value = True
+    expected_data = '<mydata><repoformat>plugin:susecloud</repoformat>\n'
+    assert utils.get_instance_data(cfg) == expected_data
 
 
 @patch('cloudregister.registerutils.time.sleep')
@@ -1886,12 +1918,14 @@ def test_has_smt_access_authorized(mock_http_basic_auth, mock_post):
 
 
 def test_https_only():
-    cfg['instance']['httpsOnly'] = 'true'
+    cfg = get_test_config()
+    cfg.add_section('instance')
+    cfg.set('instance', 'httpsOnly', 'true')
     assert utils.https_only(cfg) == True
-    del cfg['instance']['httpsOnly']
 
 
 def test_https_only_no():
+    cfg = get_test_config()
     assert utils.https_only(cfg) == False
 
 
@@ -1982,15 +2016,13 @@ def test_is_new_registration_not_new():
 
 
 def test_is_registration_supported_exception():
-    cfg_template = utils.get_config(config_path + '/regionserverclnt.cfg')
+    cfg_template = get_test_config()
     del cfg_template['server']
-    del cfg_template['service']
     assert utils.is_registration_supported(cfg_template) == False
 
 
 def test_is_registration_supported():
-    cfg_template = utils.get_config(config_path + '/regionserverclnt.cfg')
-    del cfg_template['service']
+    cfg_template = get_test_config()
     assert utils.is_registration_supported(cfg_template) == True
 
 
@@ -2665,6 +2697,8 @@ def test_write_framework_identifier_non_existing_path(
 
 @patch('cloudregister.registerutils.logging')
 def test_get_framework_plugin_no_existing(mock_logging):
+    cfg = get_test_config()
+    cfg.add_section('instance')
     cfg.set('instance', 'instanceArgs', 'foo')
     assert utils.__get_framework_plugin(cfg) == None
     mock_logging.warning.assert_called_once_with(
@@ -2674,6 +2708,8 @@ def test_get_framework_plugin_no_existing(mock_logging):
 
 
 def test_get_framework_plugin():
+    cfg = get_test_config()
+    cfg.add_section('instance')
     cfg.set('instance', 'instanceArgs', 'amazonec2')
     expected_mod = __import__('cloudregister.amazonec2', fromlist=[''])
     assert utils.__get_framework_plugin(cfg) == expected_mod
@@ -2692,14 +2728,11 @@ def test_get_referenced_credentials(mock_glob):
 @patch('cloudregister.registerutils.glob.glob')
 def test_get_referenced_credentials_not_found(mock_glob, mock_get_config):
     mock_glob.return_value = ['tests/data/repo_foo.repo']
+    cfg = get_test_config()
     cfg.set('server', 'baseurl', 'bar')
-    cfg.set('instance', 'baseurl', 'bar')
-    cfg.set('service', 'baseurl', 'bar')
     mock_get_config.return_value = cfg
     assert utils.__get_referenced_credentials('foo') == []
-    del cfg['server']['baseurl']
-    del cfg['instance']['baseurl']
-    del cfg['service']['baseurl']
+
 
 
 @patch('cloudregister.registerutils.logging')
@@ -2783,7 +2816,7 @@ def test_populate_srv_cache(
     mock_store_smt_data
 ):
     mock_set_proxy.return_value = True
-    mock_get_config.return_value = cfg
+    mock_get_config.return_value = get_test_config()
     smt_xml = dedent('''\
     <regionSMTdata>
       <smtInfo fingerprint="99:88:77:66"
@@ -2979,6 +3012,10 @@ def get_modified_servers_data():
 
     return etree.fromstring(srv_xml)
 
+def get_test_config():
+    """Return a config parser object using the minimum configuration in the
+       tests/data directory"""
+    return utils.get_config(data_path + '/regionserverclnt.cfg')
 
 class MockServer:
     def get_ipv4(self):
