@@ -1,4 +1,4 @@
-# Copyright (c) 2022, SUSE LLC, All rights reserved.
+# Copyright (c) 2023, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -164,7 +164,10 @@ def credentials_files_are_equal(repo_credentials):
     credentials_header = os.path.join(credentials_location, repo_credentials)
     ref_user, ref_pass = get_credentials(credentials_base)
     repo_user, repo_pass = get_credentials(credentials_header)
-    return (ref_user == repo_user) and (ref_pass == repo_pass)
+    if (ref_user != repo_user) or (ref_pass != repo_pass):
+        return False
+
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -385,8 +388,8 @@ def find_repos(contains_name):
     """Find all repos that contain the given name (case insensitive) in
        the repo name"""
     repo_names = []
-    repos = glob.glob('/etc/zypp/repos.d/*.repo')
     search_for = contains_name.lower()
+    repos = glob.glob('/etc/zypp/repos.d/*.repo')
     for repo in repos:
         repo_cfg = get_config(repo)
         for section in repo_cfg.sections():
@@ -587,7 +590,7 @@ def get_instance_data(config):
             if not cmd.startswith('/'):
                 try:
                     p = subprocess.Popen(
-                        ['which %s' % cmd],
+                        ['which', cmd],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
                         close_fds=True

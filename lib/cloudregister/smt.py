@@ -50,15 +50,18 @@ class SMT:
 
     # --------------------------------------------------------------------
     def __eq__(self, other_smt):
-        return (
-            isinstance(other_smt, SMT) and
-            self.get_ipv4() == other_smt.get_ipv4() and
-            self.get_ipv6() == other_smt.get_ipv6() and
-            self.get_FQDN() == other_smt.get_FQDN() and
-            self.get_fingerprint() == other_smt.get_fingerprint() and
-            self.get_region() == other_smt.get_region()
-        )
+        if not isinstance(other_smt, SMT):
+            return False
+        if (
+                self.get_ipv4() == other_smt.get_ipv4() and
+                self.get_ipv6() == other_smt.get_ipv6() and
+                self.get_FQDN() == other_smt.get_FQDN() and
+                self.get_fingerprint() == other_smt.get_fingerprint() and
+                self.get_region() == other_smt.get_region()
+        ):
+            return True
 
+        return False
 
     # --------------------------------------------------------------------
     def __ne__(self, other_smt):
