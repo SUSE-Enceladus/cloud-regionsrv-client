@@ -579,7 +579,7 @@ def get_framework_identifier_path():
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
-    instance_data = ''
+    instance_data = b''
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -588,44 +588,29 @@ def get_instance_data(config):
         cmd = instance_data_cmd.split()[0]
         if cmd != 'none':
             if not cmd.startswith('/'):
-                try:
-                    p = subprocess.Popen(
-                        ['which', cmd],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                except OSError:
+                cmd_lookup = exec_subprocess(['which', cmd])
+                if cmd_lookup:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                try:
-                    p = subprocess.Popen(
-                        instance_data_cmd.split(),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                    instance_data, errors = p.communicate()
-                    instance_data = instance_data.decode()
-                    if errors:
-                        errMsg = 'Data collected from stderr for instance '
-                        errMsg += 'data collection "%s"' % errors
-                        logging.error(errMsg)
-                    if not instance_data:
-                        warn_msg = 'Possible issue accessing the metadata '
-                        warn_msg += 'service. Metadata is empty, may result '
-                        warn_msg += 'in registration failure.'
-                        logging.warning(warn_msg)
-                except OSError:
-                    errMsg = 'Error collecting instance data with "%s"'
-                    logging.error(errMsg % instance_data_cmd)
+                instance_data, errors = exec_subprocess(
+                    instance_data_cmd.split(), True
+                )
+                if errors:
+                    errMsg = 'Data collected from stderr for instance '
+                    errMsg += 'data collection "%s"' % errors.decode()
+                    logging.error(errMsg)
+                if not instance_data:
+                    warn_msg = 'Possible issue accessing the metadata '
+                    warn_msg += 'service. Metadata is empty, may result '
+                    warn_msg += 'in registration failure.'
+                    logging.warning(warn_msg)
 
     # Marker for the server to not return https:// formatted
     # service and repo information
-    instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
+    inst_data = instance_data.decode()
 
-    return instance_data
+    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
 
 
 # ----------------------------------------------------------------------------
