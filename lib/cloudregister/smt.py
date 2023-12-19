@@ -130,10 +130,14 @@ class SMT:
         """Have both an ipv4 address and/or both an ipv6 address and they
            are in the same region they are interchangeable and considered
            equivalent"""
-        return \
-            ((self.get_ipv4() and smt_server.get_ipv4()) or
-            (self.get_ipv6() and smt_server.get_ipv6())) and \
-            self.get_region() == smt_server.get_region()
+        if (
+                ((self.get_ipv4() and smt_server.get_ipv4()) or
+                 (self.get_ipv6() and smt_server.get_ipv6())) and
+                self.get_region() == smt_server.get_region()
+        ):
+            return True
+
+        return False
 
     # --------------------------------------------------------------------
     def is_responsive(self):
