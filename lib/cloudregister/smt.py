@@ -16,7 +16,6 @@
 
 import ipaddress
 import logging
-import os
 import requests
 
 from M2Crypto import X509
