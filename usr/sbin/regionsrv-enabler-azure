@@ -37,6 +37,7 @@ def has_license_changed(license_type):
             return license_type != old_license
     except FileNotFoundError:
         update_license_cache(license_type)
+        raise
 
 
 def get_license_type():
@@ -97,20 +98,33 @@ utils.start_logging()
 service_name = 'guestregister'
 license_type = get_license_type()
 
-if ('BYOS' in license_type and has_license_changed(license_type) and
-    not utils.uses_rmt_as_scc_proxy()):
+if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy()):
+    try:
+        if not has_license_changed(license_type):
+            sys.exit(0)
+        update_license_cache(license_type)
+    except FileNotFoundError:
+        # if cache file did not exist, it got created
+        # only thing left to do is to de-register
+        pass
     run_command(['registercloudguest', '--clean'])
     run_command(['systemctl', 'disable', service_name])
-    update_license_cache(license_type)
 elif license_type and 'BYOS' not in license_type:
     # if no license type, system could be a BYOS without AHB
     # or PAYG without AHB
     update_server = utils.get_smt()
     if update_server:
-        if (not has_license_changed(license_type) and
-            utils.is_registered(update_server.get_FQDN())):
-            sys.exit(0)
-        update_license_cache(license_type)
+        try:
+            license_has_changed = has_license_changed(license_type)
+            if (not license_has_changed and
+                utils.is_registered(update_server.get_FQDN())):
+                sys.exit(0)
+            if license_has_changed:
+                update_license_cache(license_type)
+        except FileNotFoundError:
+            # if cache file did not exit, it got created
+            # only thing left to do is to register
+            pass
         update_server = None
     if not update_server:
         run_command(['registercloudguest', '--force-new'])
