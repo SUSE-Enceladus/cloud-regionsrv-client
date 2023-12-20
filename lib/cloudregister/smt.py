@@ -16,6 +16,7 @@
 
 import ipaddress
 import logging
+import os
 import requests
 
 from M2Crypto import X509
@@ -186,27 +187,31 @@ class SMT:
     def write_cert(self, target_dir):
         """Write the certificate to the given directory"""
         logging.info('Writing SMT rootCA: %s' % target_dir)
-        cert_id = 1
+        cert = self.get_cert()
+        certs_to_write = []
         ipv4 = self.get_ipv4()
         if ipv4:
-            cert_id = ipv4.replace('.', '_')
-        if cert_id != 1:
-            ipv6 = self.get_ipv6()
-            if ipv6:
-                cert_id = ipv6.replace(':', '_')
-        ca_file_path = (
-            target_dir +
-            '/registration_server_%s.pem' % cert_id
-        )
-        try:
-            with open(ca_file_path, 'w') as smt_ca_file:
-                smt_ca_file.write(self.get_cert())
-        except IOError:
-            errMsg = 'Could not store SMT certificate'
-            logging.error(errMsg)
-            return 0
+            certs_to_write.append(ipv4.replace('.', '_'))
+        ipv6 = self.get_ipv6()
+        if ipv6:
+            certs_to_write.append(ipv6.replace(':', '_'))
+        ca_file_path = os.path.join(target_dir, 'registration_server_%s.pem')
+        # We write the cert twice one time with the IPv4 as identifier and
+        # one time with the IPv6 as identifier. This is not an indication that
+        # the update server can be reached over both protocols.
+        # Changing the naming convention to something generic so we could
+        # write the cert only once would break SUMa as it looks for the certs
+        # we write here with the known pattern.
+        for cert_name in certs_to_write:
+            try:
+                with open(ca_file_path %cert_name, 'w') as smt_ca_file:
+                    smt_ca_file.write(cert)
+            except IOError:
+                errMsg = 'Could not store update server certificate'
+                logging.error(errMsg)
+                return 0
 
-        return ca_file_path
+        return 1
 
     # Private
     # --------------------------------------------------------------------
@@ -226,9 +231,10 @@ class SMT:
             check_urls[health_url] = cert_url
 
         return check_urls
-        
+
+    # --------------------------------------------------------------------
     def __is_cert_valid(self, cert):
-        """Verfify that the fingerprint of the given cert matches the
+        """Verify that the fingerprint of the given cert matches the
            expected fingerprint"""
         try:
             x509 = X509.load_cert_string(str(cert))
@@ -261,11 +267,14 @@ class SMT:
                             )
                     except Exception:
                         # No response from server
-                        logging.error('=' * 20)
-                        logging.error(
-                            'Attempt %s with %s of %s' % (
-                                attempts, cert_name, retries)
-                        )
-                        logging.error('Server %s is unreachable' % ip)
+
+                        logging.warning('+' * 20)
+                        # Extract the IP address we tried
+                        ip = 'unkown'
+                        if '[' in cert_url:
+                            ip = self.get_ipv6()
+                        else:
+                            ip = self.get_ipv4()
+                        logging.warning('Server %s is unreachable' % ip)
                     if cert_res and cert_res.status_code == 200:
                         return cert_res

@@ -911,7 +911,8 @@ def has_region_changed(cfg):
     region = 'unknown'
     if plugin:
         region_hint = __get_region_server_args(plugin)
-        region = region_hint.split('=')[-1]
+        if region_hint:
+            region = region_hint.split('=')[-1]
 
     if framework == 'unknown' or region == 'unknown':
         # We cannot determine with certainty if anything has changed
@@ -1399,7 +1400,10 @@ def write_framework_identifier(cfg):
     if plugin:
         identifier['plugin'] = plugin.__file__
         region_hint = __get_region_server_args(plugin)
-        identifier['region'] = region_hint.split('=')[-1]
+        if region_hint:
+            identifier['region'] = region_hint.split('=')[-1]
+        else:
+            identifier['region'] = 'unknown'
 
     with open(get_framework_identifier_path(), 'w') as framework_file:
         framework_file.write(json.dumps(identifier))
