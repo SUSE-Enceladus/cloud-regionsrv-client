@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.1.4
+%define base_version 10.1.5
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -89,7 +89,7 @@ Requires:       cloud-regionsrv-client >= 6.0.0
 Guest registration plugin for images intended for Google Compute Engine
 
 %package plugin-ec2
-Version:        1.0.2
+Version:        1.0.3
 Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
 Group:          Productivity/Networking/Web/Servers
