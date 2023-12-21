@@ -98,8 +98,10 @@ service_name = 'guestregister'
 license_type = get_license_type()
 
 if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy()):
+    # Registered to SCC
     license_has_changed = has_license_changed(license_type)
     if license_has_changed in [False]:
+        # System is still BYOS, nothing to do
         sys.exit(0)
     if license_has_changed:
         update_license_cache(license_type)
