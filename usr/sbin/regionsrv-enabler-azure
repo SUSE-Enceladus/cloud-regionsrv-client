@@ -100,7 +100,7 @@ license_type = get_license_type()
 if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy()):
     # Registered to SCC
     license_has_changed = has_license_changed(license_type)
-    if license_has_changed in [False]:
+    if license_has_changed == False:
         # System is still BYOS, nothing to do
         sys.exit(0)
     if license_has_changed:
@@ -113,7 +113,7 @@ elif license_type and 'BYOS' not in license_type:
     update_server = utils.get_smt()
     if update_server:
         license_has_changed = has_license_changed(license_type)
-        if (license_has_changed in [False] and
+        if (license_has_changed == False and
             utils.is_registered(update_server.get_FQDN())):
             sys.exit(0)
         if license_has_changed:
