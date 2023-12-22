@@ -131,7 +131,7 @@ elif license_type and 'BYOS' not in license_type:
     # or PAYG without AHB
     if update_server:
         license_has_changed = has_license_changed(license_type)
-        if (license_has_changed == False and
+        if (not license_has_changed and
             utils.is_registered(update_server.get_FQDN())):
             sys.exit(0)
         if license_has_changed:
