@@ -12,6 +12,21 @@
 # Lesser General Public License for more details.
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
+
+"""
+Check the different states of the license type:
+    START   LICENSE CHANGED TO     CACHE   ACTION
+    BYOS    SLES                   N/A     Register
+    BYOS    SLES                   BYOS    Register
+    BYOS    BYOS                   N/A     Do nothing
+    BYOS    BYOS                   BYOS    Do nothing
+
+    SLES    BYOS                   N/A     De-register
+    SLES    BYOS                   SLES    De-register
+    SLES    SLES                   N/A     Do nothing
+    SLES    SLES                   SLES    Do nothing
+"""
+
 import logging
 import os
 import requests
@@ -19,6 +34,7 @@ import subprocess
 import sys
 
 import cloudregister.registerutils as utils
+
 
 CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), 'cached_license')
 
