@@ -37,7 +37,7 @@ def has_license_changed(license_type):
             return license_type != old_license
     except FileNotFoundError:
         update_license_cache(license_type)
-
+        return False
 
 def get_license_type():
     proxies = {
@@ -96,21 +96,23 @@ def run_command(command):
 utils.start_logging()
 service_name = 'guestregister'
 license_type = get_license_type()
+update_server = utils.get_smt()
 
 if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy()):
-    # Registered to SCC
     license_has_changed = has_license_changed(license_type)
-    if license_has_changed == False:
-        # System is still BYOS, nothing to do
-        sys.exit(0)
-    if license_has_changed:
-        update_license_cache(license_type)
+    if (
+        license_has_changed or
+        (update_server and utils.is_registered(update_server.get_FQDN()))
+    ):
+        # either license has changed or
+        # system was previously registered
+        if license_has_changed:
+            update_license_cache(license_type)
     run_command(['registercloudguest', '--clean'])
     run_command(['systemctl', 'disable', service_name])
 elif license_type and 'BYOS' not in license_type:
     # if no license type, system could be a BYOS without AHB
     # or PAYG without AHB
-    update_server = utils.get_smt()
     if update_server:
         license_has_changed = has_license_changed(license_type)
         if (license_has_changed == False and
