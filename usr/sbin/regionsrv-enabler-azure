@@ -53,7 +53,7 @@ def has_license_changed(license_type):
             return license_type != old_license
     except FileNotFoundError:
         update_license_cache(license_type)
-        return False
+    return False
 
 def get_license_type():
     proxies = {
