@@ -1402,8 +1402,6 @@ def write_framework_identifier(cfg):
         region_hint = __get_region_server_args(plugin)
         if region_hint:
             identifier['region'] = region_hint.split('=')[-1]
-        else:
-            identifier['region'] = 'unknown'
 
     with open(get_framework_identifier_path(), 'w') as framework_file:
         framework_file.write(json.dumps(identifier))
