@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (c) 2020, SUSE LLC, All rights reserved.
+# Copyright (c) 2024, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -292,7 +292,11 @@ if proxy:
 if args.user_smt_ip:
     smt_xml = '<regionSMTdata><smtInfo '
     smt_xml += 'fingerprint="%s" ' % args.user_smt_fp
-    smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
+    smt_ip = ipaddress.ip_address(args.user_smt_ip)
+    if isinstance(smt_ip, ipaddress.IPv6Address):
+        smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
+    elif isinstance(smt_ip, ipaddress.IPv4Address):
+        smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
     smt_xml += 'SMTserverName="%s"' % args.user_smt_fqdn
     smt_xml += '/></regionSMTdata>'
     region_smt_data = etree.fromstring(smt_xml)
