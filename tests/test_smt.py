@@ -120,6 +120,14 @@ def test_not_equal_ipv4_ipv6():
 
 
 # ----------------------------------------------------------------------------
+def test_not_equal_not_SMT_instance():
+    """Test two SMT servers with different data are not equal"""
+    smt1 = 'foo'
+    smt2 = SMT(etree.fromstring(smt_data_ipv6))
+    assert smt1 != smt2
+
+
+# ----------------------------------------------------------------------------
 @patch('smt.logging')
 @patch('smt.requests.get')
 def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):

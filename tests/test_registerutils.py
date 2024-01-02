@@ -2676,6 +2676,41 @@ def test_write_framework_identifier(
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.__get_system_mfg')
+def test_write_framework_identifier_no_region(
+    mock_get_system_mfg,
+    mock_get_framework_plugin,
+    mock_get_region_servers_args,
+    mock_get_framework_identifier_path,
+    mock_json_dumps
+):
+    mock_get_system_mfg.return_value = 'unknown'
+    mock_plugin = Mock()
+    mock_plugin.__file__ = 'amazonec2.py'
+    mock_get_framework_plugin.return_value = mock_plugin
+    mock_get_region_servers_args.return_value = None
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # TODO: asumption that framework id path exists
+        # if it didnt => unhandled exception
+        mock_get_framework_identifier_path.return_value = os.path.join(
+            tmpdirname, 'foo'
+        )
+        with patch('builtins.open', create=True) as mock_framework_file:
+            utils.write_framework_identifier('foo')
+            # TODO: fix/check framework unknown + plugin OK valid combination
+            mock_json_dumps.assert_called_once_with(
+                {
+                    'framework': 'unknown',
+                    'region': 'unknown',
+                    'plugin': 'amazonec2.py'
+                }
+            )
+
+
+@patch('cloudregister.registerutils.json.dumps')
+@patch('cloudregister.registerutils.get_framework_identifier_path')
+@patch('cloudregister.registerutils.__get_region_server_args')
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.__get_system_mfg')
 def test_write_framework_identifier_non_existing_path(
     mock_get_system_mfg,
     mock_get_framework_plugin,
