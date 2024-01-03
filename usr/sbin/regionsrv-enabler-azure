@@ -16,28 +16,29 @@
 """
 Check the different states of the license type:
     START   LICENSE CHANGED TO     CACHE   ACTION
-    BYOS-1  SLES                   N/A     Register
-    BYOS-1  SLES                   BYOS    Register
-    BYOS-1  BYOS-1                 N/A     Do nothing
+    BYOS-1  SLES                   No      Register - Update Infra
+    BYOS-1  SLES                   BYOS    Register - Update Infra
+    BYOS-1  BYOS-1                 No      Do nothing
     BYOS-1  BYOS-1                 BYOS    Do nothing
-    BYOS-1  BYOS-2                 N/A     Do nothing
+    BYOS-1  BYOS-2                 No      Do nothing
     BYOS-1  BYOS-2                 BYOS    Do nothing
 
-    BYOS-2  SLES                   N/A     Do nothing
-    BYOS-2  SLES                   BYOS    Re-register
-    BYOS-2  BYOS-1                 N/A     De-register
-    BYOS-2  BYOS-1                 BYOS    De-register
+    BYOS-2  SLES                   No      Do nothing
+    BYOS-2  SLES                   BYOS    Re-register - Update Infra
+    BYOS-2  BYOS-1                 No      De-register - Update Infra
+    BYOS-2  BYOS-1                 BYOS    De-register - Update Infra
 
-    SLES    BYOS-1                 N/A     De-register
-    SLES    BYOS-1                 N/A     De-register
-    SLES    BYOS-2                 N/A     Do nothing
+    SLES    BYOS-1                 No      De-register - Update Infra
+    SLES    BYOS-1                 No      De-register - Update Infra
+    SLES    BYOS-2                 No      Do nothing
     SLES    BYOS-2                 SLES    Do nothing
-    SLES    SLES                   N/A     Do nothing
+    SLES    SLES                   No      Do nothing
     SLES    SLES                   SLES    Do nothing
 
 BYOS-1 -> BYOS unregistered
 BYOS-2 -> BYOS registered
 NOTE: When an instance starts the license_type value from IMDS is none (empty)
+START represents the state of the license type before running AHB
 """
 
 import logging
