@@ -127,18 +127,20 @@ service_name = 'guestregister'
 license_type = get_license_type()
 update_server = utils.get_smt()
 
-if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy()):
+if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy() and
+    not utils.is_scc_connected()
+):
     license_has_changed = has_license_changed(license_type)
-    if (
-        license_has_changed or
+    if (license_has_changed or
         (update_server and utils.is_registered(update_server.get_FQDN()))
     ):
         # either license has changed or
-        # system was previously registered
+        # system was previously registered to update infrastructure
+        # and neither SCC nor RMT as an SCC proxy
         if license_has_changed:
             update_license_cache(license_type)
-    run_command(['registercloudguest', '--clean'])
-    run_command(['systemctl', 'disable', service_name])
+        run_command(['registercloudguest', '--clean'])
+        run_command(['systemctl', 'disable', service_name])
 elif license_type and 'BYOS' not in license_type:
     # if no license type, system could be a BYOS without AHB
     # or PAYG without AHB
