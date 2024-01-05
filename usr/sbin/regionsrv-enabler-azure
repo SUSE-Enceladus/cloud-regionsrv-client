@@ -12,6 +12,35 @@
 # Lesser General Public License for more details.
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
+
+"""
+Check the different states of the license type:
+    START   LICENSE CHANGED TO     CACHE   ACTION
+    BYOS-1  SLES                   No      Register - Update Infra
+    BYOS-1  SLES                   BYOS    Register - Update Infra
+    BYOS-1  BYOS-1                 No      Do nothing
+    BYOS-1  BYOS-1                 BYOS    Do nothing
+    BYOS-1  BYOS-2                 No      Do nothing
+    BYOS-1  BYOS-2                 BYOS    Do nothing
+
+    BYOS-2  SLES                   No      Do nothing
+    BYOS-2  SLES                   BYOS    Re-register - Update Infra
+    BYOS-2  BYOS-1                 No      De-register - Update Infra
+    BYOS-2  BYOS-1                 BYOS    De-register - Update Infra
+
+    SLES    BYOS-1                 No      De-register - Update Infra
+    SLES    BYOS-1                 No      De-register - Update Infra
+    SLES    BYOS-2                 No      Do nothing
+    SLES    BYOS-2                 SLES    Do nothing
+    SLES    SLES                   No      Do nothing
+    SLES    SLES                   SLES    Do nothing
+
+BYOS-1 -> BYOS unregistered
+BYOS-2 -> BYOS registered
+NOTE: When an instance starts the license_type value from IMDS is none (empty)
+START represents the state of the license type before running AHB
+"""
+
 import logging
 import os
 import requests
@@ -37,7 +66,7 @@ def has_license_changed(license_type):
             return license_type != old_license
     except FileNotFoundError:
         update_license_cache(license_type)
-
+    return False
 
 def get_license_type():
     proxies = {
@@ -93,25 +122,43 @@ def run_command(command):
     return output
 
 
-utils.start_logging()
-service_name = 'guestregister'
-license_type = get_license_type()
-
-if ('BYOS' in license_type and has_license_changed(license_type) and
-    not utils.uses_rmt_as_scc_proxy()):
-    run_command(['registercloudguest', '--clean'])
-    run_command(['systemctl', 'disable', service_name])
-    update_license_cache(license_type)
-elif license_type and 'BYOS' not in license_type:
-    # if no license type, system could be a BYOS without AHB
-    # or PAYG without AHB
+def main():
+    utils.start_logging()
+    service_name = 'guestregister'
+    license_type = get_license_type()
     update_server = utils.get_smt()
-    if update_server:
-        if (not has_license_changed(license_type) and
-            utils.is_registered(update_server.get_FQDN())):
-            sys.exit(0)
-        update_license_cache(license_type)
-        update_server = None
-    if not update_server:
-        run_command(['registercloudguest', '--force-new'])
-        run_command(['systemctl', 'enable', service_name])
+
+    if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy() and
+        not utils.is_scc_connected()
+    ):
+        # system license type has been set to BYOS via AHB but
+        # neither has been registered to the update infrastructure with a reg code
+        # nor to SCC
+        license_has_changed = has_license_changed(license_type)
+        if (license_has_changed or
+            (update_server and utils.is_registered(update_server.get_FQDN()))
+        ):
+            # either license has changed or
+            # system was previously registered to update infrastructure
+            if license_has_changed:
+                update_license_cache(license_type)
+            run_command(['registercloudguest', '--clean'])
+            run_command(['systemctl', 'disable', service_name])
+    elif license_type and 'BYOS' not in license_type:
+        # if no license type, system could be a BYOS without AHB
+        # or PAYG without AHB
+        if update_server:
+            license_has_changed = has_license_changed(license_type)
+            if (not license_has_changed and
+                utils.is_registered(update_server.get_FQDN())):
+                sys.exit(0)
+            if license_has_changed:
+                update_license_cache(license_type)
+            update_server = None
+        if not update_server:
+            run_command(['registercloudguest', '--force-new'])
+            run_command(['systemctl', 'enable', service_name])
+
+
+if __name__ == '__main__':  # pragma: no cover
+    main()
