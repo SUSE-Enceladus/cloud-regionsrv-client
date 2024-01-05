@@ -16,24 +16,24 @@
 """
 Check the different states of the license type:
     START   LICENSE CHANGED TO     CACHE   ACTION
-    BYOS-1  SLES                   No      Register - Update Infra
-    BYOS-1  SLES                   BYOS    Register - Update Infra
+    BYOS-1  PAYG                   No      Register - Update Infra
+    BYOS-1  PAYG                   BYOS    Register - Update Infra
     BYOS-1  BYOS-1                 No      Do nothing
     BYOS-1  BYOS-1                 BYOS    Do nothing
     BYOS-1  BYOS-2                 No      Do nothing
     BYOS-1  BYOS-2                 BYOS    Do nothing
 
-    BYOS-2  SLES                   No      Do nothing
-    BYOS-2  SLES                   BYOS    Re-register - Update Infra
+    BYOS-2  PAYG                   No      Do nothing
+    BYOS-2  PAYG                   BYOS    Re-register - Update Infra
     BYOS-2  BYOS-1                 No      De-register - Update Infra
     BYOS-2  BYOS-1                 BYOS    De-register - Update Infra
 
-    SLES    BYOS-1                 No      De-register - Update Infra
-    SLES    BYOS-1                 No      De-register - Update Infra
-    SLES    BYOS-2                 No      Do nothing
-    SLES    BYOS-2                 SLES    Do nothing
-    SLES    SLES                   No      Do nothing
-    SLES    SLES                   SLES    Do nothing
+    PAYG    BYOS-1                 No      De-register - Update Infra
+    PAYG    BYOS-1                 No      De-register - Update Infra
+    PAYG    BYOS-2                 No      Do nothing
+    PAYG    BYOS-2                 PAYG    Do nothing
+    PAYG    PAYG                   No      Do nothing
+    PAYG    PAYG                   PAYG    Do nothing
 
 BYOS-1 -> BYOS unregistered
 BYOS-2 -> BYOS registered
