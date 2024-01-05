@@ -134,14 +134,10 @@ if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy() and
     # system license type has been set to BYOS via AHB but
     # neither has been registered to the update infrastructure with a reg code
     # nor to SCC
-    license_has_changed = has_license_changed(license_type)
-    if (license_has_changed or
-        (update_server and utils.is_registered(update_server.get_FQDN()))
-    ):
-        # either license has changed or
-        # system was previously registered to update infrastructure
-        if license_has_changed:
-            update_license_cache(license_type)
+    if has_license_changed(license_type):
+        update_license_cache(license_type)
+    if update_server and utils.is_registered(update_server.get_FQDN()):
+        # system is registered to update infrastructure
         run_command(['registercloudguest', '--clean'])
         run_command(['systemctl', 'disable', service_name])
 elif license_type and 'BYOS' not in license_type:
