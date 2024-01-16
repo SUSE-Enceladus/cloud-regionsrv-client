@@ -15,30 +15,35 @@
 
 """
 Check the different states of the license type:
+START -> The state of the instance when this code is executed
+         This code is executed by a timer
+
     START   LICENSE CHANGED TO     CACHE   ACTION
-    BYOS-1  PAYG                   No      Register - Update Infra
-    BYOS-1  PAYG                   BYOS    Register - Update Infra
-    BYOS-1  BYOS-1                 No      Do nothing
-    BYOS-1  BYOS-1                 BYOS    Do nothing
-    BYOS-1  BYOS-2                 No      Do nothing
-    BYOS-1  BYOS-2                 BYOS    Do nothing
+1   BYOS-1  PAYG                   No      Register - Update Infra
+2   BYOS-1  PAYG                   BYOS    Register - Update Infra
+3   BYOS-1  BYOS-1                 No      Do nothing
+4   BYOS-1  BYOS-1                 BYOS    Do nothing
+5   BYOS-1  BYOS-2                 No      Do nothing
+6   BYOS-1  BYOS-2                 BYOS    Do nothing
 
-    BYOS-2  PAYG                   No      Do nothing
-    BYOS-2  PAYG                   BYOS    Re-register - Update Infra
-    BYOS-2  BYOS-1                 No      De-register - Update Infra
-    BYOS-2  BYOS-1                 BYOS    De-register - Update Infra
+7   BYOS-2  PAYG                   No      Do nothing
+8   BYOS-2  PAYG                   BYOS    Re-register - Update Infra
+9   BYOS-2  BYOS-1                 No      De-register - Update Infra
+10  BYOS-2  BYOS-1                 BYOS    De-register - Update Infra
+11  BYOS-3  PAYG                   No      No de-register from SCC, register with update infrastructure
+12  BYOS-3  PAYG                   BYOS    No de-register from SCC, register with update infrastructure
 
-    PAYG    BYOS-1                 No      De-register - Update Infra
-    PAYG    BYOS-1                 No      De-register - Update Infra
-    PAYG    BYOS-2                 No      Do nothing
-    PAYG    BYOS-2                 PAYG    Do nothing
-    PAYG    PAYG                   No      Do nothing
-    PAYG    PAYG                   PAYG    Do nothing
+13  PAYG    BYOS-1                 No      De-register - Update Infra
+14  PAYG    BYOS-1                 PAYG    De-register - Update Infra
+15  PAYG    BYOS-2,3               No      Do nothing
+16  PAYG    BYOS-2,3               PAYG    Do nothing
+17  PAYG    PAYG                   No      Do nothing
+18  PAYG    PAYG                   PAYG    Do nothing
 
 BYOS-1 -> BYOS unregistered
 BYOS-2 -> BYOS registered
+BYOS-3 -> BYOS Registered to SCC
 NOTE: When an instance starts the license_type value from IMDS is none (empty)
-START represents the state of the license type before running AHB
 """
 
 import logging
@@ -138,6 +143,7 @@ if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy() and
         update_license_cache(license_type)
     if update_server and utils.is_registered(update_server.get_FQDN()):
         # system is registered to update infrastructure
+        # covers cases 9, 10, 13, 14
         run_command(['registercloudguest', '--clean'])
         run_command(['systemctl', 'disable', service_name])
 elif license_type and 'BYOS' not in license_type:
@@ -147,10 +153,16 @@ elif license_type and 'BYOS' not in license_type:
         license_has_changed = has_license_changed(license_type)
         if (not license_has_changed and
             utils.is_registered(update_server.get_FQDN())):
+            # covers cases 7, 15, 16, 17, 18
             sys.exit(0)
         if license_has_changed:
+            # cases 12
             update_license_cache(license_type)
         update_server = None
     if not update_server:
+        # cover cases 1, 2, 8
+        if has_license_changed(license_type):
+            # cover cases 2, 8
+            update_license_cache(license_type)
         run_command(['registercloudguest', '--force-new'])
         run_command(['systemctl', 'enable', service_name])
