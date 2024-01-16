@@ -154,15 +154,16 @@ elif license_type and 'BYOS' not in license_type:
         if (not license_has_changed and
             utils.is_registered(update_server.get_FQDN())):
             # covers cases 7, 15, 16, 17, 18
+            if utils.is_scc_connected():
+                # cover cases 11
+                run_command(['registercloudguest', '--force-new'])
+                run_command(['systemctl', 'enable', service_name])
             sys.exit(0)
-        if license_has_changed:
-            # cases 12
-            update_license_cache(license_type)
         update_server = None
     if not update_server:
-        # cover cases 1, 2, 8
+        # cover cases 1, 2, 8, 12
         if has_license_changed(license_type):
-            # cover cases 2, 8
+            # cover cases 2, 8, 12
             update_license_cache(license_type)
         run_command(['registercloudguest', '--force-new'])
         run_command(['systemctl', 'enable', service_name])
