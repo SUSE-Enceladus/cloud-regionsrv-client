@@ -86,7 +86,7 @@ def generateRegionSrvArgs():
             for c in region_id_az:
                 if c.isdigit():
                     region_id += c
-                    region = '-'.join(region_data[:2] + [region_id])
+            region = '-'.join(region_data[:2] + [region_id])
         else:
             logging.warning('Unable to get availability zone metadata')
             logging.warning('\tReturn code: %d' % zone_resp.status_code)
