@@ -1,4 +1,4 @@
-# Copyright (c) 2017, SUSE LLC, All rights reserved.
+# Copyright (c) 2024, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -76,17 +76,28 @@ def generateRegionSrvArgs():
         if zone_resp.status_code == 200:
             # For local zones the format is geo-loc-regionid-metro-regionidaz
             # For example us-east-1-iah-1a
-            # For regions the format is geo-loc-regionidaz
+            # For regions in the standard partition the format
+            # is geo-loc-regionidaz
             # For example us-east-1f
-            # What we need is geo-loc-regionid,
-            # i.e. us-east-1 as the region hint
-            region_data = zone_resp.text.split('-', 3)
-            region_id_az = region_data[2]
+            # For regions in the gov partition the format is
+            # geo-gov-loc-regionidaz
+            # For example us-gov-west-1a
+            # What we need is geo-(gov)-loc-regionid,
+            # i.e. us-east-1 or us-gov-west-1 as the region hint
+            region_data = zone_resp.text.split('-')
+            # Find the az (availability zone) indicator which is the first
+            # entry starting with a number
+            az_index = 0
+            for entry in region_data:
+                if entry[0].isdigit():
+                    break
+                az_index += 1
+            region_id_az = region_data[az_index]
             region_id = ''
             for c in region_id_az:
                 if c.isdigit():
                     region_id += c
-                    region = '-'.join(region_data[:2] + [region_id])
+            region = '-'.join(region_data[:az_index] + [region_id])
         else:
             logging.warning('Unable to get availability zone metadata')
             logging.warning('\tReturn code: %d' % zone_resp.status_code)

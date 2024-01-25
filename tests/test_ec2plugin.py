@@ -1,4 +1,4 @@
-# Copyright (c) 2017, SUSE LLC, All rights reserved.
+# Copyright (c) 2024, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -73,10 +73,32 @@ def test_request_fail_response_error(
 # ----------------------------------------------------------------------------
 @patch('amazonec2.requests.put')
 @patch('amazonec2.requests.get')
-def test_request_succeed(mock_request_get, mock_request_put):
+def test_request_succeed_gov_part(mock_request_get, mock_request_put):
     """Test behavior with expected return value"""
-    mock_request_put.return_value = _get_expected_response()
-    mock_request_get.return_value = _get_expected_response()
+    mock_request_put.return_value = _get_expected_response_gov_part()
+    mock_request_get.return_value = _get_expected_response_gov_part()
+    result = ec2.generateRegionSrvArgs()
+    assert 'regionHint=us-gov-east-1' == result
+
+
+# ----------------------------------------------------------------------------
+@patch('amazonec2.requests.put')
+@patch('amazonec2.requests.get')
+def test_request_succeed_std_part(mock_request_get, mock_request_put):
+    """Test behavior with expected return value"""
+    mock_request_put.return_value = _get_expected_response_std_part()
+    mock_request_get.return_value = _get_expected_response_std_part()
+    result = ec2.generateRegionSrvArgs()
+    assert 'regionHint=us-east-1' == result
+
+
+# ----------------------------------------------------------------------------
+@patch('amazonec2.requests.put')
+@patch('amazonec2.requests.get')
+def test_request_succeed_local_zone(mock_request_get, mock_request_put):
+    """Test behavior with expected return value"""
+    mock_request_put.return_value = _get_expected_response_local_zone()
+    mock_request_get.return_value = _get_expected_response_local_zone()
     result = ec2.generateRegionSrvArgs()
     assert 'regionHint=us-east-1' == result
 
@@ -91,7 +113,25 @@ def _get_error_response():
 
 
 # ----------------------------------------------------------------------------
-def _get_expected_response():
+def _get_expected_response_local_zone():
+    """Return an object mocking a expected response"""
+    response = Response()
+    response.status_code = 200
+    response.text = 'us-east-1-bos-1a'
+    return response
+
+
+# ----------------------------------------------------------------------------
+def _get_expected_response_gov_part():
+    """Return an object mocking a expected response"""
+    response = Response()
+    response.status_code = 200
+    response.text = 'us-gov-east-1a'
+    return response
+
+
+# ----------------------------------------------------------------------------
+def _get_expected_response_std_part():
     """Return an object mocking a expected response"""
     response = Response()
     response.status_code = 200
