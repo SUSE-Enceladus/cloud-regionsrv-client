@@ -616,6 +616,10 @@ def test_credentials_files_are_equal(mock_get_credentials):
     assert utils.credentials_files_are_equal('foo') == False
 
 
+def test_credentials_files_are_equal_no_credentials():
+    assert utils.credentials_files_are_equal(None) is False
+
+
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_enable_repository(mock_exec_subprocess, mock_logging):
