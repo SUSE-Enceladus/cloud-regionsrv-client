@@ -160,6 +160,9 @@ def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
     credentials_location = '/etc/zypp/credentials.d/'
+    if repo_credentials is None:
+        return False
+
     credentials_base = os.path.join(credentials_location, 'SCCcredentials')
     credentials_header = os.path.join(credentials_location, repo_credentials)
     ref_user, ref_pass = get_credentials(credentials_base)
