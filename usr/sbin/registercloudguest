@@ -133,7 +133,7 @@ argparse.add_argument(
     '-d', '--delay',
     default=0,
     dest='delay_time',
-    help='Delay the start of registartion by given value in seconds',
+    help='Delay the start of registration by given value in seconds',
     type=int
 )
 # default config file location not set it is encoded in the utils function
