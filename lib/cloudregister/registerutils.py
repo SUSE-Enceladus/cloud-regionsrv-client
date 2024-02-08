@@ -1410,6 +1410,19 @@ def write_framework_identifier(cfg):
         framework_file.write(json.dumps(identifier))
 
 
+# ----------------------------------------------------------------------------
+def instance_has_ip_enabled(rmt_ip):
+    """Check if the instance can make IPv4 or IPv6 requests."""
+    try:
+        socket.create_connection((rmt_ip, 443), timeout=2)
+    except OSError as e:
+        # check socket connection produced
+        # Network is unreachable error
+        return e.errno != errno.ENETUNREACH
+
+    return True
+
+
 # Private
 # ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):
