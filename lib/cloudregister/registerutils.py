@@ -45,7 +45,7 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
-
+REGISTRY_FQDN = 'registry.suse.com'
 
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
@@ -61,10 +61,16 @@ def add_hosts_entry(smt_server):
         smt_server.get_FQDN(),
         smt_server.get_name()
     )
+    # add registry entry
+    registry_entry = '%s\t%s\n' % (
+        smt_ip,
+        REGISTRY_FQDN
+    )
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
-    logging.info('Modified /etc/hosts, added: %s' % entry)
+        hosts_file.write(registry_entry)
+    logging.info('Modified /etc/hosts, added: %s' % (entry + registry_entry))
 
 
 # ----------------------------------------------------------------------------
