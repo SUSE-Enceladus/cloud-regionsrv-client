@@ -536,9 +536,14 @@ def test_add_hosts_entry(mock_has_ipv6_access):
             fqdn=smt_server.get_FQDN(),
             name=smt_server.get_name()
         )
+        file_content_registry_entry = '{ip}\t{registry_fqdn}\n'.format(
+            ip=smt_server.get_ipv6(),
+            registry_fqdn='registry.suse.com'
+        )
         assert file_handle.write.mock_calls == [
              call(file_content_comment),
-             call(file_content_entry)
+             call(file_content_entry),
+             call(file_content_registry_entry)
         ]
 
 
