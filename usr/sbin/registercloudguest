@@ -84,6 +84,7 @@ def set_registry_credentials():
             config_json['auths'].update(registry_credentials)
         except (FileNotFoundError, KeyError):
             # config file does not exist or "auths" key is not set
+            os.makedirs(os.path.dirname(docker_path), exist_ok=True)
             config_json.update({'auths': registry_credentials})
 
         with open(docker_path, 'w') as cred_json_file:
