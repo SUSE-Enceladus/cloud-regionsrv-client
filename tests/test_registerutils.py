@@ -717,7 +717,7 @@ def test_fetch_smt_data_metadata_server(
 
 @patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
-def test_fetch_smt_data_api_no_answered(
+def test_fetch_smt_data_api_no_answere(
     mock_logging,
     mock_time_sleep
 ):
@@ -731,21 +731,21 @@ def test_fetch_smt_data_api_no_answered(
         call('Getting update server information, attempt 1'),
         call('\tUsing region server: 1.1.1.1'),
         call(
-            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            '\tNo cert found: /usr/lib/regionService/certs/1.1.1.1.pem '
             'skip this server'
         ),
         call('Waiting 20 seconds before next attempt'),
         call('Getting update server information, attempt 2'),
         call('\tUsing region server: 1.1.1.1'),
         call(
-            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            '\tNo cert found: /usr/lib/regionService/certs/1.1.1.1.pem '
             'skip this server'
         ),
         call('Waiting 10 seconds before next attempt'),
         call('Getting update server information, attempt 3'),
         call('\tUsing region server: 1.1.1.1'),
         call(
-            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            '\tNo cert found: /usr/lib/regionService/certs/1.1.1.1.pem '
             'skip this server'
         )
     ]
@@ -2022,7 +2022,9 @@ def test_import_smt_cert_cert_middling(
     )
 
 
-def test_is_new_registration_not_new():
+@patch('cloudregister.registerutils.get_state_dir')
+def test_is_new_registration_not_new(mock_state_dir):
+    mock_state_dir.return_value = data_path
     assert utils.is_new_registration() == False
 
 
@@ -2043,11 +2045,15 @@ def test_is_scc_connected(mock_glob):
     assert utils.is_scc_connected() == True
 
 
-def test_is_scc_not_connected():
+@patch('cloudregister.registerutils.glob.glob')
+def test_is_scc_not_connected(mock_glob):
+    mock_glob.return_value = []
     assert utils.is_scc_connected() == False
 
-
-def test_is_zypper_running_not():
+    
+@patch('cloudregister.registerutils.get_zypper_pid')
+def test_is_zypper_running_not(mock_get_zypper_pid):
+    mock_get_zypper_pid.return_value = ''
     assert utils.is_zypper_running() == False
 
 
