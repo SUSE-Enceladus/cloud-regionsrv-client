@@ -717,7 +717,7 @@ def test_fetch_smt_data_metadata_server(
 
 @patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
-def test_fetch_smt_data_api_no_answere(
+def test_fetch_smt_data_api_no_answer(
     mock_logging,
     mock_time_sleep
 ):
