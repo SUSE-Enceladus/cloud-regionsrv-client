@@ -743,6 +743,7 @@ def get_smt(cache_refreshed=None):
                     # Fetch cert for new target server
                     import_smt_cert(new_target)
                     # Verify the new target server has our credentials
+                    replace_hosts_entry(current_smt, new_target)
                     credentials_file_path = get_credentials_file(new_target)
                     user, password = get_credentials(credentials_file_path)
                     if not has_smt_access(
@@ -759,8 +760,8 @@ def get_smt(cache_refreshed=None):
                         msg += 'current, %s, target update server.'
                         msg += 'Try again later.'
                         logging.error(msg % (new_target_ips, original_smt_ips))
+                        replace_hosts_entry(new_target, current_smt)
                         return current_smt
-                    replace_hosts_entry(current_smt, new_target)
                     set_as_current_smt(new_target)
                     return new_target
     else:

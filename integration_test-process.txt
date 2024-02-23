@@ -35,6 +35,13 @@ After installing the test package with "zypper in"
   + success message on stdout
   + $? is 0
   + zypper lr has repos
+- Update server failover
+  + ip=`grep susecloud.net /etc/hosts | cut -f1`
+  + iptables -A OUTPUT -d $ip -j DROP
+  + zypper ref
+  + grep -i equivalent /var/log/cloudregister
+  + grep susecloud.net /etc/hosts
+  + IP addresses in the last two outputs should match
 
 byos - test on SLES4SAP instance
 After installing the test package with "zypper in"
