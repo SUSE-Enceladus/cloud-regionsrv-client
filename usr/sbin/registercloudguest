@@ -486,8 +486,9 @@ while not base_registered:
         failed_smts.append(registration_target.get_ipv4())
         if (
             len(failed_smts) == len(region_smt_servers) or
-            registration_returncode == 67 and
-            'registration code' in error_message.lower()
+            (registration_returncode == 67 and
+             'registration code' in error_message.lower() and
+             args.reg_code)
         ):
             # there are no more RMT servers to try to register to or
             # registration failed because of an invalid reg code
