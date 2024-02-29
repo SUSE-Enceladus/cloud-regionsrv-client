@@ -284,6 +284,7 @@ def test_clean_host_file_no_empty_bottom_lines():
 
 # Added by SMT, please, do NOT remove this line
 2.3.4.5   smt-entry.susecloud.net smt-entry
+2.3.4.5   registry-entry.susecloud.net
 
 4.3.2.1   another_entry.whatever.com another_entry"""
     expected_cleaned_hosts = """
@@ -294,7 +295,7 @@ def test_clean_host_file_no_empty_bottom_lines():
 
 4.3.2.1   another_entry.whatever.com another_entry"""
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry')
+        utils.clean_hosts_file('smt-entry', 'registry-entry')
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
@@ -317,6 +318,7 @@ def test_clean_host_file_one_empty_bottom_line():
 
 # Added by SMT, please, do NOT remove this line
 2.3.4.5   smt-entry.susecloud.net smt-entry
+2.3.4.5   registry-entry.susecloud.net
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
@@ -329,7 +331,7 @@ def test_clean_host_file_one_empty_bottom_line():
 4.3.2.1   another_entry.whatever.com another_entry
 """
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry'.encode())
+        utils.clean_hosts_file('smt-entry'.encode(), 'registry-entry'.encode())
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
@@ -352,6 +354,7 @@ def test_clean_host_file_some_empty_bottom_lines():
 
 # Added by SMT, please, do NOT remove this line
 2.3.4.5   smt-entry.susecloud.net smt-entry
+2.3.4.5   registry-entry.susecloud.net
 
 4.3.2.1   another_entry.whatever.com another_entry
 
@@ -367,7 +370,7 @@ def test_clean_host_file_some_empty_bottom_lines():
 4.3.2.1   another_entry.whatever.com another_entry
 """
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry'.encode())
+        utils.clean_hosts_file('smt-entry'.encode(), 'registry-entry'.encode())
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
@@ -393,6 +396,7 @@ def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
 
 # Added by SMT, please, do NOT remove this line
 2.3.4.5   smt-entry.susecloud.net smt-entry
+2.3.4.5   registry-entry.susecloud.net
 
 
 
@@ -407,7 +411,7 @@ def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
 """
 
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry'.encode())
+        utils.clean_hosts_file('smt-entry'.encode(), 'registry-entry'.encode())
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
@@ -433,6 +437,7 @@ def test_clean_host_file_one_empty_bottom_lines_smt_entry_is_last():
 
 # Added by SMT, please, do NOT remove this line
 2.3.4.5   smt-entry.susecloud.net smt-entry
+2.3.4.5   registry-entry.susecloud.net
 
 """
     expected_cleaned_hosts = """
@@ -445,7 +450,7 @@ def test_clean_host_file_one_empty_bottom_lines_smt_entry_is_last():
 """
 
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry'.encode())
+        utils.clean_hosts_file('smt-entry'.encode(), 'registry-entry'.encode())
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
@@ -470,7 +475,8 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 4.3.2.1   another_entry.whatever.com another_entry
 
 # Added by SMT, please, do NOT remove this line
-2.3.4.5   smt-entry.susecloud.net smt-entry"""
+2.3.4.5   smt-entry.susecloud.net smt-entry
+2.3.4.5   registry-entry.susecloud.net"""
     expected_cleaned_hosts = """
 # simulates hosts file containing the ipv6 we are looking for in the test
 
@@ -480,7 +486,7 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 4.3.2.1   another_entry.whatever.com another_entry
 """
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry'.encode())
+        utils.clean_hosts_file('smt-entry'.encode(), 'registry-entry'.encode())
 
     expected_write_calls = []
     expected_lines = expected_cleaned_hosts.split('\n')
@@ -505,7 +511,7 @@ def test_clean_host_file_raised_exception():
 
 4.3.2.1   another_entry.whatever.com another_entry"""
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
-        utils.clean_hosts_file('smt-entry')
+        utils.clean_hosts_file('smt-entry', ''.encode())
 
     assert m().write.mock_calls == []
 
@@ -531,19 +537,16 @@ def test_add_hosts_entry(mock_has_ipv6_access):
             '\n# Added by SMT registration do not remove, '
             'retain comment as well\n'
         )
-        file_content_entry = '{ip}\t{fqdn}\t{name}\n'.format(
+        file_content_entry = '{ip}\t{fqdn}\t{name}\n{ip_reg}\t{reg_name}\n'.format(
             ip=smt_server.get_ipv6(),
             fqdn=smt_server.get_FQDN(),
-            name=smt_server.get_name()
-        )
-        file_content_registry_entry = '{ip}\t{registry_fqdn}\n'.format(
-            ip=smt_server.get_ipv6(),
-            registry_fqdn='registry.suse.com'
+            name=smt_server.get_name(),
+            ip_reg=smt_server.get_ipv6(),
+            reg_name=smt_server.get_registry_FQDN()
         )
         assert file_handle.write.mock_calls == [
              call(file_content_comment),
              call(file_content_entry),
-             call(file_content_registry_entry)
         ]
 
 
@@ -1737,7 +1740,10 @@ def test_get_smt_alternative_server(
     mock_add_hosts_entry.assert_called_once_with(alternative_smt_server)
     mock_set_as_current_smt.assert_called_once_with(alternative_smt_server)
     mock_set_as_current_smt.assert_called_once_with(alternative_smt_server)
-    mock_clean_hosts_file.assert_called_once_with('smt-foo.susecloud.net')
+    mock_clean_hosts_file.assert_called_once_with(
+        'smt-foo.susecloud.net',
+        'registry-foo.susecloud.net'
+    )
 
 
 @patch('cloudregister.registerutils.__populate_srv_cache')
@@ -2415,7 +2421,10 @@ def test_replace_hosts_entry(mock_clean_hosts_file, mock_add_hosts_entry):
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     utils.replace_hosts_entry(smt_server, 'new_smt')
-    mock_clean_hosts_file.assert_called_once_with('smt-foo.susecloud.net')
+    mock_clean_hosts_file.assert_called_once_with(
+        'smt-foo.susecloud.net',
+        'registry-foo.susecloud.net'
+    )
     mock_add_hosts_entry.assert_called_once_with('new_smt')
 
 
