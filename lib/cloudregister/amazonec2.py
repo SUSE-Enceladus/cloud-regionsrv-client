@@ -32,10 +32,10 @@ def generateRegionSrvArgs():
     for imds_ip in imds_ips:
         imds_addr = imds_ip
         if ':' in imds_ip:
-            imds_addr = '[%s]' %imds_ip
+            imds_addr = '[%s]' % imds_ip
         try:
             token_resp = requests.put(
-                token_url %imds_addr,
+                token_url % imds_addr,
                 headers=token_header
             )
             if token_resp.status_code == 200:
@@ -43,7 +43,7 @@ def generateRegionSrvArgs():
             else:
                 continue
         except requests.exceptions.RequestException:
-            msg = 'Unable to retrieve IMDSv2 token using %s' %imds_ip
+            msg = 'Unable to retrieve IMDSv2 token using %s' % imds_ip
             logging.info(msg)
             continue
         break
@@ -58,8 +58,8 @@ def generateRegionSrvArgs():
     for imds_ip in imds_ips:
         imds_addr = imds_ip
         if ':' in imds_ip and '[' not in imds_ip:
-            imds_addr = '[%s]' %imds_ip
-        metadata_url = 'http://%s/latest/meta-data/' %imds_addr
+            imds_addr = '[%s]' % imds_ip
+        metadata_url = 'http://%s/latest/meta-data/' % imds_addr
         zone_info = 'placement/availability-zone'
 
         try:

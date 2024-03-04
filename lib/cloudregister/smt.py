@@ -204,7 +204,7 @@ class SMT:
         # we write here with the known pattern.
         for cert_name in certs_to_write:
             try:
-                with open(ca_file_path %cert_name, 'w') as smt_ca_file:
+                with open(ca_file_path % cert_name, 'w') as smt_ca_file:
                     smt_ca_file.write(cert)
             except IOError:
                 errMsg = 'Could not store update server certificate'
@@ -225,8 +225,8 @@ class SMT:
             rmt_ip = srv_ip
             # Per rfc3986 IPv6 addresses in a URI are enclosed in []
             if isinstance(ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address):
-                rmt_ip = '[%s]' %srv_ip
-            health_url = 'https://%s/api/health/status' %rmt_ip
+                rmt_ip = '[%s]' % srv_ip
+            health_url = 'https://%s/api/health/status' % rmt_ip
             cert_url = '%s://%s/' % (self._protocol, rmt_ip)
             check_urls[health_url] = cert_url
 

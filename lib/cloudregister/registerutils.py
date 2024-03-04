@@ -47,6 +47,7 @@ REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 
 
+
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
     """Add an entry to the /etc/hosts file for the given SMT server"""
@@ -447,7 +448,10 @@ def get_available_smt_servers():
     if not os.path.exists(get_state_dir()):
         return available_smt_servers
     smt_data_files = glob.glob(
-        os.path.join(get_state_dir(), AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*')
+        os.path.join(
+            get_state_dir(),
+            AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
+        )
     )
     for smt_data in smt_data_files:
         available_smt_servers.append(get_smt_from_store(smt_data))
@@ -552,9 +556,9 @@ def get_current_smt():
     smt_ipv6 = smt.get_ipv6()
     smt_fqdn = smt.get_FQDN()
     # A bit cumbersome to support Python 3.4
-    ipv4_search = '%s\s' % smt_ipv4
-    ipv6_search = '%s\s' % smt_ipv6
-    fqdn_search = '\s%s\s' % smt_fqdn
+    ipv4_search = r'%s\s' % smt_ipv4
+    ipv6_search = r'%s\s' % smt_ipv6
+    fqdn_search = r'\s%s\s' % smt_fqdn
     with open(HOSTSFILE_PATH, 'rb') as hosts_file:
         hosts = hosts_file.read()
     if (
@@ -928,7 +932,7 @@ def has_region_changed(cfg):
             registered_region = json.loads(
                 framework_file.read()
             )
-    except:
+    except Exception:
         return False
 
     if (
