@@ -149,7 +149,9 @@ def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):
 def test_get_cert_access_exception_ipv4(mock_request_get, mock_logging):
     """Test the exception path for cert retrieval when we cannot reach
        an update server with IPv4 adddress"""
-    mock_request_get.side_effect = Exception('FOO')
+    mock_request_get.side_effect = Exception(
+        "Server's too far, cant be reached"
+    )
     smt = SMT(etree.fromstring(smt_data_ipv4))
     assert not smt.get_cert()
     mock_logging.warning.assert_called_with(
@@ -187,20 +189,6 @@ def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
     assert mock_logging.error.called
     msg = 'Fingerprint could not be verified'
     mock_logging.error.assert_called_with(msg)
-
-
-# ----------------------------------------------------------------------------
-@patch('smt.requests.get')
-def test_get_cert_server_unreachable(mock_cert_pull):
-    """Test get cert with an unreachable server."""
-    response = Response()
-    response.status_code = 200
-    with open('tests/data/cert.pem', 'r') as cert_file:
-        response.text = cert_file.read()
-
-    mock_cert_pull.side_effect = Exception("Server's too far, cant be reached")
-    smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert not smt.get_cert()
 
 
 # ----------------------------------------------------------------------------
