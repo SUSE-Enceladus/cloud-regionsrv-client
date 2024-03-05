@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import amazonec2 as ec2
+import amazonec2 as ec2 # noqa
 
 
 # ----------------------------------------------------------------------------

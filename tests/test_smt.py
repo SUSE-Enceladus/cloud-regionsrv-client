@@ -28,7 +28,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-from smt import SMT
+from smt import SMT # noqa
 
 smt_data_ipv4 = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
@@ -149,10 +149,14 @@ def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):
 def test_get_cert_access_exception_ipv4(mock_request_get, mock_logging):
     """Test the exception path for cert retrieval when we cannot reach
        an update server with IPv4 adddress"""
-    mock_request_get.side_effect = Exception('FOO')
+    mock_request_get.side_effect = Exception(
+        "Server's too far, cant be reached"
+    )
     smt = SMT(etree.fromstring(smt_data_ipv4))
     assert not smt.get_cert()
-    mock_logging.warning.assert_called_with('Server 192.168.1.1 is unreachable')
+    mock_logging.warning.assert_called_with(
+        'Server 192.168.1.1 is unreachable'
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -185,20 +189,6 @@ def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
     assert mock_logging.error.called
     msg = 'Fingerprint could not be verified'
     mock_logging.error.assert_called_with(msg)
-
-
-# ----------------------------------------------------------------------------
-# @patch('smt.requests.get')
-# def test_get_cert_server_unreachable(mock_cert_pull):
-#     """Test get cert with an unreachable server."""
-#     response = Response()
-#     response.status_code = 200
-#     with open('tests/data/cert.pem', 'r') as cert_file:
-#         response.text = cert_file.read()
-
-#     mock_cert_pull.side_effect = Exception("Server's too far, cant be reached")
-#     smt = SMT(etree.fromstring(smt_data_ipv46))
-#     assert not smt.get_cert()
 
 
 # ----------------------------------------------------------------------------
@@ -298,7 +288,6 @@ def test_is_equivalent_on_ipv6():
     assert smt1.is_equivalent(smt2)
 
 
-
 # ----------------------------------------------------------------------------
 def test_is_equivalent_fails_differ_ipv():
     """Test two SMT servers with different network config are not equivalent"""
@@ -353,7 +342,7 @@ def test_is_responsive_ok(mock_cert_pull):
     response.json.return_value = {"state": "online"}
     mock_cert_pull.return_value = response
     smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert smt.is_responsive() == True
+    assert smt.is_responsive() is True
 
 
 # ----------------------------------------------------------------------------
@@ -373,13 +362,13 @@ def test_is_responsive_not_found(mock_cert_pull):
 
     mock_cert_pull.side_effect = mock_requests
     smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert smt.is_responsive() == True
+    assert smt.is_responsive() is True
 
 
 # ----------------------------------------------------------------------------
 def test_set_protocol_none():
     smt = SMT(etree.fromstring(smt_data_ipv46))
-    assert smt.set_protocol('foo') == None
+    assert smt.set_protocol('foo') is None
 
 
 # ----------------------------------------------------------------------------
@@ -428,9 +417,11 @@ def test_write_cert_ipv4_only(mock_get_cert):
     smt = SMT(etree.fromstring(smt_data_ipv4))
     with tempfile.TemporaryDirectory() as tmpdirname:
         smt.write_cert(tmpdirname)
-        certs = glob.glob('%s/*.pem' %tmpdirname)
+        certs = glob.glob('%s/*.pem' % tmpdirname)
         assert len(certs) == 1
-        assert certs[0] == '%s/registration_server_192_168_1_1.pem' %tmpdirname
+        assert certs[0] == (
+            '%s/registration_server_192_168_1_1.pem' % tmpdirname
+        )
 
 
 # ----------------------------------------------------------------------------
@@ -442,9 +433,9 @@ def test_write_cert_ipv6_only(mock_get_cert):
     smt = SMT(etree.fromstring(smt_data_ipv6))
     with tempfile.TemporaryDirectory() as tmpdirname:
         smt.write_cert(tmpdirname)
-        certs = glob.glob('%s/*.pem' %tmpdirname)
+        certs = glob.glob('%s/*.pem' % tmpdirname)
         assert len(certs) == 1
-        assert certs[0] == '%s/registration_server_fc00__1.pem' %tmpdirname
+        assert certs[0] == '%s/registration_server_fc00__1.pem' % tmpdirname
 
 
 # ----------------------------------------------------------------------------
@@ -456,10 +447,10 @@ def test_write_cert_dual_stack(mock_get_cert):
     smt = SMT(etree.fromstring(smt_data_ipv46))
     with tempfile.TemporaryDirectory() as tmpdirname:
         smt.write_cert(tmpdirname)
-        certs = glob.glob('%s/*.pem' %tmpdirname)
+        certs = glob.glob('%s/*.pem' % tmpdirname)
         assert len(certs) == 2
-        assert '%s/registration_server_fc00__1.pem' %tmpdirname in certs
-        assert '%s/registration_server_192_168_1_1.pem' %tmpdirname in certs
+        assert '%s/registration_server_fc00__1.pem' % tmpdirname in certs
+        assert '%s/registration_server_192_168_1_1.pem' % tmpdirname in certs
 
 
 # ----------------------------------------------------------------------------

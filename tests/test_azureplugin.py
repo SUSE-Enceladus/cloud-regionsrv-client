@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import msftazure as azure
+import msftazure as azure # noqa
 
 
 # ----------------------------------------------------------------------------

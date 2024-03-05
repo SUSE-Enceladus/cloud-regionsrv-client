@@ -47,7 +47,6 @@ REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 
 
-
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
     """Add an entry to the /etc/hosts file for the given SMT server"""
