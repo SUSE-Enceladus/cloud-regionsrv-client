@@ -1,0 +1,15 @@
+-r .virtualenv.requirements.txt
+
+# python unit testing framework
+pytest
+pytest-cov
+coverage
+
+# Rolling backport of unittest.mock for all Pythons
+mock
+
+# Python style guide checker
+flake8
+
+# Version-bump your software with a single command!
+bumpversion
