@@ -45,7 +45,7 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
-DOCKER_REGISTRY_CREDENTIALS_PATH = '.docker/.config.json'
+DOCKER_REGISTRY_CREDENTIALS_PATH = '.docker/config.json'
 
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
@@ -511,9 +511,10 @@ def get_credentials(credentials_file):
 # ----------------------------------------------------------------------------
 def set_registry_credentials(registry_fqdn, username, password):
     """Set the auth token to pull images from SUSE registry."""
-    auth_token = base64.b64encode(
-        b'{username}:{passwowrd}'.format(username=username, password=password)
-    )
+    auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
     registry_credentials = {}
     registry_credentials[registry_fqdn] = {'auths': auth_token}
 

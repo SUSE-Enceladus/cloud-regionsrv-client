@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
+import base64
 import configparser
 import inspect
 import io
@@ -2289,7 +2290,6 @@ def test_remove_registration_data(
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() == None
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call('System successfully removed from update infrastructure'),
@@ -2338,7 +2338,6 @@ def test_remove_registration_data_request_not_OK(
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() == None
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call(
@@ -2395,7 +2394,7 @@ def test_remove_registration_data_request_exception(
     mock_request_delete.side_effect = exception
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() == None
-    print(mock_logging.error.call_args_list)
+
     assert mock_logging.warning.call_args_list == [
         call('Unable to remove client registration from server'),
         call(exception),
@@ -3016,6 +3015,94 @@ def test_remove_service(
     assert utils.__remove_service('192') == 1
     mock_os_unlink.assert_called_once_with('foo')
     mock_logging.info.not_called()
+
+
+@patch('cloudregister.registerutils.os.path.join')
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_set_registry_credentials_config_does_not_exist(
+    mock_makedirs,
+    mock_json_dump,
+    mock_os_join
+):
+    username = 'SCC_dbe7a97570214719bb6a2dc5e9c5baab'
+    password = '1256447b616544fc'
+    expected_auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+
+    mock_os_join.return_value = '/home/foo/non_file'
+
+    # with patch('builtins.open', side_effect=FileExistsError()):
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open_docker_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            if mode == 'w':
+                return mock_open_docker_config.return_value
+            if mode == 'r':
+                raise FileNotFoundError()
+
+        mock_open.side_effect = open_file
+        file_handle = mock_open_docker_config.return_value.__enter__.return_value
+        file_handle.read.return_value = ''
+        utils.set_registry_credentials('127.0.0.1', username, password)
+        assert mock_makedirs.call_args_list == [
+            call('/home/foo', exist_ok=True),
+            call('/home/foo', exist_ok=True)
+        ]
+        assert mock_json_dump.call_args_list == [
+            call({"auths": {"127.0.0.1": {"auths": expected_auth_token}}}, file_handle),
+            call({"auths": {"127.0.0.1": {"auths": expected_auth_token}}}, file_handle)
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.json.load')
+@patch('cloudregister.registerutils.os.path.join')
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_set_registry_credentials_config_does_exist(
+    mock_makedirs,
+    mock_json_dump,
+    mock_os_join,
+    mock_json_load
+):
+    username = 'SCC_dbe7a97570214719bb6a2dc5e9c5baab'
+    password = '1256447b616544fc'
+    expected_auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+
+    mock_os_join.return_value = '/home/foo/non_file'
+
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open_docker_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            return mock_open_docker_config.return_value
+
+        mock_open.side_effect = open_file
+        file_handle = \
+            mock_open_docker_config.return_value.__enter__.return_value
+        file_handle.read.return_value = ''
+        mock_json_load.return_value = {
+            "auths": {
+                "127.0.0.1": {
+                    "auths": 'foo'
+                }
+            }
+        }
+        utils.set_registry_credentials('127.0.0.1', username, password)
+        assert mock_makedirs.call_args_list == []
+        assert mock_json_dump.call_args_list == [
+            call({
+                "auths": {"127.0.0.1": {"auths": expected_auth_token}}
+            }, file_handle),
+            call({
+                "auths": {"127.0.0.1": {"auths": expected_auth_token}}
+            }, file_handle)
+        ]
 
 
 # ---------------------------------------------------------------------------
