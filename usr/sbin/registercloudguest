@@ -54,45 +54,6 @@ DOCKER_REGISTRY_CREDENTIALS_PATH = '.docker/.config.json'
 urllib3.disable_warnings()
 registration_returncode = 0
 
-# ----------------------------------------------------------------------------
-def set_registry_credentials():
-    username, password = utils.get_credentials(
-        utils.get_credentials_file(
-            utils.get_current_smt()
-        )
-    )
-    registry_credentials = {}
-    registry_credentials[utils.REGISTRY_FQDN] = {
-        'username': username,
-        'password': password
-    }
-
-    docker_paths = [
-        os.path.join(
-            os.path.expanduser('~'), DOCKER_REGISTRY_CREDENTIALS_PATH
-        ),
-        os.path.join(os.sep, 'root', DOCKER_REGISTRY_CREDENTIALS_PATH)
-    ]
-    for docker_path in docker_paths:
-        config_json = {}
-        try:
-            with open(docker_path, 'r') as cred_json:
-                config_json = json.load(cred_json)
-            # file exists
-            # set the new registry credentials,
-            # independently of what that content was
-            config_json['auths'].update(registry_credentials)
-        except (FileNotFoundError, KeyError):
-            # config file does not exist or "auths" key is not set
-            os.makedirs(os.path.dirname(docker_path), exist_ok=True)
-            config_json.update({'auths': registry_credentials})
-
-        with open(docker_path, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
-
-        logging.info(
-            'Credentials for the registry added in %s' % ' '.join(docker_paths)
-        )
 
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[], failed=[]):
@@ -616,8 +577,12 @@ if failed_extensions:
     for failed_extension in failed_extensions:
         print(activate_prod_cmd.format(failed_extension))
 
-# add username and password credentials for registry
-set_registry_credentials()
+# add registry auth token credentials
+utils.set_registry_credentials(
+    registration_target.get_registry_FQDN(),
+    user,
+    password
+)
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():
