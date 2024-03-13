@@ -3058,9 +3058,6 @@ def test_set_registry_credentials_config_does_not_exist(
         password=password
     ).encode()).decode()
 
-    mock_os_join.return_value = '/home/foo/non_file'
-
-    # with patch('builtins.open', side_effect=FileExistsError()):
     with patch('builtins.open', create=True) as mock_open:
         mock_open_docker_config = MagicMock(spec=io.IOBase)
         def open_file(filename, mode):
@@ -3070,18 +3067,20 @@ def test_set_registry_credentials_config_does_not_exist(
                 raise FileNotFoundError()
 
         mock_open.side_effect = open_file
-        file_handle = mock_open_docker_config.return_value.__enter__.return_value
+        file_handle = \
+            mock_open_docker_config.return_value.__enter__.return_value
         file_handle.read.return_value = ''
-        utils.set_registry_credentials('127.0.0.1', username, password)
+        mock_os_join.return_value = '/home/foo/non_file'
+        utils.set_registry_credentials(
+            '127.0.0.1',
+            username,
+            password,
+            mock_os_join.return_value
+        )
         assert mock_makedirs.call_args_list == [
-            call('/home/foo', exist_ok=True),
             call('/home/foo', exist_ok=True)
         ]
         assert mock_json_dump.call_args_list == [
-            call(
-                {"auths": {"127.0.0.1": {"auth": expected_auth_token}}},
-                file_handle
-            ),
             call(
                 {"auths": {"127.0.0.1": {"auth": expected_auth_token}}},
                 file_handle
@@ -3107,8 +3106,6 @@ def test_set_registry_credentials_config_does_exist(
         password=password
     ).encode()).decode()
 
-    mock_os_join.return_value = '/home/foo/non_file'
-
     with patch('builtins.open', create=True) as mock_open:
         mock_open_docker_config = MagicMock(spec=io.IOBase)
         def open_file(filename, mode):
@@ -3118,22 +3115,16 @@ def test_set_registry_credentials_config_does_exist(
         file_handle = \
             mock_open_docker_config.return_value.__enter__.return_value
         file_handle.read.return_value = ''
-        mock_json_load.return_value = {
-            "auths": {
-                "127.0.0.1": {
-                    "auth": 'foo'
-                }
-            }
-        }
-        utils.set_registry_credentials('127.0.0.1', username, password)
+        mock_json_load.return_value = {"auths":{"127.0.0.1": {"auth": 'foo'}}}
+
+        utils.set_registry_credentials('127.0.0.1', username, password, '')
+
         assert mock_makedirs.call_args_list == []
         assert mock_json_dump.call_args_list == [
-            call({
-                "auths": {"127.0.0.1": {"auth": expected_auth_token}}
-            }, file_handle),
-            call({
-                "auths": {"127.0.0.1": {"auth": expected_auth_token}}
-            }, file_handle)
+            call(
+                {"auths": {"127.0.0.1": {"auth": expected_auth_token}}},
+                file_handle
+            )
         ]
 
 

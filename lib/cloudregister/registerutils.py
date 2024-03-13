@@ -515,12 +515,20 @@ def get_credentials(credentials_file):
 
 # ----------------------------------------------------------------------------
 def set_registry_config(registry_fqdn, username, password):
-    set_registry_credentials(registry_fqdn, username, password)
+    registry_credentials_paths = [
+        os.path.join(
+            os.path.expanduser('~'), DOCKER_REGISTRY_CREDENTIALS_PATH
+        ),
+        os.path.join(os.sep, 'root', DOCKER_REGISTRY_CREDENTIALS_PATH),
+        os.getenv('XDG_RUNTIME_DIR')  # podman path
+    ]
+    for cfg_path in registry_credentials_paths:
+        set_registry_credentials(registry_fqdn, username, password, cfg_path)
     set_registry_order_search(registry_fqdn)
 
 
 # ----------------------------------------------------------------------------
-def set_registry_credentials(registry_fqdn, username, password):
+def set_registry_credentials(registry_fqdn, username, password, cfg_path):
     """Set the auth token to pull images from SUSE registry."""
     auth_token = base64.b64encode('{username}:{password}'.format(
         username=username,
@@ -529,113 +537,31 @@ def set_registry_credentials(registry_fqdn, username, password):
     registry_credentials = {}
     registry_credentials[registry_fqdn] = {'auth': auth_token}
 
-    docker_paths = [
-        os.path.join(
-            os.path.expanduser('~'), DOCKER_REGISTRY_CREDENTIALS_PATH
-        ),
-        os.path.join(os.sep, 'root', DOCKER_REGISTRY_CREDENTIALS_PATH)
-    ]
-    for docker_path in docker_paths:
-        config_json = {}
-        try:
-            with open(docker_path, 'r') as cred_json:
-                config_json = json.load(cred_json)
-            # file exists
-            # set the new registry credentials,
-            # independently of what that content was
-            config_json['auths'].update(registry_credentials)
-        except (FileNotFoundError, KeyError):
-            # config file does not exist or "auths" key is not set
-            os.makedirs(os.path.dirname(docker_path), exist_ok=True)
-            config_json.update({'auths': registry_credentials})
+    config_json = {}
+    try:
+        with open(cfg_path, 'r') as cred_json:
+            config_json = json.load(cred_json)
+        # file exists
+        # set the new registry credentials,
+        # independently of what that content was
+        config_json['auths'].update(registry_credentials)
+    except (FileNotFoundError, KeyError):
+        # config file does not exist or "auths" key is not set
+        os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+        config_json.update({'auths': registry_credentials})
 
-        with open(docker_path, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
+    with open(cfg_path, 'w') as cred_json_file:
+        json.dump(config_json, cred_json_file)
 
-        logging.info(
-            'Credentials for the registry added in %s' % ' '.join(docker_paths)
-        )
+    logging.info(
+        'Credentials for the registry added in %s' % ' '.join(cfg_path)
+    )
 
 
 # ----------------------------------------------------------------------------
 def set_registry_order_search(registry_fqdn):
-    registry_location_config = {
-        'location': registry_fqdn,
-        'insecure': True
-    }
-    suse_registry = {
-        'location': 'registry.suse.com',
-        'insecure': True
-    }
-    registries_conf = {}
-    try:
-        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
-            registries_conf = toml.load(registries_conf_file)
-
-        if registry_fqdn not in registries_conf['unqualified-search-registries']:  #no-qa
-            registries_conf['unqualified-search-registries'] = \
-                ["{}".format(registry_fqdn), 'registry.suse.com'] + \
-                registries_conf['unqualified-search-registries']
-        if suse_registry not in registries_conf['registry']:
-            registries_conf['registry'] = \
-                [suse_registry] + registries_conf['registry']
-        if registry_location_config not in registries_conf['registry']:
-            registries_conf['registry'] = \
-                [registry_location_config] + registries_conf['registry']
-    except (FileNotFoundError, KeyError):
-        # file does not exist, create the file
-        os.makedirs(os.path.dirname(REGISTRIES_CONF_PATH), exist_ok=True)
-        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
-            registries_conf = toml.load(registries_conf_file)
-
-        # one or both keys do not exist
-        if registries_conf.get('unqualified-search-registries') is None:
-            registries_conf['unqualified-search-registries'] = \
-                ["{}".format(registry_fqdn), 'registry.suse.com']
-        if registries_conf.get('registry') is None:
-            registries_conf['registry'] = \
-                [registry_location_config] + [suse_registry]
-
-    with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
-        toml.dump(registries_conf, registries_conf_file)
-
-
-    docker_registry_config = [
-        "'{}'".format(registry_fqdn),
-        'registry.suse.com'
-    ]
-    docker_config_json = {}
-    try:
-        with open(DOCKER_CONFIG_PATH, 'r') as docker_config_file_json:
-            docker_config_json = json.load(docker_config_file_json)
-
-        docker_config_json['registry-mirrors'].update(
-            docker_registry_config + docker_config_json['registry-mirrors']
-        )
-        docker_config_json['insecure-registries'].update(
-            docker_registry_config + docker_config_json['insecure-registries']
-        )
-    except (FileNotFoundError, KeyError):
-        # config file does not exist,
-        # or either "registry-mirrors" key is not set or
-        # or"insecure-registries" key is not set
-        os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
-        if docker_config_json.get('registry-mirrors') is None:
-            docker_config_json.update(
-                {'registry-mirrors': docker_registry_config}
-            )
-        if docker_config_json.get('insecure-registries') is None:
-            docker_config_json.update(
-                {'insecure-registries': docker_registry_config}
-            )
-    with open(DOCKER_CONFIG_PATH, 'w') as docker_config_file_json:
-        json.dump(docker_config_json, docker_config_file_json)
-
-    logging.info(
-        'Config for the registry added in %s' % ' and '.join(
-            [REGISTRIES_CONF_PATH, DOCKER_CONFIG_PATH]
-        )
-    )
+    _set_registry_order_search_podman(registry_fqdn)
+    _set_registry_order_search_docker(registry_fqdn)
 
 
 # ----------------------------------------------------------------------------
@@ -1777,3 +1703,80 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
+
+
+# ----------------------------------------------------------------------------
+def _set_registry_order_search_podman(registry_fqdn):
+    registry_location_config = {'location': registry_fqdn, 'insecure': True}
+    suse_registry = {'location': 'registry.suse.com', 'insecure': True}
+    registries_conf = {}
+    try:
+        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
+            registries_conf = toml.load(registries_conf_file)
+
+        if registry_fqdn not in registries_conf['unqualified-search-registries']:  # no-qa
+            registries_conf['unqualified-search-registries'] = \
+                ["{}".format(registry_fqdn), 'registry.suse.com'] + \
+                registries_conf['unqualified-search-registries']
+        if suse_registry not in registries_conf['registry']:
+            registries_conf['registry'] = \
+                [suse_registry] + registries_conf['registry']
+        if registry_location_config not in registries_conf['registry']:
+            registries_conf['registry'] = \
+                [registry_location_config] + registries_conf['registry']
+    except (FileNotFoundError, KeyError):
+        # file does not exist, create the file
+        os.makedirs(os.path.dirname(REGISTRIES_CONF_PATH), exist_ok=True)
+        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
+            registries_conf = toml.load(registries_conf_file)
+
+        # one or both keys do not exist
+        if registries_conf.get('unqualified-search-registries') is None:
+            registries_conf['unqualified-search-registries'] = \
+                ["{}".format(registry_fqdn), 'registry.suse.com']
+        if registries_conf.get('registry') is None:
+            registries_conf['registry'] = \
+                [registry_location_config] + [suse_registry]
+
+    with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
+        toml.dump(registries_conf, registries_conf_file)
+
+
+# ----------------------------------------------------------------------------
+def _set_registry_order_search_docker(registry_fqdn):
+    docker_registry_config = [
+        "'{}'".format(registry_fqdn),
+        'registry.suse.com'
+    ]
+    docker_config_json = {}
+    try:
+        with open(DOCKER_CONFIG_PATH, 'r') as docker_config_file_json:
+            docker_config_json = json.load(docker_config_file_json)
+
+        docker_config_json['registry-mirrors'].update(
+            docker_registry_config + docker_config_json['registry-mirrors']
+        )
+        docker_config_json['insecure-registries'].update(
+            docker_registry_config + docker_config_json['insecure-registries']
+        )
+    except (FileNotFoundError, KeyError):
+        # config file does not exist,
+        # or either "registry-mirrors" key is not set or
+        # or"insecure-registries" key is not set
+        os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
+        if docker_config_json.get('registry-mirrors') is None:
+            docker_config_json.update(
+                {'registry-mirrors': docker_registry_config}
+            )
+        if docker_config_json.get('insecure-registries') is None:
+            docker_config_json.update(
+                {'insecure-registries': docker_registry_config}
+            )
+    with open(DOCKER_CONFIG_PATH, 'w') as docker_config_file_json:
+        json.dump(docker_config_json, docker_config_file_json)
+
+    logging.info(
+        'Config for the registry added in %s' % ' and '.join(
+            [REGISTRIES_CONF_PATH, DOCKER_CONFIG_PATH]
+        )
+    )
