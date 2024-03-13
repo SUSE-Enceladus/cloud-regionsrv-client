@@ -34,12 +34,14 @@ smt_data_ipv4 = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
      SMTserverIP="192.168.1.1"
      SMTserverName="fantasy.example.com"
+     SMTregistryName="registry-fantasy.example.com"
      region="antarctica-1"/>''')
 
 smt_data_ipv6 = dedent('''\
     <smtInfo fingerprint="00:44:22:33"
      SMTserverIPv6="fc00::1"
      SMTserverName="fantasy.example.com"
+     SMTregistryName="registry-fantasy.example.com"
      region="antarctica-1"/>''')
 
 smt_data_ipv46 = dedent('''\
@@ -47,12 +49,14 @@ smt_data_ipv46 = dedent('''\
      SMTserverIP="192.168.1.1"
      SMTserverIPv6="fc00::1"
      SMTserverName="fantasy.example.com"
+     SMTregistryName="registry-fantasy.example.com"
      region="antarctica-1"/>''')
 
 smt_data_no_region = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
      SMTserverIP="192.168.1.1"
-     SMTserverName="fantasy.example.com"/>''')
+     SMTserverName="fantasy.example.com"
+     SMTregistryName="registry-fantasy.example.com"/>''')
 
 
 # ----------------------------------------------------------------------------

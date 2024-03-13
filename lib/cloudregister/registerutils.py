@@ -237,7 +237,9 @@ def fetch_smt_data(cfg, proxies, quiet=False):
             logging.error('Unable to obtain SMT server information, exiting')
             sys.exit(1)
         smt_info = json.loads(response.text)
-        expected_entries = ('fingerprint', 'SMTserverIP', 'SMTserverName')
+        expected_entries = (
+            'fingerprint', 'SMTserverIP', 'SMTserverName', 'SMTregistryName'
+        )
         smt_info_xml = '<regionSMTdata><smtInfo '
         for attr in expected_entries:
             value = smt_info.get(attr)

@@ -200,6 +200,7 @@ def test_has_rmt_in_hosts_has_ipv4():
     # simulates hosts file containing the ipv4 we are looking for in the test
 
     1.1.1.1   smt-foo.susecloud.net  smt-foo
+    1.1.1.1   registry-foo.susecloud.net
     """
     server = MockServer()
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
@@ -525,6 +526,7 @@ def test_add_hosts_entry(mock_has_ipv6_access):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
 
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
@@ -712,12 +714,14 @@ def test_fetch_smt_data_metadata_server(
     response = Response()
     response.status_code = 200
     response.text = (
-        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar"}'
+        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar",'
+        '"SMTregistryName":"registry-foobar"}'
     )
     mock_request_get.return_value = response
     smt_data_fetched = dedent('''\
     <regionSMTdata><smtInfo fingerprint="foo" SMTserverIP="bar" \
-    SMTserverName="foobar" /></regionSMTdata>''')
+    SMTserverName="foobar" \
+    SMTregistryName="registry-foobar" /></regionSMTdata>''')
     smt_server = etree.fromstring(smt_data_fetched)
     fetched_smt_data = utils.fetch_smt_data(cfg, None)
     assert etree.tostring(fetched_smt_data, encoding='utf-8') == \
@@ -788,7 +792,8 @@ def test_fetch_smt_data_api_answered(
         SMTserverIP="1.2.3.4"
         SMTserverIPv6="fc11::2"
         SMTserverName="foo.susecloud.net"
-        />
+        SMTregistryName="registry-foo.susecloud.net"
+      />
     </regionSMTdata>''')
     response.text = smt_xml
     mock_request_get.return_value = response
@@ -819,14 +824,16 @@ def test_fetch_smt_data_api_no_valid_ip(
     response = Response()
     response.status_code = 200
     response.text = (
-        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar"}'
+        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar",'
+        '"SMTregistryName":"registry-foobar"}'
     )
     response2 = Response()
     response2.status_code = 200
     smt_xml = dedent(
         '''<regionSMTdata><smtInfo fingerprint="99:88:77:66" '''
         '''SMTserverIP="1.2.3.4" SMTserverIPv6="fc11::2" '''
-        '''SMTserverName="foo.susecloud.net"/></regionSMTdata>'''
+        '''SMTserverName="foo.susecloud.net" '''
+        '''SMTregistryName="registry-foo.susecloud.net"/></regionSMTdata>'''
     )
     response2.text = smt_xml
     mock_request_get.side_effect = [response2, response2]
@@ -972,35 +979,14 @@ def test_find_equivalent_smt_server(mock_is_responsive):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_data_ipv46_2 = dedent('''\
         <smtInfo fingerprint="00:11:22:33"
          SMTserverIP="192.168.2.1"
          SMTserverIPv6="fc00::2"
          SMTserverName="fantasy.example.net"
-         region="antarctica-1"/>''')
-    smt_a = SMT(etree.fromstring(smt_data_ipv46))
-    smt_b = SMT(etree.fromstring(smt_data_ipv46_2))
-    mock_is_responsive.return_value = True
-
-    assert utils.find_equivalent_smt_server(smt_a, [smt_a, smt_b]) == smt_b
-    assert utils.find_equivalent_smt_server(smt_a, [smt_a]) == None
-
-
-@patch.object(SMT, 'is_responsive')
-def test_find_equivalent_smt_server(mock_is_responsive):
-    """Test hosts entry has a new entry added by us."""
-    smt_data_ipv46 = dedent('''\
-        <smtInfo fingerprint="00:11:22:33"
-         SMTserverIP="192.168.1.1"
-         SMTserverIPv6="fc00::1"
-         SMTserverName="fantasy.example.com"
-         region="antarctica-1"/>''')
-    smt_data_ipv46_2 = dedent('''\
-        <smtInfo fingerprint="00:11:22:33"
-         SMTserverIP="192.168.2.1"
-         SMTserverIPv6="fc00::2"
-         SMTserverName="fantasy.example.net"
+         SMTregistryName="registry-fantasy.example.net"
          region="antarctica-1"/>''')
     smt_a = SMT(etree.fromstring(smt_data_ipv46))
     smt_b = SMT(etree.fromstring(smt_data_ipv46_2))
@@ -1031,6 +1017,7 @@ def test_get_activations_no_user_pass(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt.return_value = smt_server
@@ -1064,6 +1051,7 @@ def test_get_activations_request_wrong(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt.return_value = smt_server
@@ -1113,6 +1101,7 @@ def test_get_activations_request_OK(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt.return_value = smt_server
@@ -1165,6 +1154,7 @@ def test_get_credentials_file_no_file(mock_logging, mock_glob):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
 
@@ -1190,6 +1180,7 @@ def test_get_credentials_two_files(mock_logging, mock_glob):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
 
@@ -1215,6 +1206,7 @@ def test_get_current_smt_no_match(mock_get_smt_from_store, mock_os_unlink):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
@@ -1228,6 +1220,7 @@ def test_get_current_smt_no_registered(mock_get_smt_from_store):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
@@ -1250,6 +1243,7 @@ def test_get_current_smt(mock_get_smt_from_store, mock_is_registered):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
@@ -1551,6 +1545,7 @@ def test_get_smt_network_issue(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = smt_server
@@ -1580,6 +1575,7 @@ def test_get_smt_registered_no_network(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = smt_server
@@ -1622,6 +1618,7 @@ def test_get_smt_find_equivalent(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     smt_data_ipv46 = dedent('''\
@@ -1629,6 +1626,7 @@ def test_get_smt_find_equivalent(
          SMTserverIP="42.168.1.1"
          SMTserverIPv6="fc00::7"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     equivalent_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = smt_server
@@ -1677,6 +1675,7 @@ def test_get_smt_equivalent_smt_no_access(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     smt_data_ipv46 = dedent('''\
@@ -1684,6 +1683,7 @@ def test_get_smt_equivalent_smt_no_access(
          SMTserverIP="42.168.1.1"
          SMTserverIPv6="fc00::7"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     equivalent_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = smt_server
@@ -1729,6 +1729,7 @@ def test_get_smt_alternative_server(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     alternative_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_available_smt_servers.return_value = [alternative_smt_server]
@@ -1791,6 +1792,7 @@ def test_get_update_server_name_from_hosts(mock_get_available_smt_servers):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     alternative_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_available_smt_servers.return_value = [alternative_smt_server]
@@ -1832,6 +1834,7 @@ def test_has_ipv6_access_no_ipv6_defined():
         <smtInfo fingerprint="00:11:22:33"
          SMTserverIP="192.168.1.1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv4))
     assert utils.has_ipv6_access(smt_server) == False
@@ -1846,6 +1849,7 @@ def test_has_ipv6_access_https(mock_https_only, mock_request, mock_get_config):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     response = Response()
@@ -1874,6 +1878,7 @@ def test_has_ipv6_access_exception(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_request.side_effect = Exception("Server's too far, cant be reached")
@@ -1960,6 +1965,7 @@ def test_import_smtcert_12_no_write_cert(mock_smt_write_cert):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
 
@@ -1979,6 +1985,7 @@ def test_import_smtcert_12_no_update_ca_chain(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
 
@@ -1998,6 +2005,7 @@ def test_import_smtcert_12(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
 
@@ -2082,6 +2090,7 @@ def test_set_as_current_smt(mock_get_state_dir):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="fantasy.example.com"
+         SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
 
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
@@ -2168,6 +2177,7 @@ def test_switch_services_to_plugin_config_parse_error(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_available_smt_servers.return_value = [smt_server]
@@ -2198,6 +2208,7 @@ def test_switch_services_to_plugin_unlink_service(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_available_smt_servers.return_value = [smt_server]
@@ -2280,6 +2291,7 @@ def test_remove_registration_data(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
@@ -2328,6 +2340,7 @@ def test_remove_registration_data_request_not_OK(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
@@ -2383,6 +2396,7 @@ def test_remove_registration_data_request_exception(
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
@@ -2417,6 +2431,7 @@ def test_replace_hosts_entry(mock_clean_hosts_file, mock_add_hosts_entry):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     utils.replace_hosts_entry(smt_server, 'new_smt')
@@ -2455,6 +2470,7 @@ def test_store_smt_data(mock_os_fchmod, mock_pickle, mock_dump):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
+         SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -2474,6 +2490,7 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
          SMTserverIP="111.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="ANOTHER_NAME"
+         SMTregistryName="ANOTHER_REGISTRY_NAME"
          region="antarctica-1"/>''')
     new_smt_server = SMT(etree.fromstring(new_smt_data_ipv46))
     smt_data_ipv46 = dedent('''\
@@ -2481,6 +2498,7 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
          SMTserverIP="111.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="plugin:/susecloud"
+         SMTregistryName="registry-susecloud"
          region="antarctica-1"/>''')
     current_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = current_smt_server
@@ -2516,6 +2534,7 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
          SMTserverIP="111.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="ANOTHER_NAME"
+         SMTregistryName="ANOTHER_REGISTRY_NAME"
          region="antarctica-1"/>''')
     new_smt_server = SMT(etree.fromstring(new_smt_data_ipv46))
     smt_data_ipv46 = dedent('''\
@@ -2523,6 +2542,7 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
          SMTserverIP="111.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="plugin:/susecloud"
+         SMTregistryName="registry-susecloud"
          region="antarctica-1"/>''')
     current_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = current_smt_server
@@ -2593,6 +2613,7 @@ def test_update_rmt_cert_no_cert_change(
          SMTserverIP="111.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="ANOTHER_NAME"
+         SMTregistryName="ANOTHER_REGISTRY_NAME"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     smt_xml = dedent('''\
@@ -2601,6 +2622,7 @@ def test_update_rmt_cert_no_cert_change(
         SMTserverIP="1.2.3.4"
         SMTserverIPv6="fc11::2"
         SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
         />
     </regionSMTdata>''')
     region_smt_data = etree.fromstring(smt_xml)
@@ -2634,6 +2656,7 @@ def test_update_rmt_cert(
          SMTserverIP="111.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="ANOTHER_NAME"
+         SMTregistryName="ANOTHER_REGISTRY_NAME"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     smt_xml = dedent('''\
@@ -2642,6 +2665,7 @@ def test_update_rmt_cert(
         SMTserverIP="111.168.1.1"
         SMTserverIPv6="fc00::1"
         SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
         />
     </regionSMTdata>''')
     region_smt_data = etree.fromstring(smt_xml)
@@ -2882,6 +2906,7 @@ def test_populate_srv_cache(
         SMTserverIP="1.2.3.4"
         SMTserverIPv6="fc11::2"
         SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
         />
     </regionSMTdata>''')
     region_smt_data = etree.fromstring(smt_xml)
@@ -2893,6 +2918,7 @@ def test_populate_srv_cache(
         SMTserverIP="1.2.3.4"
         SMTserverIPv6="fc11::2"
         SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
         />''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_store_smt_data.assert_called_once_with(
@@ -3124,16 +3150,19 @@ def get_servers_data():
         <smtInfo
             SMTserverIP="107.22.231.220"
             SMTserverName="smt-ec2.susecloud.net"
+            SMTregistryName="registry-ec2.susecloud.net"
             fingerprint=
             "9E:B5:BD:DA:97:52:DA:55:F0:F2:5D:5C:64:60:D3:E0:5C:D4:FB:79"/>\n
         <smtInfo
             SMTserverIP="54.197.240.216"
             SMTserverName="smt-ec2.susecloud.net"
+            SMTregistryName="registry-ec2.susecloud.net"
             fingerprint=
             "9E:B5:BD:DA:97:52:DA:55:F0:F2:5D:5C:64:60:D3:E0:5C:D4:FB:79"/>\n
         <smtInfo
             SMTserverIP="54.225.105.144"
             SMTserverName="smt-ec2.susecloud.net"
+            SMTregistryName="registry-ec2.susecloud.net"
             fingerprint=
             "9E:B5:BD:DA:97:52:DA:55:F0:F2:5D:5C:64:60:D3:E0:5C:D4:FB:79"/>\n
     </regionSMTdata>
@@ -3148,16 +3177,19 @@ def get_modified_servers_data():
         <smtInfo
             SMTserverIP="107.22.231.220"
             SMTserverName="smt-ec2.susecloud.net"
+            SMTregistryName="registry-ec2.susecloud.net"
             fingerprint=
             "99:88:77:66"/>\n
         <smtInfo
             SMTserverIP="54.197.240.216"
             SMTserverName="smt-ec2.susecloud.net"
+            SMTregistryName="registry-ec2.susecloud.net"
             fingerprint=
             "9E:B5:BD:DA:97:52:DA:55:F0:F2:5D:5C:64:60:D3:E0:5C:D4:FB:79"/>\n
         <smtInfo
             SMTserverIP="54.225.105.144"
             SMTserverName="smt-ec2.susecloud.net"
+            SMTregistryName="registry-ec2.susecloud.net"
             fingerprint=
             "9E:B5:BD:DA:97:52:DA:55:F0:F2:5D:5C:64:60:D3:E0:5C:D4:FB:79"/>\n
     </regionSMTdata>
