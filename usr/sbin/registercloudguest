@@ -585,7 +585,7 @@ if failed_extensions:
         print(activate_prod_cmd.format(failed_extension))
 
 # add registry auth token credentials
-utils.set_registry_credentials(
+utils.set_registry_config(
     registration_target.get_registry_FQDN(),
     user,
     password
