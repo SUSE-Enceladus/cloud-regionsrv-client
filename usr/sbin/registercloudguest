@@ -167,6 +167,12 @@ argparse.add_argument(
     dest='user_smt_fqdn',
     help=help_msg
 )
+help_msg='The target registry server FQDN. '
+argparse.add_argument(
+    '--smt-registry-fqdn',
+    dest='user_registry_fqdn',
+    help=help_msg
+)
 help_msg='The target update server IP. '
 help_msg+='Use in exceptional cases only'
 argparse.add_argument(
@@ -300,7 +306,8 @@ if args.user_smt_ip:
         smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
     elif isinstance(smt_ip, ipaddress.IPv4Address):
         smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
-    smt_xml += 'SMTserverName="%s"' % args.user_smt_fqdn
+    smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+    smt_xml += 'SMTregistryName="%s"' % args.user_registry_fqdn
     smt_xml += '/></regionSMTdata>'
     region_smt_data = etree.fromstring(smt_xml)
 else:
