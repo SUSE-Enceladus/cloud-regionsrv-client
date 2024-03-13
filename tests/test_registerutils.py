@@ -3052,8 +3052,14 @@ def test_set_registry_credentials_config_does_not_exist(
             call('/home/foo', exist_ok=True)
         ]
         assert mock_json_dump.call_args_list == [
-            call({"auths": {"127.0.0.1": {"auths": expected_auth_token}}}, file_handle),
-            call({"auths": {"127.0.0.1": {"auths": expected_auth_token}}}, file_handle)
+            call(
+                {"auths": {"127.0.0.1": {"auth": expected_auth_token}}},
+                file_handle
+            ),
+            call(
+                {"auths": {"127.0.0.1": {"auth": expected_auth_token}}},
+                file_handle
+            )
         ]
 
 
@@ -3089,7 +3095,7 @@ def test_set_registry_credentials_config_does_exist(
         mock_json_load.return_value = {
             "auths": {
                 "127.0.0.1": {
-                    "auths": 'foo'
+                    "auth": 'foo'
                 }
             }
         }
@@ -3097,10 +3103,10 @@ def test_set_registry_credentials_config_does_exist(
         assert mock_makedirs.call_args_list == []
         assert mock_json_dump.call_args_list == [
             call({
-                "auths": {"127.0.0.1": {"auths": expected_auth_token}}
+                "auths": {"127.0.0.1": {"auth": expected_auth_token}}
             }, file_handle),
             call({
-                "auths": {"127.0.0.1": {"auths": expected_auth_token}}
+                "auths": {"127.0.0.1": {"auth": expected_auth_token}}
             }, file_handle)
         ]
 

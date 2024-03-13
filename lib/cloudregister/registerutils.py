@@ -516,7 +516,7 @@ def set_registry_credentials(registry_fqdn, username, password):
         password=password
     ).encode()).decode()
     registry_credentials = {}
-    registry_credentials[registry_fqdn] = {'auths': auth_token}
+    registry_credentials[registry_fqdn] = {'auth': auth_token}
 
     docker_paths = [
         os.path.join(
