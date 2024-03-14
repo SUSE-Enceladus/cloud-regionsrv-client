@@ -1744,36 +1744,27 @@ def _set_registry_order_search_podman(registry_fqdn):
 
 # ----------------------------------------------------------------------------
 def _set_registry_order_search_docker(registry_fqdn):
-    docker_registry_config = [
-        "'{}'".format(registry_fqdn),
-        'registry.suse.com'
+    insecure_urls = mirrors_urls = [
+        'https://{}'.format(registry_fqdn),
+        'https://registry.suse.com'
     ]
-    docker_config_json = {}
+    docker_cfg_json = {}
     try:
         with open(DOCKER_CONFIG_PATH, 'r') as docker_config_file_json:
-            docker_config_json = json.load(docker_config_file_json)
+            docker_cfg_json = json.load(docker_config_file_json)
 
-        docker_config_json['registry-mirrors'].update(
-            docker_registry_config + docker_config_json['registry-mirrors']
-        )
-        docker_config_json['insecure-registries'].update(
-            docker_registry_config + docker_config_json['insecure-registries']
-        )
+        mirrors_urls += docker_cfg_json['registry-mirrors']
+        insecure_urls += docker_cfg_json['insecure-registries']
     except (FileNotFoundError, KeyError):
         # config file does not exist,
-        # or either "registry-mirrors" key is not set or
-        # or"insecure-registries" key is not set
+        # "registry-mirrors" key is not set or
+        # "insecure-registries" key is not set
         os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
-        if docker_config_json.get('registry-mirrors') is None:
-            docker_config_json.update(
-                {'registry-mirrors': docker_registry_config}
-            )
-        if docker_config_json.get('insecure-registries') is None:
-            docker_config_json.update(
-                {'insecure-registries': docker_registry_config}
-            )
+
+    docker_cfg_json['registry-mirrors'] = mirrors_urls
+    docker_cfg_json['insecure-registries'] = insecure_urls
     with open(DOCKER_CONFIG_PATH, 'w') as docker_config_file_json:
-        json.dump(docker_config_json, docker_config_file_json)
+        json.dump(docker_cfg_json, docker_config_file_json)
 
     logging.info(
         'Config for the registry added in %s' % ' and '.join(
