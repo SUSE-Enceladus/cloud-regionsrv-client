@@ -46,11 +46,14 @@ from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
+DOCKER_REGISTRY_CREDENTIALS_PATH = '.docker/.config.json'
+
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
 urllib3.disable_warnings()
 registration_returncode = 0
+
 
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[], failed=[]):
@@ -162,6 +165,12 @@ help_msg+='Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fqdn',
     dest='user_smt_fqdn',
+    help=help_msg
+)
+help_msg='The target registry server FQDN. '
+argparse.add_argument(
+    '--smt-registry-fqdn',
+    dest='user_registry_fqdn',
     help=help_msg
 )
 help_msg='The target update server IP. '
@@ -297,7 +306,8 @@ if args.user_smt_ip:
         smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
     elif isinstance(smt_ip, ipaddress.IPv4Address):
         smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
-    smt_xml += 'SMTserverName="%s"' % args.user_smt_fqdn
+    smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+    smt_xml += 'SMTregistryName="%s"' % args.user_registry_fqdn
     smt_xml += '/></regionSMTdata>'
     region_smt_data = etree.fromstring(smt_xml)
 else:
@@ -588,6 +598,13 @@ if failed_extensions:
     activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
     for failed_extension in failed_extensions:
         print(activate_prod_cmd.format(failed_extension))
+
+# add registry auth token credentials
+utils.set_registry_config(
+    registration_target.get_registry_FQDN(),
+    user,
+    password
+)
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():

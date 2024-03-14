@@ -41,6 +41,7 @@ Requires:       python3-lxml
 Requires:       python3-requests
 Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
+Requires:       python3-toml
 Requires:       regionsrv-certs
 Requires:       zypper
 BuildRequires:  systemd
@@ -56,6 +57,7 @@ BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
 BuildRequires:  python3-zypp-plugin
+BuildRequires:  python3-toml
 BuildRequires:  systemd-rpm-macros
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 

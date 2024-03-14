@@ -40,6 +40,7 @@ class SMT:
         except KeyError:
             self._region = 'unknown'
         self._fqdn = smtXMLNode.attrib['SMTserverName']
+        self._registry_fqdn = smtXMLNode.attrib['SMTregistryName']
         self._fingerprint = smtXMLNode.attrib['fingerprint']
         self._cert = None
         self._cert_names = ('smt.crt', 'rmt.crt')
@@ -56,6 +57,7 @@ class SMT:
                 self.get_ipv4() == other_smt.get_ipv4() and
                 self.get_ipv6() == other_smt.get_ipv6() and
                 self.get_FQDN() == other_smt.get_FQDN() and
+                self.get_registry_FQDN() == other_smt.get_registry_FQDN() and
                 self.get_fingerprint() == other_smt.get_fingerprint() and
                 self.get_region() == other_smt.get_region()
         ):
@@ -93,6 +95,11 @@ class SMT:
     def get_FQDN(self):
         """Return the fully qualified domain name"""
         return self._fqdn
+
+    # --------------------------------------------------------------------
+    def get_registry_FQDN(self):
+        """Return the fully qualified domain registry name"""
+        return self._registry_fqdn
 
     # --------------------------------------------------------------------
     def get_name(self):

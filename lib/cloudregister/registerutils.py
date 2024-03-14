@@ -30,6 +30,7 @@ import stat
 import subprocess
 import sys
 import time
+import toml
 
 from lxml import etree
 from pathlib import Path
@@ -45,7 +46,9 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
-
+DOCKER_REGISTRY_CREDENTIALS_PATH = '.docker/config.json'
+DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
+REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 
 
 # ----------------------------------------------------------------------------
@@ -57,10 +60,12 @@ def add_hosts_entry(smt_server):
     smt_ip = smt_server.get_ipv4()
     if has_ipv6_access(smt_server):
         smt_ip = smt_server.get_ipv6()
-    entry = '%s\t%s\t%s\n' % (
+    entry = '%s\t%s\t%s\n%s\t%s\n' % (
         smt_ip,
         smt_server.get_FQDN(),
-        smt_server.get_name()
+        smt_server.get_name(),
+        smt_ip,
+        smt_server.get_registry_FQDN(),
     )
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
@@ -87,10 +92,12 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
-def clean_hosts_file(domain_name):
+def clean_hosts_file(domain_name, registry_name):
     """Remove the smt server entry from the /etc/hosts file"""
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
+    if isinstance(registry_name, str):
+        registry_name = registry_name.encode()
     new_hosts_content = []
     # Handle entries as bytes,
     # Yes, users put non ascii characters into /etc/hosts
@@ -98,12 +105,17 @@ def clean_hosts_file(domain_name):
         content = hosts_file.readlines()
 
     smt_announce_found = None
+    smt_domain_found = None
     for entry in content:
         if b'# Added by SMT' in entry:
             smt_announce_found = True
             continue
         if smt_announce_found and domain_name in entry:
             smt_announce_found = False
+            smt_domain_found = True
+            continue
+        if smt_domain_found and registry_name in entry:
+            smt_domain_found = False
             continue
         new_hosts_content.append(entry)
 
@@ -229,7 +241,9 @@ def fetch_smt_data(cfg, proxies, quiet=False):
             logging.error('Unable to obtain SMT server information, exiting')
             sys.exit(1)
         smt_info = json.loads(response.text)
-        expected_entries = ('fingerprint', 'SMTserverIP', 'SMTserverName')
+        expected_entries = (
+            'fingerprint', 'SMTserverIP', 'SMTserverName', 'SMTregistryName'
+        )
         smt_info_xml = '<regionSMTdata><smtInfo '
         for attr in expected_entries:
             value = smt_info.get(attr)
@@ -501,6 +515,57 @@ def get_credentials(credentials_file):
                             'credentials file "%s"' % entry)
 
     return (username, password)
+
+
+# ----------------------------------------------------------------------------
+def set_registry_config(registry_fqdn, username, password):
+    registry_credentials_paths = [
+        os.path.join(
+            os.path.expanduser('~'), DOCKER_REGISTRY_CREDENTIALS_PATH
+        ),
+        os.path.join(os.sep, 'root', DOCKER_REGISTRY_CREDENTIALS_PATH),
+        os.getenv('XDG_RUNTIME_DIR')  # podman path
+    ]
+    for cfg_path in registry_credentials_paths:
+        set_registry_credentials(registry_fqdn, username, password, cfg_path)
+    set_registry_order_search(registry_fqdn)
+
+
+# ----------------------------------------------------------------------------
+def set_registry_credentials(registry_fqdn, username, password, cfg_path):
+    """Set the auth token to pull images from SUSE registry."""
+    auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+    registry_credentials = {}
+    registry_credentials[registry_fqdn] = {'auth': auth_token}
+
+    config_json = {}
+    try:
+        with open(cfg_path, 'r') as cred_json:
+            config_json = json.load(cred_json)
+        # file exists
+        # set the new registry credentials,
+        # independently of what that content was
+        config_json['auths'].update(registry_credentials)
+    except (FileNotFoundError, KeyError):
+        # config file does not exist or "auths" key is not set
+        os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+        config_json.update({'auths': registry_credentials})
+
+    with open(cfg_path, 'w') as cred_json_file:
+        json.dump(config_json, cred_json_file)
+
+    logging.info(
+        'Credentials for the registry added in %s' % ' '.join(cfg_path)
+    )
+
+
+# ----------------------------------------------------------------------------
+def set_registry_order_search(registry_fqdn):
+    _set_registry_order_search_podman(registry_fqdn)
+    _set_registry_order_search_docker(registry_fqdn)
 
 
 # ----------------------------------------------------------------------------
@@ -778,7 +843,7 @@ def get_smt(cache_refreshed=None):
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
                 # Assume the new server is in the same domain
-                clean_hosts_file(server.get_FQDN())
+                clean_hosts_file(server.get_FQDN(), server.get_registry_FQDN())
                 add_hosts_entry(server)
                 set_as_current_smt(server)
                 return server
@@ -1266,7 +1331,7 @@ def remove_registration_data():
             logging.warning('Unable to remove client registration from server')
             logging.warning(e)
             logging.info('Continue with local artifact removal')
-        clean_hosts_file(domain_name)
+        clean_hosts_file(domain_name, smt.get_registry_FQDN())
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     if is_scc_connected():
@@ -1300,7 +1365,7 @@ def remove_registration_data():
 
 # ----------------------------------------------------------------------------
 def replace_hosts_entry(current_smt, new_smt):
-    clean_hosts_file(current_smt.get_FQDN())
+    clean_hosts_file(current_smt.get_FQDN(), current_smt.get_registry_FQDN())
     add_hosts_entry(new_smt)
 
 
@@ -1643,3 +1708,71 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
+
+
+# ----------------------------------------------------------------------------
+def _set_registry_order_search_podman(registry_fqdn):
+    registry_location_config = {'location': registry_fqdn, 'insecure': True}
+    suse_registry = {'location': 'registry.suse.com', 'insecure': True}
+    registries_conf = {}
+    try:
+        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
+            registries_conf = toml.load(registries_conf_file)
+
+        if registry_fqdn not in registries_conf['unqualified-search-registries']:  # no-qa
+            registries_conf['unqualified-search-registries'] = \
+                ["{}".format(registry_fqdn), 'registry.suse.com'] + \
+                registries_conf['unqualified-search-registries']
+        if suse_registry not in registries_conf['registry']:
+            registries_conf['registry'] = \
+                [suse_registry] + registries_conf['registry']
+        if registry_location_config not in registries_conf['registry']:
+            registries_conf['registry'] = \
+                [registry_location_config] + registries_conf['registry']
+    except (FileNotFoundError, KeyError):
+        # file does not exist, create the file
+        os.makedirs(os.path.dirname(REGISTRIES_CONF_PATH), exist_ok=True)
+        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
+            registries_conf = toml.load(registries_conf_file)
+
+        # one or both keys do not exist
+        if registries_conf.get('unqualified-search-registries') is None:
+            registries_conf['unqualified-search-registries'] = \
+                ["{}".format(registry_fqdn), 'registry.suse.com']
+        if registries_conf.get('registry') is None:
+            registries_conf['registry'] = \
+                [registry_location_config] + [suse_registry]
+
+    with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
+        toml.dump(registries_conf, registries_conf_file)
+
+
+# ----------------------------------------------------------------------------
+def _set_registry_order_search_docker(registry_fqdn):
+    insecure_urls = mirrors_urls = [
+        'https://{}'.format(registry_fqdn),
+        'https://registry.suse.com'
+    ]
+    docker_cfg_json = {}
+    try:
+        with open(DOCKER_CONFIG_PATH, 'r') as docker_config_file_json:
+            docker_cfg_json = json.load(docker_config_file_json)
+
+        mirrors_urls += docker_cfg_json['registry-mirrors']
+        insecure_urls += docker_cfg_json['insecure-registries']
+    except (FileNotFoundError, KeyError):
+        # config file does not exist,
+        # "registry-mirrors" key is not set or
+        # "insecure-registries" key is not set
+        os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
+
+    docker_cfg_json['registry-mirrors'] = mirrors_urls
+    docker_cfg_json['insecure-registries'] = insecure_urls
+    with open(DOCKER_CONFIG_PATH, 'w') as docker_config_file_json:
+        json.dump(docker_cfg_json, docker_config_file_json)
+
+    logging.info(
+        'Config for the registry added in %s' % ' and '.join(
+            [REGISTRIES_CONF_PATH, DOCKER_CONFIG_PATH]
+        )
+    )
