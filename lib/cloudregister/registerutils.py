@@ -504,6 +504,23 @@ def get_credentials(credentials_file):
 
 
 # ----------------------------------------------------------------------------
+def refresh_registry_credentials():
+    """Refresh registry credentials."""
+    requests.packages.urllib3.disable_warnings() # to silence InsecureRequestWarning
+    current_server = get_current_smt()
+    if current_server and is_registered(current_server.get_FQDN()):
+        if get_activations():
+            sys.exit(0)
+        message = 'Could not refresh credentials'
+    elif current_server:
+        message = 'System is not registered'
+    else:
+        message = 'No current update server configured'
+    logging.info(message)
+    sys.exit(message)
+
+
+# ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
     """Return the credentials filename.
     Credentials are stored per service. If there is a service

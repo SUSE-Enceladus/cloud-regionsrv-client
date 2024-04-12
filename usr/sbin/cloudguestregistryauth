@@ -1,0 +1,39 @@
+#!/usr/bin/python3
+
+# Copyright (c) 2024, SUSE LLC, All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library.
+
+"""This script refreshes the registry credentials on the configured
+   update server in the cloud environment.
+
+   Logic:
+   1.) Check if system has an RMT server configured
+   2.) Check if system is registered
+   3.) Refresh credentials"""
+
+
+import os
+import sys
+
+from cloudregister.registerutils import refresh_registry_credentials
+
+
+def main():
+    if os.geteuid():
+        sys.exit('You must be root')
+
+    refresh_registry_credentials()
+
+
+if __name__ == '__main__':  # pragma: no cover
+    main()
