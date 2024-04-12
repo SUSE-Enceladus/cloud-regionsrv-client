@@ -508,14 +508,13 @@ def refresh_registry_credentials():
     """Refresh registry credentials."""
     requests.packages.urllib3.disable_warnings() # to silence InsecureRequestWarning
     current_server = get_current_smt()
-    if current_server and is_registered(current_server.get_FQDN()):
+    if current_server:
+        # system is registered
         if get_activations():
             sys.exit(0)
         message = 'Could not refresh credentials'
-    elif current_server:
-        message = 'System is not registered'
     else:
-        message = 'No current update server configured'
+        message = 'No current update server configured or system is not registered'
     logging.info(message)
     sys.exit(message)
 

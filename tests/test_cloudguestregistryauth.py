@@ -44,33 +44,9 @@ def test_registry_no_rmt_server(mock_os_geteuid, mock_get_current_smt):
         cloudguestregistryauth.main()
 
     assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 'No current update server configured'
-
-
-@patch('cloudregister.registerutils.is_registered')
-@patch('cloudregister.registerutils.get_current_smt')
-@patch('cloudguestregistryauth.os.geteuid')
-def test_registry_not_registered(
-    mock_os_geteuid, mock_get_current_smt, mock_is_registered
-):
-    mock_os_geteuid.return_value = 0
-    mock_is_registered.return_value = False
-    smt_data_ipv46 = dedent('''\
-        <smtInfo fingerprint="00:11:22:33"
-         SMTserverIP="192.168.1.1"
-         SMTserverIPv6="fc00::1"
-         SMTserverName="fantasy.example.com"
-         SMTregistryName="registry-fantasy.example.com"
-         region="antarctica-1"/>''')
-    smt_server = SMT(etree.fromstring(smt_data_ipv46))
-
-    mock_get_current_smt.return_value = smt_server
-
-    with raises(SystemExit) as pytest_wrapped_e:
-        cloudguestregistryauth.main()
-
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 'System is not registered'
+    expected_error_message = 'No current update server configured or ' \
+        'system is not registered'
+    assert pytest_wrapped_e.value.code == expected_error_message
 
 
 @patch('cloudregister.registerutils.get_activations')
