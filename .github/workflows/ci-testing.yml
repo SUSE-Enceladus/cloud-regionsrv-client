@@ -1,0 +1,28 @@
+name: CI-Code-Style
+
+on: [push]
+
+jobs:
+  unit_tests:
+    name: Linter checks
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: [3.6]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Python${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Tox
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+      - name: Run code checks
+        run: |
+          tox -e check
+          tox -e "unit_py${PY_VER/./_}" -- -n auto
+        env:
+          PY_VER: ${{ matrix.python-version }}

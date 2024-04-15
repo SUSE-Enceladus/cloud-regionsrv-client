@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import amazonec2 as ec2
+import amazonec2 as ec2 # noqa
 
 
 # ----------------------------------------------------------------------------
@@ -69,12 +69,27 @@ def test_request_fail_response_error(
         mock_logging, mock_request_get, mock_request_put
 ):
     """Test unexpected return value"""
-    mock_request_get.return_value = _get_error_response()
+    # make sure loop has two IP addresses
+    mock_request_put.side_effect = [
+        _get_error_response(),
+        _get_error_response()
+    ]
+    mock_request_get.side_effect = [
+        _get_error_response(),
+        _get_error_response()
+    ]
     result = ec2.generateRegionSrvArgs()
     assert result is None
     assert mock_logging.warning.called
-    msg = '\tMessage: Test server failure'
-    mock_logging.warning.assert_called_with(msg)
+    assert mock_logging.warning.call_args_list == [
+        call('Falling back to IMDSv1'),
+        call('Unable to get availability zone metadata'),
+        call('\tReturn code: 500'),
+        call('\tMessage: Test server failure'),
+        call('Unable to get availability zone metadata'),
+        call('\tReturn code: 500'),
+        call('\tMessage: Test server failure')
+    ]
 
 
 # ----------------------------------------------------------------------------
