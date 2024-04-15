@@ -70,12 +70,17 @@ def test_request_fail_response_error(
 ):
     """Test unexpected return value"""
     # make sure loop has two IP addresses
-    mock_request_put.side_effect = [_get_error_response(), _get_error_response()]
-    mock_request_get.side_effect = [_get_error_response(), _get_error_response()]
+    mock_request_put.side_effect = [
+        _get_error_response(),
+        _get_error_response()
+    ]
+    mock_request_get.side_effect = [
+        _get_error_response(),
+        _get_error_response()
+    ]
     result = ec2.generateRegionSrvArgs()
     assert result is None
     assert mock_logging.warning.called
-    msg = '\tMessage: Test server failure'
     assert mock_logging.warning.call_args_list == [
         call('Falling back to IMDSv1'),
         call('Unable to get availability zone metadata'),
@@ -85,6 +90,7 @@ def test_request_fail_response_error(
         call('\tReturn code: 500'),
         call('\tMessage: Test server failure')
     ]
+
 
 # ----------------------------------------------------------------------------
 @patch('amazonec2.requests.put')
