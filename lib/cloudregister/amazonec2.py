@@ -104,6 +104,5 @@ def generateRegionSrvArgs():
             logging.warning('\tMessage: %s' % zone_resp.text)
             if imds_ip == imds_ips[-1]:
                 return
-            continue
 
     return 'regionHint=' + region

@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import googlece as gce
+import googlece as gce # noqa
 
 
 # ----------------------------------------------------------------------------
