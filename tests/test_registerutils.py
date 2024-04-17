@@ -533,12 +533,14 @@ def test_add_hosts_entry(mock_has_ipv6_access):
             '\n# Added by SMT registration do not remove, '
             'retain comment as well\n'
         )
-        file_content_entry = '{ip}\t{fqdn}\t{name}\n{ip_reg}\t{reg_name}\n'.format(
-            ip=smt_server.get_ipv6(),
-            fqdn=smt_server.get_FQDN(),
-            name=smt_server.get_name(),
-            ip_reg=smt_server.get_ipv6(),
-            reg_name=smt_server.get_registry_FQDN()
+        file_content_entry = (
+            '{ip}\t{fqdn}\t{name}\n{ip_reg}\t{reg_name}\n'.format(
+                ip=smt_server.get_ipv6(),
+                fqdn=smt_server.get_FQDN(),
+                name=smt_server.get_name(),
+                ip_reg=smt_server.get_ipv6(),
+                reg_name=smt_server.get_registry_FQDN()
+            )
         )
         assert file_handle.write.mock_calls == [
              call(file_content_comment),
@@ -3055,6 +3057,7 @@ def test_set_registry_credentials_config_does_not_exist(
 
     with patch('builtins.open', create=True) as mock_open:
         mock_open_docker_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             if mode == 'w':
                 return mock_open_docker_config.return_value
@@ -3103,6 +3106,7 @@ def test_set_registry_credentials_config_does_exist(
 
     with patch('builtins.open', create=True) as mock_open:
         mock_open_docker_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             return mock_open_docker_config.return_value
 
@@ -3110,7 +3114,7 @@ def test_set_registry_credentials_config_does_exist(
         file_handle = \
             mock_open_docker_config.return_value.__enter__.return_value
         file_handle.read.return_value = ''
-        mock_json_load.return_value = {"auths":{"127.0.0.1": {"auth": 'foo'}}}
+        mock_json_load.return_value = {"auths": {"127.0.0.1": {"auth": 'foo'}}}
 
         utils.set_registry_credentials('127.0.0.1', username, password, '')
 

@@ -50,6 +50,7 @@ DOCKER_REGISTRY_CREDENTIALS_PATH = '.docker/config.json'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 
+
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
     """Add an entry to the /etc/hosts file for the given SMT server"""
@@ -1726,7 +1727,9 @@ def _set_registry_order_search_podman(registry_fqdn):
         with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
             registries_conf = toml.load(registries_conf_file)
 
-        if registry_fqdn not in registries_conf['unqualified-search-registries']:  # no-qa
+        missing_registry_fqdn = registry_fqdn not in \
+            registries_conf['unqualified-search-registries']
+        if missing_registry_fqdn:
             registries_conf['unqualified-search-registries'] = \
                 ["{}".format(registry_fqdn), 'registry.suse.com'] + \
                 registries_conf['unqualified-search-registries']
