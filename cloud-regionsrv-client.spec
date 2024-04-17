@@ -187,6 +187,7 @@ fi
 %dir /var/cache/cloudregister
 %{_mandir}/man*/*
 %{_sbindir}/cloudguest-repo-service
+%{_sbindir}/cloudguestregistryauth
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/createregioninfo
 %{_sbindir}/switchcloudguestservices

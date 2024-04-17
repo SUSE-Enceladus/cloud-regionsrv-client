@@ -503,6 +503,15 @@ def get_credentials(credentials_file):
 
 
 # ----------------------------------------------------------------------------
+def refresh_registry_credentials():
+    """Refresh registry credentials."""
+    # to silence InsecureRequestWarning
+    # should be fixed on a different PR
+    requests.packages.urllib3.disable_warnings()
+    return get_activations()
+
+
+# ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
     """Return the credentials filename.
     Credentials are stored per service. If there is a service
