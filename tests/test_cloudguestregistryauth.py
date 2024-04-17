@@ -21,7 +21,7 @@ sys.path.insert(0, code_path)
 # Hack to get the script without the .py imported for testing
 cloudguestregistryauth = SourceFileLoader(
     'cloudguestregistryauth',
-    './usr/sbin/cloudguestregistryauth'
+    './usr/bin/cloudguestregistryauth'
 ).load_module()
 
 

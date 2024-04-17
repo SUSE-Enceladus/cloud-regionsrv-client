@@ -186,8 +186,10 @@ fi
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
 %{_mandir}/man*/*
+# Do not expect the user that needs containers to have root access
+# on the system
+%{_bindir}/cloudguestregistryauth
 %{_sbindir}/cloudguest-repo-service
-%{_sbindir}/cloudguestregistryauth
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/createregioninfo
 %{_sbindir}/switchcloudguestservices
