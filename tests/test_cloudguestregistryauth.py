@@ -63,13 +63,15 @@ def test_registry_get_activations_error(
     assert pytest_wrapped_e.value.code == 'Could not refresh credentials'
 
 
+@patch('builtins.print')
 @patch('cloudregister.registerutils.get_activations')
 @patch('cloudregister.registerutils.is_registered')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudguestregistryauth.os.geteuid')
 def test_registry_get_activations(
     mock_os_geteuid, mock_get_current_smt,
-    mock_is_registered, mock_get_activations
+    mock_is_registered, mock_get_activations,
+    mock_print
 ):
     mock_os_geteuid.return_value = 0
     mock_is_registered.return_value = True
@@ -84,8 +86,5 @@ def test_registry_get_activations(
     mock_get_current_smt.return_value = smt_server
     mock_get_activations.return_value = {'foo': 'bar'}
 
-    with raises(SystemExit) as pytest_wrapped_e:
-        cloudguestregistryauth.main()
-
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == 0
+    cloudguestregistryauth.main()
+    mock_print.assert_called_once_with('Credentials refreshed')

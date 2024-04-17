@@ -32,8 +32,10 @@ def main():
     if os.geteuid():
         sys.exit('You must be root')
 
-    refresh_registry_credentials()
+    if not refresh_registry_credentials():
+        sys.exit('Could not refresh credentials')
 
+    print('Credentials refreshed')
 
 if __name__ == '__main__':  # pragma: no cover
     main()
