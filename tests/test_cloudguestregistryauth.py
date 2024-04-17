@@ -35,20 +35,6 @@ def test_registry_call_as_root(mock_os_geteuid):
     assert pytest_wrapped_e.value.code == 'You must be root'
 
 
-@patch('cloudregister.registerutils.get_current_smt')
-@patch('cloudguestregistryauth.os.geteuid')
-def test_registry_no_rmt_server(mock_os_geteuid, mock_get_current_smt):
-    mock_os_geteuid.return_value = 0
-    mock_get_current_smt.return_value = None
-    with raises(SystemExit) as pytest_wrapped_e:
-        cloudguestregistryauth.main()
-
-    assert pytest_wrapped_e.type == SystemExit
-    expected_error_message = 'No current update server configured or ' \
-        'system is not registered'
-    assert pytest_wrapped_e.value.code == expected_error_message
-
-
 @patch('cloudregister.registerutils.get_activations')
 @patch('cloudregister.registerutils.is_registered')
 @patch('cloudregister.registerutils.get_current_smt')
