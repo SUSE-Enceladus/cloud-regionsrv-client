@@ -47,6 +47,12 @@ class SMT:
         if https_only:
             self._protocol = 'https'
         self._check_urls = self._form_srv_check_urls()
+        # disable InsecureRequestWarning
+        # as verification is disabled for the https request
+        requests.packages.urllib3.disable_warnings(
+            requests.packages.urllib3.exceptions.InsecureRequestWarning
+        )
+
 
     # --------------------------------------------------------------------
     def __eq__(self, other_smt):
