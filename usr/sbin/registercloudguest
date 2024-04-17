@@ -136,7 +136,7 @@ argparse.add_argument(
     '-d', '--delay',
     default=0,
     dest='delay_time',
-    help='Delay the start of registartion by given value in seconds',
+    help='Delay the start of registration by given value in seconds',
     type=int
 )
 # default config file location not set it is encoded in the utils function
@@ -494,7 +494,22 @@ while not base_registered:
         # Even on error SUSEConnect writes messages to stdout, go figure
         error_message = res[0].decode()
         failed_smts.append(registration_target.get_ipv4())
-        if len(failed_smts) == len(region_smt_servers):
+        if (
+            len(failed_smts) == len(region_smt_servers) or
+            (registration_returncode == 67 and
+             'registration code' in error_message.lower() and
+             args.reg_code)
+        ):
+            # there are no more RMT servers to try to register to or
+            # registration failed because of an invalid reg code
+            # and that SCC response will not change, independently
+            # of the RMT sibling selected
+            # SCC exit codes:
+            # 0: Registration successful
+            # 64: Connection refused
+            # 65: Access error, e.g. files not readable
+            # 66: Parser error: Server JSON response was not parseable
+            # 67: Server responded with error: see log output
             logging.error('Baseproduct registration failed')
             logging.error('\t%s' % error_message)
             cleanup()

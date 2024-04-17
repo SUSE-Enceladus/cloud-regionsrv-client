@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.1.6
+%define base_version 10.1.8
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -188,6 +188,9 @@ fi
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
 %{_mandir}/man*/*
+# Do not expect the user that needs containers to have root access
+# on the system
+%{_bindir}/cloudguestregistryauth
 %{_sbindir}/cloudguest-repo-service
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/createregioninfo

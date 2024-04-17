@@ -461,7 +461,10 @@ def get_available_smt_servers():
     if not os.path.exists(get_state_dir()):
         return available_smt_servers
     smt_data_files = glob.glob(
-        os.path.join(get_state_dir(), AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*')
+        os.path.join(
+            get_state_dir(),
+            AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
+        )
     )
     for smt_data in smt_data_files:
         available_smt_servers.append(get_smt_from_store(smt_data))
@@ -564,6 +567,14 @@ def set_registry_order_search(registry_fqdn):
     _set_registry_order_search_docker(registry_fqdn)
 
 
+def refresh_registry_credentials():
+    """Refresh registry credentials."""
+    # to silence InsecureRequestWarning
+    # should be fixed on a different PR
+    requests.packages.urllib3.disable_warnings()
+    return get_activations()
+
+
 # ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
     """Return the credentials filename.
@@ -617,9 +628,9 @@ def get_current_smt():
     smt_ipv6 = smt.get_ipv6()
     smt_fqdn = smt.get_FQDN()
     # A bit cumbersome to support Python 3.4
-    ipv4_search = '%s\s' % smt_ipv4
-    ipv6_search = '%s\s' % smt_ipv6
-    fqdn_search = '\s%s\s' % smt_fqdn
+    ipv4_search = r'%s\s' % smt_ipv4
+    ipv6_search = r'%s\s' % smt_ipv6
+    fqdn_search = r'\s%s\s' % smt_fqdn
     with open(HOSTSFILE_PATH, 'rb') as hosts_file:
         hosts = hosts_file.read()
     if (
@@ -808,6 +819,7 @@ def get_smt(cache_refreshed=None):
                     # Fetch cert for new target server
                     import_smt_cert(new_target)
                     # Verify the new target server has our credentials
+                    replace_hosts_entry(current_smt, new_target)
                     credentials_file_path = get_credentials_file(new_target)
                     user, password = get_credentials(credentials_file_path)
                     if not has_smt_access(
@@ -824,8 +836,8 @@ def get_smt(cache_refreshed=None):
                         msg += 'current, %s, target update server.'
                         msg += 'Try again later.'
                         logging.error(msg % (new_target_ips, original_smt_ips))
+                        replace_hosts_entry(new_target, current_smt)
                         return current_smt
-                    replace_hosts_entry(current_smt, new_target)
                     set_as_current_smt(new_target)
                     return new_target
     else:
@@ -992,7 +1004,7 @@ def has_region_changed(cfg):
             registered_region = json.loads(
                 framework_file.read()
             )
-    except:
+    except Exception:
         return False
 
     if (

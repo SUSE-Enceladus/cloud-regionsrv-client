@@ -34,8 +34,8 @@ data_path = test_path + os.sep + 'data/'
 
 sys.path.insert(0, code_path)
 
-import cloudregister.registerutils as utils
-from cloudregister.smt import SMT
+import cloudregister.registerutils as utils # noqa
+from cloudregister.smt import SMT # noqa
 
 CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
 
@@ -95,7 +95,7 @@ def test_has_region_changed_no_change(subproc, id_path, plugin, srvargs):
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-central1-d'
     cfg = get_test_config()
-    assert False == utils.has_region_changed(cfg)
+    assert utils.has_region_changed(cfg) is False
 
 
 @patch('cloudregister.registerutils.__get_system_mfg')
@@ -104,7 +104,7 @@ def test_has_region_changed_no_dmidecode(plugin, mfg):
     plugin.return_value = False
     mfg.return_value = False
     cfg = get_test_config()
-    assert False == utils.has_region_changed(cfg)
+    assert utils.has_region_changed(cfg) is False
 
 
 @patch('cloudregister.registerutils.__get_system_mfg')
@@ -113,7 +113,7 @@ def test_has_region_changed_no_plugin(plugin, mfg):
     plugin.return_value = False
     mfg.return_value = 'Google'
     cfg = get_test_config()
-    assert False == utils.has_region_changed(cfg)
+    assert utils.has_region_changed(cfg) is False
 
 
 @patch('cloudregister.registerutils.__get_region_server_args')
@@ -126,7 +126,7 @@ def test_has_region_changed_provider_change(subproc, id_path, plugin, srvargs):
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-central1-d'
-    assert True == utils.has_region_changed(cfg)
+    assert utils.has_region_changed(cfg) is True
 
 
 @patch('cloudregister.registerutils.__get_region_server_args')
@@ -141,7 +141,7 @@ def test_has_region_changed_provider_and_region_change(
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-east-1'
     cfg = get_test_config()
-    assert True == utils.has_region_changed(cfg)
+    assert utils.has_region_changed(cfg) is True
 
 
 @patch('cloudregister.registerutils.__get_region_server_args')
@@ -156,7 +156,7 @@ def test_has_region_changed_region_change(
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-east2-f'
     cfg = get_test_config()
-    assert True == utils.has_region_changed(cfg)
+    assert utils.has_region_changed(cfg) is True
 
 
 @patch('cloudregister.registerutils.json.loads')
@@ -178,7 +178,7 @@ def test_has_region_changed_provider_and_region_change_exception(
     mock_srvargs.return_value = 'regionHint=us-east-1'
     mock_json_loads.side_effect = Exception('foo')
     cfg = get_test_config()
-    assert utils.has_region_changed(cfg) == False
+    assert utils.has_region_changed(cfg) is False
 
 
 def test_is_registration_supported_SUSE_Family():
@@ -206,7 +206,7 @@ def test_has_rmt_in_hosts_has_ipv4():
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
-    assert True == has_entry
+    assert has_entry is True
 
 
 def test_has_rmt_in_hosts_has_ipv4_6():
@@ -221,7 +221,7 @@ def test_has_rmt_in_hosts_has_ipv4_6():
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
-    assert True == has_entry
+    assert has_entry is True
 
 
 def test_has_rmt_in_hosts_ipv4_not_found():
@@ -234,7 +234,7 @@ def test_has_rmt_in_hosts_ipv4_not_found():
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
-    assert False == has_entry
+    assert has_entry is False
 
 
 def test_has_rmt_in_hosts_has_ipv6():
@@ -247,7 +247,7 @@ def test_has_rmt_in_hosts_has_ipv6():
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
-    assert True == has_entry
+    assert has_entry is True
 
 
 def test_has_rmt_in_hosts_has_ipv6_4():
@@ -262,7 +262,7 @@ def test_has_rmt_in_hosts_has_ipv6_4():
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
-    assert True == has_entry
+    assert has_entry is True
 
 
 def test_has_rmt_in_hosts_ipv6_not_found():
@@ -275,7 +275,7 @@ def test_has_rmt_in_hosts_ipv6_not_found():
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
-    assert False == has_entry
+    assert has_entry is False
 
 
 def test_clean_host_file_no_empty_bottom_lines():
@@ -505,13 +505,6 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 
 def test_clean_host_file_raised_exception():
     hosts_content = ""
-    expected_cleaned_hosts = """
-# simulates hosts file containing the ipv6 we are looking for in the test
-
-1.2.3.4   smt-foo.susecloud.net  smt-foo
-
-
-4.3.2.1   another_entry.whatever.com another_entry"""
     with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('smt-entry', ''.encode())
 
@@ -617,14 +610,14 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
 @patch('cloudregister.registerutils.get_credentials')
 def test_credentials_files_are_equal(mock_get_credentials):
     mock_get_credentials.side_effect = [('SCC_foo', 'bar'), ('SCC_foo', 'bar')]
-    assert utils.credentials_files_are_equal('foo') == True
+    assert utils.credentials_files_are_equal('foo') is True
     assert mock_get_credentials.mock_calls == [
         call('/etc/zypp/credentials.d/SCCcredentials'),
         call('/etc/zypp/credentials.d/foo')
     ]
 
     mock_get_credentials.side_effect = [('SCC_bar', 'bar'), ('SCC_foo', 'bar')]
-    assert utils.credentials_files_are_equal('foo') == False
+    assert utils.credentials_files_are_equal('foo') is False
 
 
 def test_credentials_files_are_equal_no_credentials():
@@ -676,7 +669,7 @@ def test_fetch_smt_data_not_200_exception(
     response = Response()
     response.status_code = 422
     mock_request_get.return_value = response
-    with raises(SystemExit) as pytest_wrapped_e:
+    with raises(SystemExit):
         utils.fetch_smt_data(cfg, None)
     assert mock_logging.error.call_args_list == [
         call('===================='),
@@ -696,7 +689,7 @@ def test_fetch_smt_data_no_response_text(
     response.status_code = 200
     response.text = "{}"
     mock_request_get.return_value = response
-    with raises(SystemExit) as pytest_wrapped_e:
+    with raises(SystemExit):
         utils.fetch_smt_data(cfg, None)
     assert mock_logging.error.call_args_list == [
         call('Metadata server did not supply a value for "fingerprint"'),
@@ -730,35 +723,35 @@ def test_fetch_smt_data_metadata_server(
 
 @patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
-def test_fetch_smt_data_api_no_answered(
+def test_fetch_smt_data_api_no_answer(
     mock_logging,
     mock_time_sleep
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', '1.1.1.1')
-    with raises(SystemExit) as pytest_wrapped_e:
-        fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    with raises(SystemExit):
+        utils.fetch_smt_data(cfg, None)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
         call('\tUsing region server: 1.1.1.1'),
         call(
-            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            '\tNo cert found: /usr/lib/regionService/certs/1.1.1.1.pem '
             'skip this server'
         ),
         call('Waiting 20 seconds before next attempt'),
         call('Getting update server information, attempt 2'),
         call('\tUsing region server: 1.1.1.1'),
         call(
-            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            '\tNo cert found: /usr/lib/regionService/certs/1.1.1.1.pem '
             'skip this server'
         ),
         call('Waiting 10 seconds before next attempt'),
         call('Getting update server information, attempt 3'),
         call('\tUsing region server: 1.1.1.1'),
         call(
-            '\tNo cert found: /var/lib/regionService/certs/1.1.1.1.pem '
+            '\tNo cert found: /usr/lib/regionService/certs/1.1.1.1.pem '
             'skip this server'
         )
     ]
@@ -838,8 +831,8 @@ def test_fetch_smt_data_api_no_valid_ip(
     response2.text = smt_xml
     mock_request_get.side_effect = [response2, response2]
     mock_ipaddress_ip_address.side_effect = ValueError('foo')
-    fetched_smt_data = utils.fetch_smt_data(cfg, None)
-    assert etree.tostring(fetched_smt_data, encoding='utf-8') == smt_xml.encode()
+    smt_data = utils.fetch_smt_data(cfg, None)
+    assert etree.tostring(smt_data, encoding='utf-8') == smt_xml.encode()
 
 
 @patch('cloudregister.registerutils.requests.get')
@@ -860,8 +853,8 @@ def test_fetch_smt_data_api_error_response(
     response.status_code = 422
     response.reason = 'well, you shall not pass'
     mock_request_get.return_value = response
-    with raises(SystemExit) as pytest_wrapped_e:
-        fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    with raises(SystemExit):
+        utils.fetch_smt_data(cfg, None)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
@@ -912,8 +905,8 @@ def test_fetch_smt_data_api_exception(
     response.status_code = 422
     response.reason = 'well, you shall not pass'
     mock_request_get.side_effect = requests.exceptions.RequestException('foo')
-    with raises(SystemExit) as pytest_wrapped_e:
-        fetched_smt_data = utils.fetch_smt_data(cfg, None)
+    with raises(SystemExit):
+        utils.fetch_smt_data(cfg, None)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
@@ -958,8 +951,8 @@ def test_fetch_smt_data_api_exception_quiet(
     response.status_code = 422
     response.reason = 'well, you shall not pass'
     mock_request_get.side_effect = requests.exceptions.RequestException('foo')
-    with raises(SystemExit) as pytest_wrapped_e:
-        fetched_smt_data = utils.fetch_smt_data(cfg, 'foo', quiet=True)
+    with raises(SystemExit):
+        utils.fetch_smt_data(cfg, 'foo', quiet=True)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Waiting 20 seconds before next attempt'),
@@ -993,7 +986,7 @@ def test_find_equivalent_smt_server(mock_is_responsive):
     mock_is_responsive.return_value = True
 
     assert utils.find_equivalent_smt_server(smt_a, [smt_a, smt_b]) == smt_b
-    assert utils.find_equivalent_smt_server(smt_a, [smt_a]) == None
+    assert utils.find_equivalent_smt_server(smt_a, [smt_a]) is None
 
 
 @patch('cloudregister.registerutils.glob.glob')
@@ -1157,8 +1150,6 @@ def test_get_credentials_file_no_file(mock_logging, mock_glob):
          SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-
-
     utils.get_credentials_file(smt_server, 'bar')
     assert mock_logging.info.mock_calls == [
         call('No credentials entry for "*bar*"'),
@@ -1183,19 +1174,17 @@ def test_get_credentials_two_files(mock_logging, mock_glob):
          SMTregistryName="registry-fantasy.example.com"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
-
-
     assert utils.get_credentials_file(smt_server) == 'foo'
     assert mock_logging.warning.mock_calls == [
         call('Found multiple credentials for "None" entry and '
-                'hoping for the best')
+             'hoping for the best')
     ]  # TODO: check this warning
 
 
 @patch('cloudregister.registerutils.get_smt_from_store')
 def test_get_current_smt_no_smt(mock_get_smt_from_store):
     mock_get_smt_from_store.return_value = None
-    assert utils.get_current_smt() == None
+    assert utils.get_current_smt() is None
 
 
 @patch('cloudregister.registerutils.os.unlink')
@@ -1232,7 +1221,7 @@ def test_get_current_smt_no_registered(mock_get_smt_from_store):
     with mock.patch('builtins.open', mock.mock_open(
         read_data=hosts_content.encode()
     )):
-        assert utils.get_current_smt() == None
+        assert utils.get_current_smt() is None
 
 
 @patch('cloudregister.registerutils.is_registered')
@@ -1286,8 +1275,8 @@ def test_get_instance_data_provider_option_none():
     cfg.set('instance', 'dataProvider', 'none')
     expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
-    
-    
+
+
 @patch('cloudregister.registerutils.logging')
 def test_get_instance_data_cmd_not_found(mock_logging):
     cfg = get_test_config()
@@ -1516,10 +1505,10 @@ def test_get_installed_products_no_link(
 @patch('cloudregister.registerutils.glob.glob')
 def test_get_repo_url(mock_glob):
     mock_glob.return_value = ['tests/data/repo_foo.repo']
-    assert utils.get_repo_url('SLE-Module-Live-Foo15-SP5-Source-Pool') == \
-        'plugin:/susecloud?credentials=SUSE_Linux_Enterprise_Live_Foo_x86_64&' \
-        'path=/repo/SUSE/Products/SLE-Module-Live-Foo/15-SP5/x86_64/' \
-        'product_source/'
+    assert utils.get_repo_url('SLE-Module-Live-Foo15-SP5-Source-Pool') == (
+        'plugin:/susecloud?credentials=SUSE_Linux_Enterprise_Live_Foo_x86_64&'
+        'path=/repo/SUSE/Products/SLE-Module-Live-Foo/15-SP5/x86_64/'
+        'product_source/')
 
 
 @patch('cloudregister.registerutils.glob.glob')
@@ -1700,9 +1689,9 @@ def test_get_smt_equivalent_smt_no_access(
         call('Using equivalent update server: "(\'42.168.1.1\', \'fc00::7\')"')
     ]
     mock_logging.error.assert_called_once_with(
-        "Sibling update server, ('42.168.1.1', 'fc00::7'), does not have system credentials "
-        "cannot failover. Retaining current, ('192.168.1.1', 'fc00::1'), target update server."
-        'Try again later.'
+        "Sibling update server, ('42.168.1.1', 'fc00::7'), does not have "
+        'system credentials cannot failover. Retaining current, '
+        "('192.168.1.1', 'fc00::1'), target update server.Try again later."
     )
 
 
@@ -1774,7 +1763,7 @@ def test_get_smt_refresh_cache(
 @patch('cloudregister.registerutils.os.path.exists')
 def test_get_smt_from_store_non_existing_path(mock_os_path_exists):
     mock_os_path_exists.return_value = False
-    assert utils.get_smt_from_store('foo') == None
+    assert utils.get_smt_from_store('foo') is None
 
 
 @patch.object(pickle, 'Unpickler')
@@ -1782,7 +1771,9 @@ def test_get_smt_from_store_raise_exception(mock_unpickler):
     unpick = Mock()
     mock_unpickler.return_value = unpick
     unpick.load.side_effect = pickle.UnpicklingError
-    assert utils.get_smt_from_store('tests/data/availableSMTInfo_1.obj') == None
+    assert utils.get_smt_from_store(
+        'tests/data/availableSMTInfo_1.obj'
+    ) is None
 
 
 @patch('cloudregister.registerutils.get_available_smt_servers')
@@ -1837,7 +1828,7 @@ def test_has_ipv6_access_no_ipv6_defined():
          SMTregistryName="registry-foo.susecloud.net"
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv4))
-    assert utils.has_ipv6_access(smt_server) == False
+    assert utils.has_ipv6_access(smt_server) is False
 
 
 @patch('cloudregister.registerutils.get_config')
@@ -1883,7 +1874,7 @@ def test_has_ipv6_access_exception(
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_request.side_effect = Exception("Server's too far, cant be reached")
     mock_https_only.return_value = True
-    assert utils.has_ipv6_access(smt_server) == False
+    assert utils.has_ipv6_access(smt_server) is False
     mock_request.assert_called_once_with(
         'https://[fc00::1]/smt.crt',
         timeout=3,
@@ -1894,14 +1885,14 @@ def test_has_ipv6_access_exception(
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_nvidia_support(mock_subprocess):
     mock_subprocess.return_value = b'NVIDIA', 'bar'
-    assert utils.has_nvidia_support() == True
+    assert utils.has_nvidia_support() is True
 
 
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_nvidia_support_exception(mock_subprocess, mock_logging):
     mock_subprocess.side_effect = TypeError('foo')
-    assert utils.has_nvidia_support() == False
+    assert utils.has_nvidia_support() is False
     mock_logging.info.assert_called_once_with(
         'lspci command not found, instance Nvidia support cannot be determined'
     )
@@ -1910,13 +1901,13 @@ def test_has_nvidia_support_exception(mock_subprocess, mock_logging):
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_nvidia_no_support(mock_subprocess):
     mock_subprocess.return_value = b'foo', 'bar'
-    assert utils.has_nvidia_support() == False
+    assert utils.has_nvidia_support() is False
 
 
 @patch('cloudregister.registerutils.__get_service_plugins')
 def test_has_services_service_plugin(mock_get_service_plugins):
     mock_get_service_plugins.return_value = 'foo'
-    assert utils.has_services('foo') == True
+    assert utils.has_services('foo') is True
 
 
 @patch('cloudregister.registerutils.glob.glob')
@@ -1924,7 +1915,7 @@ def test_has_services_service(mock_get_service_plugins):
     mock_get_service_plugins.return_value = ['foo']
     content = 'url=plugin:susecloud'
     with mock.patch('builtins.open', mock.mock_open(read_data=content)):
-        assert utils.has_services('foo') == True
+        assert utils.has_services('foo') is True
 
 
 @patch('cloudregister.registerutils.requests.post')
@@ -1933,7 +1924,7 @@ def test_has_smt_access_unauthorized(mock_http_basic_auth, mock_post):
     response = Response()
     response.reason = 'Unauthorized'
     mock_post.return_value = response
-    assert utils.has_smt_access('foo', 'bar', 'foobar') == False
+    assert utils.has_smt_access('foo', 'bar', 'foobar') is False
 
 
 @patch('cloudregister.registerutils.requests.post')
@@ -1942,19 +1933,19 @@ def test_has_smt_access_authorized(mock_http_basic_auth, mock_post):
     response = Response()
     response.reason = 'Super_Authorized'
     mock_post.return_value = response
-    assert utils.has_smt_access('foo', 'bar', 'foobar') == True
+    assert utils.has_smt_access('foo', 'bar', 'foobar') is True
 
 
 def test_https_only():
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'httpsOnly', 'true')
-    assert utils.https_only(cfg) == True
+    assert utils.https_only(cfg) is True
 
 
 def test_https_only_no():
     cfg = get_test_config()
-    assert utils.https_only(cfg) == False
+    assert utils.https_only(cfg) is False
 
 
 @patch.object(SMT, 'write_cert')
@@ -2016,7 +2007,7 @@ def test_import_smtcert_12(
 @patch('cloudregister.registerutils.import_smtcert_12')
 def test_import_smt_cert_fail(mock_import_smtcert_12, mockin_logging):
     mock_import_smtcert_12.return_value = False
-    assert utils.import_smt_cert('foo') == None
+    assert utils.import_smt_cert('foo') is None
     mockin_logging.error.assert_called_once_with(
         'SMT certificate import failed'
     )
@@ -2029,7 +2020,7 @@ def test_import_smt_cert_fail(mock_import_smtcert_12, mockin_logging):
 def test_import_smt_cert_cert_middling(
     mock_import_smtcert_12,
     mockin_logging,
-        mockin_getsitepackages,
+    mockin_getsitepackages,
     mockin_glob
 ):
     mock_import_smtcert_12.return_value = True
@@ -2042,39 +2033,46 @@ def test_import_smt_cert_cert_middling(
     )
 
 
-def test_is_new_registration_not_new():
-    assert utils.is_new_registration() == False
+@patch('cloudregister.registerutils.get_state_dir')
+def test_is_new_registration_not_new(mock_state_dir):
+    mock_state_dir.return_value = data_path
+    assert utils.is_new_registration() is False
 
 
 def test_is_registration_supported_exception():
     cfg_template = get_test_config()
     del cfg_template['server']
-    assert utils.is_registration_supported(cfg_template) == False
+    assert utils.is_registration_supported(cfg_template) is False
 
 
 def test_is_registration_supported():
     cfg_template = get_test_config()
-    assert utils.is_registration_supported(cfg_template) == True
+    assert utils.is_registration_supported(cfg_template) is True
 
 
 @patch('cloudregister.registerutils.glob.glob')
 def test_is_scc_connected(mock_glob):
     mock_glob.return_value = ['tests/data/scc_repo.repo']
-    assert utils.is_scc_connected() == True
+    assert utils.is_scc_connected() is True
 
 
-def test_is_scc_not_connected():
-    assert utils.is_scc_connected() == False
+@patch('cloudregister.registerutils.glob.glob')
+def test_is_scc_not_connected(mock_glob):
+    mock_glob.return_value = []
+    assert utils.is_scc_connected() is False
 
 
-def test_is_zypper_running_not():
-    assert utils.is_zypper_running() == False
+@patch('cloudregister.registerutils.get_zypper_pid')
+def test_is_zypper_running_not(mock_get_zypper_pid):
+    mock_get_zypper_pid.return_value = ''
+    assert utils.is_zypper_running() is False
 
 
 @patch('cloudregister.registerutils.get_zypper_pid')
 def test_is_zypper_running(mock_get_zypper_pid):
     mock_get_zypper_pid.return_value = 42
     assert utils.is_zypper_running()
+
 
 @patch('cloudregister.registerutils.get_state_dir')
 def test_refresh_zypper_pid_cache(mock_get_state_dir):
@@ -2099,10 +2097,14 @@ def test_set_as_current_smt(mock_get_state_dir):
         utils.set_as_current_smt(smt_server)
 
 
-@patch.dict(os.environ, {'http_proxy': 'foo', 'https_proxy': 'bar'}, clear=True)
+@patch.dict(
+    os.environ,
+    {'http_proxy': 'foo', 'https_proxy': 'bar'},
+    clear=True
+)
 @patch('cloudregister.registerutils.logging')
 def test_set_proxy_proxy_set_on_os_env(mock_logging):
-    assert utils.set_proxy() == False
+    assert utils.set_proxy() is False
     assert mock_logging.info.call_args_list == [
         call('Using proxy settings from execution environment'),
         call('\thttp_proxy: foo'),
@@ -2113,7 +2115,7 @@ def test_set_proxy_proxy_set_on_os_env(mock_logging):
 @patch('cloudregister.registerutils.os.path.exists')
 def test_set_proxy_proxy_set_on_directory(mock_os_path_exists):
     mock_os_path_exists.return_value = False
-    assert utils.set_proxy() == False
+    assert utils.set_proxy() is False
 
 
 @patch('cloudregister.registerutils.os.path.exists')
@@ -2125,7 +2127,7 @@ def test_set_proxy(mock_os_path_exists):
     NO_PROXY="localhost, 127.0.0.1"
     """
     with mock.patch('builtins.open', mock.mock_open(read_data=proxy_content)):
-        assert utils.set_proxy() == True
+        assert utils.set_proxy() is True
 
 
 @patch.dict(os.environ, {'http_proxy': '', 'https_proxy': ''}, clear=True)
@@ -2136,7 +2138,7 @@ def test_proxy_not_enable(mock_os_path_exists):
     PROXY_ENABLED="no"
     """
     with mock.patch('builtins.open', mock.mock_open(read_data=proxy_content)):
-        assert utils.set_proxy() == False
+        assert utils.set_proxy() is False
 
 
 @patch('cloudregister.registerutils.Path')
@@ -2159,7 +2161,7 @@ def test_rmt_as_scc_proxy_flag(mock_path):
 @patch('cloudregister.registerutils.get_available_smt_servers')
 def test_switch_services_to_plugin_no_servers(mock_get_available_smt_servers):
     mock_get_available_smt_servers.return_value = []
-    assert utils.switch_services_to_plugin() == None
+    assert utils.switch_services_to_plugin() is None
 
 
 @patch('cloudregister.registerutils.logging')
@@ -2234,7 +2236,7 @@ def test_remove_registration_data_no_user(
     mock_logging
 ):
     mock_get_creds.return_value = None, None
-    assert utils.remove_registration_data() == None
+    assert utils.remove_registration_data() is None
     mock_logging.info.assert_called_once_with(
         'No credentials, nothing to do server side'
     )
@@ -2255,7 +2257,7 @@ def test_remove_registration_data_no_registration(
     mock_get_creds.return_value = 'foo', 'bar'
     mock_is_scc_connected.return_value = False
     mock_os_path_exists.return_value = False
-    assert utils.remove_registration_data() == None
+    assert utils.remove_registration_data() is None
     mock_logging.info.assert_called_once_with(
         'No current registration server set.'
     )
@@ -2301,7 +2303,7 @@ def test_remove_registration_data(
     response.status_code = 204
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
-    assert utils.remove_registration_data() == None
+    assert utils.remove_registration_data() is None
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call('System successfully removed from update infrastructure'),
@@ -2350,7 +2352,7 @@ def test_remove_registration_data_request_not_OK(
     response.status_code = 504
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
-    assert utils.remove_registration_data() == None
+    assert utils.remove_registration_data() is None
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call(
@@ -2358,10 +2360,11 @@ def test_remove_registration_data_request_not_OK(
             'continue with local changes'
         ),
         call('Removing system from SCC'),
-        call('System not found in SCC. The system may still be tracked '
-             'against your subscription. It is recommended to investigate '
-             'the issue. System user name: "foo". '
-             'Local registration artifacts removed.'
+        call(
+            'System not found in SCC. The system may still be tracked '
+            'against your subscription. It is recommended to investigate '
+            'the issue. System user name: "foo". '
+            'Local registration artifacts removed.'
         )
     ]
 
@@ -2407,8 +2410,7 @@ def test_remove_registration_data_request_exception(
     exception = requests.exceptions.RequestException('foo')
     mock_request_delete.side_effect = exception
     mock_is_scc_connected.return_value = True
-    assert utils.remove_registration_data() == None
-
+    assert utils.remove_registration_data() is None
     assert mock_logging.warning.call_args_list == [
         call('Unable to remove client registration from server'),
         call(exception),
@@ -2507,23 +2509,24 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
     with open('tests/data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
     open_mock = mock.mock_open(read_data=file_azo)
+
     def open_f(filename, *args, **kwargs):
         return open_mock()
 
     with patch('builtins.open', create=True) as mock_open:
-           mock_open.side_effect = open_f
-           utils.switch_smt_repos(new_smt_server)
-           assert mock_open.call_args_list == [
-               call('tests/data/repo_foo.repo', 'r'),
-               call('tests/data/repo_foo.repo', 'w')
-           ]
-           expected_content = file_azo.replace(
-               'plugin:/susecloud',
-               new_smt_server.get_FQDN()
-           )
-           mock_open(
-               'tests/data/repo_foo.repo', 'w'
-           ).write.assert_called_once_with(expected_content)
+        mock_open.side_effect = open_f
+        utils.switch_smt_repos(new_smt_server)
+        assert mock_open.call_args_list == [
+            call('tests/data/repo_foo.repo', 'r'),
+            call('tests/data/repo_foo.repo', 'w')
+        ]
+        expected_content = file_azo.replace(
+           'plugin:/susecloud',
+           new_smt_server.get_FQDN()
+        )
+        mock_open(
+            'tests/data/repo_foo.repo', 'w'
+        ).write.assert_called_once_with(expected_content)
 
 
 @patch('cloudregister.registerutils.glob.glob')
@@ -2551,23 +2554,24 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
     with open('tests/data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
     open_mock = mock.mock_open(read_data=file_azo)
+
     def open_f(filename, *args, **kwargs):
         return open_mock()
 
     with patch('builtins.open', create=True) as mock_open:
-           mock_open.side_effect = open_f
-           utils.switch_smt_service(new_smt_server)
-           assert mock_open.call_args_list == [
-               call('tests/data/service.service', 'r'),
-               call('tests/data/service.service', 'w')
-           ]
-           expected_content = file_azo.replace(
-               'plugin:/susecloud',
-               new_smt_server.get_FQDN()
-           )
-           mock_open(
-               'tests/data/repo_foo.repo', 'w'
-           ).write.assert_called_once_with(expected_content)
+        mock_open.side_effect = open_f
+        utils.switch_smt_service(new_smt_server)
+        assert mock_open.call_args_list == [
+            call('tests/data/service.service', 'r'),
+            call('tests/data/service.service', 'w')
+        ]
+        expected_content = file_azo.replace(
+            'plugin:/susecloud',
+            new_smt_server.get_FQDN()
+        )
+        mock_open(
+            'tests/data/repo_foo.repo', 'w'
+        ).write.assert_called_once_with(expected_content)
 
 
 @patch('cloudregister.registerutils.logging')
@@ -2591,7 +2595,7 @@ def test_update_ca_chain_failed(mock_exec_subprocess):
 @patch('cloudregister.registerutils.is_new_registration')
 def test_update_rmt_cert_new_registration(mock_is_new_registration):
     mock_is_new_registration.return_value = True
-    assert utils.update_rmt_cert('foo') == None
+    assert utils.update_rmt_cert('foo') is None
 
 
 @patch('cloudregister.registerutils.logging')
@@ -2630,7 +2634,7 @@ def test_update_rmt_cert_no_cert_change(
     mock_is_new_registration.return_value = False
     mock_set_proxy.return_value = True
     mock_fetch_smt_data.return_value = region_smt_data
-    assert utils.update_rmt_cert(smt_server) == False
+    assert utils.update_rmt_cert(smt_server) is False
     assert mock_logging.info.call_args_list == [
         call('Check for cert update'),
         call('No cert change')
@@ -2673,7 +2677,7 @@ def test_update_rmt_cert(
     mock_is_new_registration.return_value = False
     mock_set_proxy.return_value = True
     mock_fetch_smt_data.return_value = region_smt_data
-    assert utils.update_rmt_cert(smt_server) == True
+    assert utils.update_rmt_cert(smt_server) is True
     assert mock_logging.info.call_args_list == [
         call('Check for cert update'),
         call('Update server cert updated')
@@ -2681,7 +2685,7 @@ def test_update_rmt_cert(
 
 
 def test_uses_rmt_as_scc_proxy():
-    assert utils.uses_rmt_as_scc_proxy() == False
+    assert utils.uses_rmt_as_scc_proxy() is False
 
 
 @patch('cloudregister.registerutils.json.dumps')
@@ -2707,7 +2711,7 @@ def test_write_framework_identifier(
         mock_get_framework_identifier_path.return_value = os.path.join(
             tmpdirname, 'foo'
         )
-        with patch('builtins.open', create=True) as mock_framework_file:
+        with patch('builtins.open', create=True):
             utils.write_framework_identifier('foo')
             # TODO: fix/check framework unknown + plugin OK valid combination
             mock_json_dumps.assert_called_once_with(
@@ -2742,7 +2746,7 @@ def test_write_framework_identifier_no_region(
         mock_get_framework_identifier_path.return_value = os.path.join(
             tmpdirname, 'foo'
         )
-        with patch('builtins.open', create=True) as mock_framework_file:
+        with patch('builtins.open', create=True):
             utils.write_framework_identifier('foo')
             # TODO: fix/check framework unknown + plugin OK valid combination
             mock_json_dumps.assert_called_once_with(
@@ -2783,7 +2787,7 @@ def test_get_framework_plugin_no_existing(mock_logging):
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'instanceArgs', 'foo')
-    assert utils.__get_framework_plugin(cfg) == None
+    assert utils.__get_framework_plugin(cfg) is None
     mock_logging.warning.assert_called_once_with(
         'Configured instanceArgs module could not be loaded. '
         'Continuing without additional arguments.'
@@ -2817,7 +2821,6 @@ def test_get_referenced_credentials_not_found(mock_glob, mock_get_config):
     assert utils.__get_referenced_credentials('foo') == []
 
 
-
 @patch('cloudregister.registerutils.logging')
 def test_get_region_server_args_exception(
     mock_logging
@@ -2838,7 +2841,7 @@ def test_get_region_server_args_not_region_srv_args(
 ):
     mock_amazon_generate_region_args.return_value = None
     mod = __import__('cloudregister.amazonec2', fromlist=[''])
-    assert utils.__get_region_server_args(mod) == None
+    assert utils.__get_region_server_args(mod) is None
     mock_logging.assert_not_called
 
 
@@ -2860,7 +2863,7 @@ def test_get_system_mfg(mock_exec_subprocess):
 @patch('cloudregister.registerutils.glob.glob')
 def test_has_credentials_in_system(mock_glob, mock_get_referenced_creds):
     mock_glob.return_value = ['/etc/zypp/credentials.d/SCCcredentials']
-    assert utils.__has_credentials('foo') == True
+    assert utils.__has_credentials('foo') is True
 
 
 @patch('cloudregister.registerutils.__get_referenced_credentials')
@@ -2868,22 +2871,14 @@ def test_has_credentials_in_system(mock_glob, mock_get_referenced_creds):
 def test_has_credentials_in_service(mock_glob, mock_get_referenced_creds):
     mock_glob.return_value = ['/etc/zypp/credentials.d/service']
     mock_get_referenced_creds.return_value = ['service']
-    assert utils.__has_credentials('foo') == True
-
-
-@patch('cloudregister.registerutils.__get_referenced_credentials')
-@patch('cloudregister.registerutils.glob.glob')
-def test_has_credentials_in_service(mock_glob, mock_get_referenced_creds):
-    mock_glob.return_value = ['/etc/zypp/credentials.d/service']
-    mock_get_referenced_creds.return_value = ['service']
-    assert utils.__has_credentials('foo') == True
+    assert utils.__has_credentials('foo') is True
 
 
 @patch('cloudregister.registerutils.__get_referenced_credentials')
 @patch('cloudregister.registerutils.glob.glob')
 def test_has_credentials_not_found(mock_glob, mock_get_referenced_creds):
     mock_glob.return_value = []
-    assert utils.__has_credentials('foo') == False
+    assert utils.__has_credentials('foo') is False
 
 
 @patch('cloudregister.registerutils.store_smt_data')
@@ -2961,7 +2956,7 @@ def test_remove_artifacts(
     mock_os_unlink
 ):
     mock_os_path_exists.return_value = True
-    assert utils.__remove_repo_artifacts('foo') == None
+    assert utils.__remove_repo_artifacts('foo') is None
     mock_remove_creds.assert_called_once_with('foo')
     mock_remove_repos.assert_called_once_with('foo')
     mock_remove_service.assert_called_once_with('foo')
@@ -2981,7 +2976,7 @@ def test_remove_artifacts_no_remove_etc_scccreds(
     mock_os_path_exists,
     mock_os_unlink
 ):
-    assert utils.__remove_repo_artifacts('foo') == None
+    assert utils.__remove_repo_artifacts('foo') is None
     mock_remove_creds.assert_called_once_with('foo')
     mock_remove_repos.assert_called_once_with('foo')
     mock_remove_service.assert_called_once_with('foo')
@@ -3016,7 +3011,7 @@ def test_remove_repos_removed_nothing(mock_os_unlink, mock_logging, mock_glob):
 def test_remove_service_not_plugins(
     mock_os_unlink,
     mock_logging,
-        mock_glob,
+    mock_glob,
     mock_get_service_plugin
 ):
     mock_glob.return_value = ['tests/data/service.service']
@@ -3135,6 +3130,7 @@ class Response():
     def json(self):
         pass
 
+
 def get_servers_data():
     """The XML data matching the data pickled server objects"""
     srv_xml = """<regionSMTdata>\n
@@ -3188,10 +3184,12 @@ def get_modified_servers_data():
 
     return etree.fromstring(srv_xml)
 
+
 def get_test_config():
     """Return a config parser object using the minimum configuration in the
        tests/data directory"""
     return utils.get_config(data_path + '/regionserverclnt.cfg')
+
 
 class MockServer:
     def get_ipv4(self):

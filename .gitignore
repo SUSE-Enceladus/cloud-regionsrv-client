@@ -1,0 +1,9 @@
+# Distribution / packaging
+*.egg-info
+
+# Unit test / coverage reports
+.tox/
+.coverage
+.cache
+**/*/__pycache__/
+.pytest_cache
