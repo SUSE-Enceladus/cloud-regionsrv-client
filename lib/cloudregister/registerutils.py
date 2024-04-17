@@ -508,11 +508,7 @@ def refresh_registry_credentials():
     # to silence InsecureRequestWarning
     # should be fixed on a different PR
     requests.packages.urllib3.disable_warnings()
-    if get_activations():
-        sys.exit(0)
-    message = 'Could not refresh credentials'
-    logging.info(message)
-    sys.exit(message)
+    return get_activations()
 
 
 # ----------------------------------------------------------------------------
