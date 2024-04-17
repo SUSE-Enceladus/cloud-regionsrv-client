@@ -37,5 +37,6 @@ def main():
 
     print('Credentials refreshed')
 
+
 if __name__ == '__main__':  # pragma: no cover
     main()
