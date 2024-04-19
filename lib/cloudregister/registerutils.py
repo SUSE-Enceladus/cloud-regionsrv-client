@@ -404,7 +404,7 @@ def find_repos(contains_name):
 
 
 # ----------------------------------------------------------------------------
-def get_activations():
+def get_activations(registry=False):
     """Get the activated products from the update server"""
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
@@ -419,6 +419,8 @@ def get_activations():
 
     instance_data = bytes(get_instance_data(get_config()), 'utf-8')
     headers = {'X-Instance-Data': base64.b64encode(instance_data)}
+    if registry:
+        headers['X-Registry'] = user
 
     res = requests.get(
         'https://%s/connect/systems/activations' % update_server.get_FQDN(),
@@ -508,7 +510,7 @@ def refresh_registry_credentials():
     # to silence InsecureRequestWarning
     # should be fixed on a different PR
     requests.packages.urllib3.disable_warnings()
-    return get_activations()
+    return get_activations(True)
 
 
 # ----------------------------------------------------------------------------
