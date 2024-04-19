@@ -1095,6 +1095,53 @@ def test_get_activations_request_OK(
     )
 
 
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.get_instance_data')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.HTTPBasicAuth')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_smt')
+def test_get_activations_request_registry_header(
+    mock_get_smt,
+    mock_get_creds,
+    mock_get_creds_file,
+    mock_logging,
+    mock_http_basic_auth,
+    mock_config,
+    mock_get_instance_data,
+    mock_request_get
+):
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt.return_value = smt_server
+    mock_get_creds.return_value = 'foo', 'bar'
+    mock_http_basic_auth.return_value = 'foobar'
+    mock_get_instance_data.return_value = 'super_instance_data'
+    response = Response()
+    response.status_code = 200
+    json_mock = Mock()
+    json_mock.return_value = {"foo": "bar"}
+    response.json = json_mock
+    mock_request_get.return_value = response
+    assert utils.get_activations(True) == {'foo': 'bar'}
+    assert mock_logging.error.not_called
+    mock_request_get.assert_called_once_with(
+        'https://fantasy.example.com/connect/systems/activations',
+        auth='foobar',
+        headers={
+            'X-Instance-Data': b'c3VwZXJfaW5zdGFuY2VfZGF0YQ==',
+            'X-Registry': 'foo'
+        }
+    )
+
+
 @patch('cloudregister.registerutils.configparser.RawConfigParser.read')
 def test_get_config(mock_config_parser):
     mock_config_parser.return_value = data_path + '/regionserverclnt.cfg'
