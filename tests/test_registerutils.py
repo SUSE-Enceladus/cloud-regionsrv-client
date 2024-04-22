@@ -1121,23 +1121,23 @@ def test_get_activations_request_registry_header(
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt.return_value = smt_server
-    mock_get_creds.return_value = 'foo', 'bar'
-    mock_http_basic_auth.return_value = 'foobar'
+    mock_get_creds.return_value = 'username_foo', 'password_bar'
+    mock_http_basic_auth.return_value = 'http_basic_auth_from_userpass'
     mock_get_instance_data.return_value = 'super_instance_data'
     response = Response()
     response.status_code = 200
     json_mock = Mock()
-    json_mock.return_value = {"foo": "bar"}
+    json_mock.return_value = {"prod": "activated"}
     response.json = json_mock
     mock_request_get.return_value = response
-    assert utils.get_activations(True) == {'foo': 'bar'}
+    assert utils.get_activations(True) == {'prod': 'activated'}
     assert mock_logging.error.not_called
     mock_request_get.assert_called_once_with(
         'https://fantasy.example.com/connect/systems/activations',
-        auth='foobar',
+        auth='http_basic_auth_from_userpass',
         headers={
             'X-Instance-Data': b'c3VwZXJfaW5zdGFuY2VfZGF0YQ==',
-            'X-Registry': 'foo'
+            'X-Registry': 'username_foo'
         }
     )
 
