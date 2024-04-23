@@ -3168,6 +3168,7 @@ def test_set_registry_order_search_podman_no_configured(
     mock_get_registry_file.side_effect = [FileNotFoundError(), registry_conf]
     with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             return mock_open_podman_config.return_value
 
@@ -3206,6 +3207,7 @@ def test_set_registry_order_search_podman_conf_missing_suse_registry(
     mock_get_registry_file.return_value = registry_conf
     with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             return mock_open_podman_config.return_value
 
@@ -3269,8 +3271,9 @@ def test_get_registry_config_file_docker(mock_json_load):
 def test_set_registry_order_search_docker_not_key_secure(
     mock_json_dump, mock_get_registry_conf_file
 ):
-     with patch('builtins.open', create=True) as mock_open:
+    with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             return mock_open_podman_config.return_value
 
@@ -3297,8 +3300,9 @@ def test_set_registry_order_search_docker_not_key_secure(
 def test_set_registry_order_search_docker_not_key_mirror(
     mock_json_dump, mock_get_registry_conf_file
 ):
-     with patch('builtins.open', create=True) as mock_open:
+    with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             return mock_open_podman_config.return_value
 
@@ -3327,8 +3331,9 @@ def test_set_registry_order_search_docker_not_file(
     mock_json_dump, mock_get_registry_conf_file,
     mock_os_makedirs
 ):
-     with patch('builtins.open', create=True) as mock_open:
+    with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
+
         def open_file(filename, mode):
             return mock_open_podman_config.return_value
 

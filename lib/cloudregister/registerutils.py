@@ -1780,7 +1780,7 @@ def _set_registry_order_search_docker():
         docker_cfg_json = _get_registry_conf_file(DOCKER_CONFIG_PATH, 'docker')
         secure_urls += docker_cfg_json.get('secure-registries', [])
         mirrors_urls += docker_cfg_json.get('registry-mirrors', [])
-    except (FileNotFoundError): # , KeyError):
+    except (FileNotFoundError):
         # config file does not exist,
         os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
 
