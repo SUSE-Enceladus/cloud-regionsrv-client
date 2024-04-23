@@ -20,6 +20,7 @@ import pickle
 import requests
 import sys
 import tempfile
+import toml
 from pytest import raises
 from textwrap import dedent
 
@@ -1920,6 +1921,27 @@ def test_has_services_service(mock_get_service_plugins):
         assert utils.has_services('foo') is True
 
 
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.__get_service_plugins')
+def test_has_no_services(
+    mock_get_service_plugins, mock_glob_glob
+):
+    mock_glob_glob.return_value = []
+    mock_get_service_plugins.return_value = None
+    assert utils.has_services('foo') is False
+
+
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.__get_referenced_credentials')
+@patch('cloudregister.registerutils.__get_service_plugins')
+def test_is_registered(mock_service_plugin, mock_ref_creds, mock_glob_glob):
+    mock_glob_glob.return_value = []
+    mock_service_plugin.return_value = None
+    mock_ref_creds.return_value = None
+
+    assert utils.is_registered('foo') is False
+
+
 @patch('cloudregister.registerutils.requests.post')
 @patch('cloudregister.registerutils.HTTPBasicAuth')
 def test_has_smt_access_unauthorized(mock_http_basic_auth, mock_post):
@@ -3125,6 +3147,204 @@ def test_set_registry_credentials_config_does_exist(
                 file_handle
             )
         ]
+
+
+@patch('cloudregister.registerutils._set_registry_order_search_docker')
+@patch('cloudregister.registerutils._set_registry_order_search_podman')
+def test_set_registry_order_search(mock_podman_order, mock_docker_order):
+    utils.set_registry_order_search('foo')
+    mock_podman_order.assert_called_once_with('foo')
+    mock_docker_order.assert_called_once_with('foo')
+
+
+@patch('cloudregister.registerutils.toml.dump')
+@patch('cloudregister.registerutils._get_registry_conf_file')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_set_registry_order_search_podman_no_configured(
+    mock_os_makedirs, mock_get_registry_file, mock_toml_dump
+):
+    with open('tests/data/unconfigured_registry.conf') as f:
+        registry_conf = toml.load(f)
+    mock_get_registry_file.side_effect = [FileNotFoundError(), registry_conf]
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        file_handle = \
+            mock_open_podman_config.return_value.__enter__.return_value
+        utils._set_registry_order_search_podman('rmt-registry.susecloud.net')
+        mock_os_makedirs.assert_called_once_with(
+            '/etc/containers',
+            exist_ok=True
+        )
+        mock_toml_dump.assert_called_once_with(
+            {
+                'search-registries': ['docker.io'],
+                'no-registry': [{'location': 'foo'}],
+                'unqualified-search-registries': ['registry.suse.com'],
+                'registry': [
+                    {
+                        'location': 'rmt-registry.susecloud.net',
+                        'insecure': False
+                    },
+                    {'location': 'registry.suse.com', 'insecure': False}
+                ]
+            },
+            file_handle
+        )
+
+
+@patch('cloudregister.registerutils.toml.dump')
+@patch('cloudregister.registerutils._get_registry_conf_file')
+def test_set_registry_order_search_podman_conf_missing_suse_registry(
+    mock_get_registry_file, mock_toml_dump
+):
+    with open('tests/data/registry_conf.conf') as f:
+        registry_conf = toml.load(f)
+    mock_get_registry_file.return_value = registry_conf
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        file_handle = \
+            mock_open_podman_config.return_value.__enter__.return_value
+        utils._set_registry_order_search_podman('rmt-registry.susecloud.net')
+        mock_toml_dump.assert_called_once_with(
+            {
+                'unqualified-search-registries': [
+                    'registry.suse.com',
+                    'foo.com',
+                    'bar.registry.com',
+                    'docker.io',
+                ],
+                'registry': [
+                    {
+                        'location': 'rmt-registry.susecloud.net',
+                        'insecure': False
+                    },
+                    {'location': 'registry.suse.com', 'insecure': False},
+                    {'location': 'foo.com', 'insecure': True}
+                ]
+            },
+            file_handle
+        )
+
+
+@patch('cloudregister.registerutils.toml.load')
+def test_get_registry_config_file_podman(mock_toml_load):
+    with patch('builtins.open') as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        utils._get_registry_conf_file(
+            '/etc/containers/registries.conf', 'podman'
+        )
+        mock_toml_load.assert_called_once()
+
+
+@patch('cloudregister.registerutils.json.load')
+def test_get_registry_config_file_docker(mock_json_load):
+    with patch('builtins.open') as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        utils._get_registry_conf_file(
+            '/etc/containers/registries.conf', 'docker'
+        )
+        mock_json_load.assert_called_once()
+
+
+@patch('cloudregister.registerutils._get_registry_conf_file')
+@patch('cloudregister.registerutils.json.dump')
+def test_set_registry_order_search_docker_not_key_secure(
+    mock_json_dump, mock_get_registry_conf_file
+):
+     with patch('builtins.open', create=True) as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        file_handle = \
+            mock_open_podman_config.return_value.__enter__.return_value
+        mock_get_registry_conf_file.return_value = {
+            'registry-mirrors': ['foo'],
+            'bar': ['bar'],
+        }
+        utils._set_registry_order_search_docker()
+        mock_json_dump.assert_called_once_with(
+            {
+                'registry-mirrors': ['https://registry.suse.com', 'foo'],
+                'bar': ['bar'],
+                'secure-registries': ['https://registry.suse.com']
+            },
+            file_handle
+        )
+
+
+@patch('cloudregister.registerutils._get_registry_conf_file')
+@patch('cloudregister.registerutils.json.dump')
+def test_set_registry_order_search_docker_not_key_mirror(
+    mock_json_dump, mock_get_registry_conf_file
+):
+     with patch('builtins.open', create=True) as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        file_handle = \
+            mock_open_podman_config.return_value.__enter__.return_value
+        mock_get_registry_conf_file.return_value = {
+            'foo': ['foo'],
+            'secure-registries': ['bar'],
+        }
+        utils._set_registry_order_search_docker()
+        mock_json_dump.assert_called_once_with(
+            {
+                'foo': ['foo'],
+                'registry-mirrors': ['https://registry.suse.com'],
+                'secure-registries': ['https://registry.suse.com', 'bar']
+            },
+            file_handle
+        )
+
+
+@patch('cloudregister.registerutils.os.makedirs')
+@patch('cloudregister.registerutils._get_registry_conf_file')
+@patch('cloudregister.registerutils.json.dump')
+def test_set_registry_order_search_docker_not_file(
+    mock_json_dump, mock_get_registry_conf_file,
+    mock_os_makedirs
+):
+     with patch('builtins.open', create=True) as mock_open:
+        mock_open_podman_config = MagicMock(spec=io.IOBase)
+        def open_file(filename, mode):
+            return mock_open_podman_config.return_value
+
+        mock_open.side_effect = open_file
+        file_handle = \
+            mock_open_podman_config.return_value.__enter__.return_value
+        mock_get_registry_conf_file.side_effect = [FileNotFoundError(), {}]
+        utils._set_registry_order_search_docker()
+        mock_json_dump.assert_called_once_with(
+            {
+                'registry-mirrors': ['https://registry.suse.com'],
+                'secure-registries': ['https://registry.suse.com']
+            },
+            file_handle
+        )
+        mock_os_makedirs.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

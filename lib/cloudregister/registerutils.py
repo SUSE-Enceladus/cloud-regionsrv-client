@@ -1720,64 +1720,72 @@ def __replace_url_target(config_files, new_smt):
 
 # ----------------------------------------------------------------------------
 def _set_registry_order_search_podman(registry_fqdn):
-    registry_location_config = {'location': registry_fqdn, 'insecure': True}
-    suse_registry = {'location': 'registry.suse.com', 'insecure': True}
+    public_registry_fqdn = 'registry.suse.com'
+    private_registry = {'location': registry_fqdn, 'insecure': False}
+    public_registry = {'location': public_registry_fqdn, 'insecure': False}
     registries_conf = {}
     try:
-        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
-            registries_conf = toml.load(registries_conf_file)
-
-        missing_registry_fqdn = registry_fqdn not in \
+        registries_conf = _get_registry_conf_file(
+            REGISTRIES_CONF_PATH, 'podman'
+        )
+        missing_public_registry = public_registry_fqdn not in \
             registries_conf['unqualified-search-registries']
-        if missing_registry_fqdn:
+        if missing_public_registry:
             registries_conf['unqualified-search-registries'] = \
-                ["{}".format(registry_fqdn), 'registry.suse.com'] + \
+                [public_registry_fqdn] + \
                 registries_conf['unqualified-search-registries']
-        if suse_registry not in registries_conf['registry']:
+        if public_registry not in registries_conf['registry']:
             registries_conf['registry'] = \
-                [suse_registry] + registries_conf['registry']
-        if registry_location_config not in registries_conf['registry']:
+                [public_registry] + registries_conf['registry']
+        if private_registry not in registries_conf['registry']:
             registries_conf['registry'] = \
-                [registry_location_config] + registries_conf['registry']
+                [private_registry] + registries_conf['registry']
     except (FileNotFoundError, KeyError):
         # file does not exist, create the file
         os.makedirs(os.path.dirname(REGISTRIES_CONF_PATH), exist_ok=True)
-        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
-            registries_conf = toml.load(registries_conf_file)
-
+        registries_conf = _get_registry_conf_file(
+            REGISTRIES_CONF_PATH, 'podman'
+        )
         # one or both keys do not exist
         if registries_conf.get('unqualified-search-registries') is None:
             registries_conf['unqualified-search-registries'] = \
-                ["{}".format(registry_fqdn), 'registry.suse.com']
+                ["{}".format(public_registry_fqdn)]
         if registries_conf.get('registry') is None:
             registries_conf['registry'] = \
-                [registry_location_config] + [suse_registry]
+                [private_registry] + [public_registry]
 
     with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
         toml.dump(registries_conf, registries_conf_file)
 
 
 # ----------------------------------------------------------------------------
-def _set_registry_order_search_docker(registry_fqdn):
-    insecure_urls = mirrors_urls = [
-        'https://{}'.format(registry_fqdn),
-        'https://registry.suse.com'
-    ]
+def _get_registry_conf_file(container_path, container):
+    if container in 'podman':
+        with open(container_path, 'r') as registries_conf_file:
+            registries_conf = toml.load(registries_conf_file)
+    if container in 'docker':
+        with open(container_path, 'r') as registries_conf_file:
+            registries_conf = json.load(registries_conf_file)
+
+    return registries_conf
+
+
+# ----------------------------------------------------------------------------
+def _set_registry_order_search_docker():
+    # search is disabled for Docker server side for private registry
+    secure_urls = ['https://registry.suse.com']
+    mirrors_urls = ['https://registry.suse.com']
     docker_cfg_json = {}
     try:
-        with open(DOCKER_CONFIG_PATH, 'r') as docker_config_file_json:
-            docker_cfg_json = json.load(docker_config_file_json)
-
-        mirrors_urls += docker_cfg_json['registry-mirrors']
-        insecure_urls += docker_cfg_json['insecure-registries']
-    except (FileNotFoundError, KeyError):
+        docker_cfg_json = _get_registry_conf_file(DOCKER_CONFIG_PATH, 'docker')
+        secure_urls += docker_cfg_json.get('secure-registries', [])
+        mirrors_urls += docker_cfg_json.get('registry-mirrors', [])
+    except (FileNotFoundError): # , KeyError):
         # config file does not exist,
-        # "registry-mirrors" key is not set or
-        # "insecure-registries" key is not set
         os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
 
     docker_cfg_json['registry-mirrors'] = mirrors_urls
-    docker_cfg_json['insecure-registries'] = insecure_urls
+    docker_cfg_json['secure-registries'] = secure_urls
     with open(DOCKER_CONFIG_PATH, 'w') as docker_config_file_json:
         json.dump(docker_cfg_json, docker_config_file_json)
 
