@@ -3149,6 +3149,32 @@ def test_set_registry_credentials_config_does_exist(
         ]
 
 
+@patch('cloudregister.registerutils.os.path.expanduser')
+@patch('cloudregister.registerutils.set_registry_order_search')
+@patch('cloudregister.registerutils.set_registry_credentials')
+def test_set_registry_config(
+    mock_set_registry_cred, mock_set_registry_search, mock_os_path_expanduser
+):
+    mock_os_path_expanduser.return_value = 'regular_path'
+    utils.set_registry_config('registry_fqdn', 'username', 'pass')
+    assert mock_set_registry_cred.call_args_list == [
+        call(
+            'registry_fqdn',
+            'username',
+            'pass',
+            'regular_path/.docker/config.json'
+        ),
+        call(
+            'registry_fqdn',
+            'username',
+            'pass',
+            '/root/.docker/config.json'
+        )
+
+    ]
+    mock_set_registry_search.assert_called_once_with('registry_fqdn')
+
+
 @patch('cloudregister.registerutils._set_registry_order_search_docker')
 @patch('cloudregister.registerutils._set_registry_order_search_podman')
 def test_set_registry_order_search(mock_podman_order, mock_docker_order):

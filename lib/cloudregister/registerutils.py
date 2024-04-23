@@ -524,7 +524,6 @@ def set_registry_config(registry_fqdn, username, password):
             os.path.expanduser('~'), DOCKER_REGISTRY_CREDENTIALS_PATH
         ),
         os.path.join(os.sep, 'root', DOCKER_REGISTRY_CREDENTIALS_PATH),
-        os.getenv('XDG_RUNTIME_DIR')  # podman path
     ]
     for cfg_path in registry_credentials_paths:
         set_registry_credentials(registry_fqdn, username, password, cfg_path)
