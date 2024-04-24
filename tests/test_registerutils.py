@@ -3208,8 +3208,6 @@ def test_set_registry_order_search_podman_no_configured(
         )
         mock_toml_dump.assert_called_once_with(
             {
-                'search-registries': ['docker.io'],
-                'no-registry': [{'location': 'foo'}],
                 'unqualified-search-registries': ['registry.suse.com'],
                 'registry': [
                     {
