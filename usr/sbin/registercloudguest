@@ -200,14 +200,13 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
-    if not utils.instance_has_ip_enabled(args.user_smt_ip):
+    if not utils.has_network_access_by_ipversion(args.user_smt_ip):
         error_message = (
             'Connection error: Could not establish a connection to {ip}.'
-            'Please, make sure the instance has that IP format enabled '
-            'and working properly'.format(ip=args.user_smt_ip)
+            'Please, make sure the network configuration supports the '
+            'provided {ip} address version.'.format(ip=args.user_smt_ip)
         )
-        print(error_message, file=sys.stderr)
-        sys.exit(1)
+        sys.exit(error_message)
 
 
 if args.clean_up and args.force_new_registration:
@@ -222,7 +221,6 @@ if (args.email and not args.reg_code):
     sys.exit(1)
 
 time.sleep(int(args.delay_time))
-
 
 config_file = args.config_file
 if config_file:

@@ -1408,15 +1408,14 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def instance_has_ip_enabled(rmt_ip):
+def has_network_access_by_ipversion(rmt_ip):
     """Check if the instance can make IPv4 or IPv6 requests."""
     try:
-        socket.create_connection((rmt_ip, 443), timeout=2)
+        rmt_connection = socket.create_connection((rmt_ip, 443), timeout=2)
     except OSError as e:
-        # check socket connection produced
-        # Network is unreachable error
-        return e.errno != errno.ENETUNREACH
+        return False
 
+    rmt_connection.close()
     return True
 
 
