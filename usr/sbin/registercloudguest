@@ -503,6 +503,7 @@ while not base_registered:
             logging.error('Baseproduct registration failed')
             logging.error('\t%s' % error_message)
             cleanup()
+            print(error_message, file=sys.stderr)
             sys.exit(1)
         for smt_srv in region_smt_servers:
             target_smt_ipv4 = registration_target.get_ipv4()
