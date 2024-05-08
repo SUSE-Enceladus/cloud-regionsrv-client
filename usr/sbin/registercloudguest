@@ -367,7 +367,7 @@ if registration_smt:
             ):
                 continue
             smt_ip = new_target.get_ipv4()
-            if utils.has_ipv6_access(new_target):
+            if utils.has_rmt_ipv6_access(new_target):
                 smt_ip = new_target.get_ipv6()
             msg = 'Configured update server is unresponsive, switching '
             msg += 'to equivalent update server with ip %s' % smt_ip
