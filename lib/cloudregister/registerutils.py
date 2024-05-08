@@ -1,4 +1,4 @@
-# Copyright (c) 2022, SUSE LLC, All rights reserved.
+# Copyright (c) 2023, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,7 @@ import pickle
 import random
 import re
 import requests
+import site
 import socket
 import stat
 import subprocess
@@ -159,6 +160,9 @@ def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
     credentials_location = '/etc/zypp/credentials.d/'
+    if not repo_credentials or not isinstance(repo_credentials, str):
+        return False
+
     credentials_base = os.path.join(credentials_location, 'SCCcredentials')
     credentials_header = os.path.join(credentials_location, repo_credentials)
     ref_user, ref_pass = get_credentials(credentials_base)
@@ -220,7 +224,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 )
         except Exception as e:
             logging.error('=' * 20)
-            logging.error(e.message)
+            logging.error(str(e))
             logging.error('Unable to obtain SMT server information, exiting')
             sys.exit(1)
         smt_info = json.loads(response.text)
@@ -235,7 +239,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 logging.error('Cannot proceed, exiting registration code')
                 sys.exit(1)
             smt_info_xml += '%s="%s" ' % (attr, value)
-            smt_info_xml += '/></regionSMTdata>'
+        smt_info_xml += '/></regionSMTdata>'
         smt_data_root = etree.fromstring(smt_info_xml)
     else:
         # Get the API to use
@@ -393,8 +397,7 @@ def find_repos(contains_name):
         repo_cfg = get_config(repo)
         for section in repo_cfg.sections():
             cfg_repo_name = repo_cfg.get(section, 'name')
-            repo_name = cfg_repo_name
-            if search_for in repo_name.lower():
+            if search_for in cfg_repo_name.lower():
                 repo_names.append(cfg_repo_name)
 
     return repo_names
@@ -403,7 +406,6 @@ def find_repos(contains_name):
 # ----------------------------------------------------------------------------
 def get_activations():
     """Get the activated products from the update server"""
-    activations = {}
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
     if not (user and password):
@@ -411,7 +413,7 @@ def get_activations():
             'Unable to extract username and password '
             'for "%s"' % update_server.get_FQDN()
         )
-        return activations
+        return {}
 
     auth_creds = HTTPBasicAuth(user, password)
 
@@ -433,7 +435,7 @@ def get_activations():
         )
         logging.error('\tReason: "%s"' % res.reason)
         logging.error('\tCode: %d', res.status_code)
-        return activations
+        return {}
 
     return res.json()
 
@@ -445,7 +447,10 @@ def get_available_smt_servers():
     if not os.path.exists(get_state_dir()):
         return available_smt_servers
     smt_data_files = glob.glob(
-        os.path.join(get_state_dir(), AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*')
+        os.path.join(
+            get_state_dir(),
+            AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'
+        )
     )
     for smt_data in smt_data_files:
         available_smt_servers.append(get_smt_from_store(smt_data))
@@ -495,6 +500,15 @@ def get_credentials(credentials_file):
                             'credentials file "%s"' % entry)
 
     return (username, password)
+
+
+# ----------------------------------------------------------------------------
+def refresh_registry_credentials():
+    """Refresh registry credentials."""
+    # to silence InsecureRequestWarning
+    # should be fixed on a different PR
+    requests.packages.urllib3.disable_warnings()
+    return get_activations()
 
 
 # ----------------------------------------------------------------------------
@@ -550,9 +564,9 @@ def get_current_smt():
     smt_ipv6 = smt.get_ipv6()
     smt_fqdn = smt.get_FQDN()
     # A bit cumbersome to support Python 3.4
-    ipv4_search = '%s\s' % smt_ipv4
-    ipv6_search = '%s\s' % smt_ipv6
-    fqdn_search = '\s%s\s' % smt_fqdn
+    ipv4_search = r'%s\s' % smt_ipv4
+    ipv6_search = r'%s\s' % smt_ipv6
+    fqdn_search = r'\s%s\s' % smt_fqdn
     with open(HOSTSFILE_PATH, 'rb') as hosts_file:
         hosts = hosts_file.read()
     if (
@@ -572,7 +586,7 @@ def get_current_smt():
 
 # ----------------------------------------------------------------------------
 def get_framework_identifier_path():
-    """Return the path for the frmework identifier file"""
+    """Return the path for the framework identifier file."""
     return os.path.join(get_state_dir(), FRAMEWORK_IDENTIFIER)
 
 
@@ -580,7 +594,7 @@ def get_framework_identifier_path():
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
-    instance_data = ''
+    instance_data = b''
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -589,44 +603,29 @@ def get_instance_data(config):
         cmd = instance_data_cmd.split()[0]
         if cmd != 'none':
             if not cmd.startswith('/'):
-                try:
-                    p = subprocess.Popen(
-                        ['which %s' % cmd],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                except OSError:
+                cmd_lookup = exec_subprocess(['which', cmd])
+                if cmd_lookup:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                try:
-                    p = subprocess.Popen(
-                        instance_data_cmd.split(),
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=True
-                    )
-                    instance_data, errors = p.communicate()
-                    instance_data = instance_data.decode()
-                except OSError:
-                    errMsg = 'Error collecting instance data with "%s"'
-                    logging.error(errMsg % instance_data_cmd)
+                instance_data, errors = exec_subprocess(
+                    instance_data_cmd.split(), True
+                )
                 if errors:
                     errMsg = 'Data collected from stderr for instance '
-                    errMsg += 'data collection "%s"' % errors
+                    errMsg += 'data collection "%s"' % errors.decode()
                     logging.error(errMsg)
                 if not instance_data:
-                    warn_msg = 'Possible issue accessing the metadata service.'
-                    warn_msg += ' Metadata is empty, may result in '
-                    warn_msg += 'registration failure.'
+                    warn_msg = 'Possible issue accessing the metadata '
+                    warn_msg += 'service. Metadata is empty, may result '
+                    warn_msg += 'in registration failure.'
                     logging.warning(warn_msg)
 
     # Marker for the server to not return https:// formatted
     # service and repo information
-    instance_data += '<repoformat>plugin:susecloud</repoformat>\n'
+    inst_data = instance_data.decode()
 
-    return instance_data
+    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
 
 
 # ----------------------------------------------------------------------------
@@ -646,10 +645,9 @@ def get_installed_products():
         logging.error(errMsg)
         return products
 
+    zypper_products_cmd = ["zypper", "--no-remote", "-x", "products"]
     try:
-        cmd = subprocess.Popen(
-            ["zypper", "--no-remote", "-x", "products"], stdout=subprocess.PIPE
-        )
+        cmd = subprocess.Popen(zypper_products_cmd, stdout=subprocess.PIPE)
         product_xml = cmd.communicate()
         # Just in case something else started zypper again
         if cmd.returncode != 0:
@@ -657,8 +655,9 @@ def get_installed_products():
             logging.error(errMsg % cmd.returncode)
             return products
     except OSError:
-        errMsg = 'Could not get product list %s' % cmd[1]
-        logging.error(errMsg)
+        logging.error(
+            'Could not get product list %s', ' '.join(zypper_products_cmd)
+        )
         return products
 
     # Determine the base product
@@ -753,7 +752,10 @@ def get_smt(cache_refreshed=None):
                             (new_target.get_ipv4(), new_target.get_ipv6())
                         )
                     )
+                    # Fetch cert for new target server
+                    import_smt_cert(new_target)
                     # Verify the new target server has our credentials
+                    replace_hosts_entry(current_smt, new_target)
                     credentials_file_path = get_credentials_file(new_target)
                     user, password = get_credentials(credentials_file_path)
                     if not has_smt_access(
@@ -770,8 +772,8 @@ def get_smt(cache_refreshed=None):
                         msg += 'current, %s, target update server.'
                         msg += 'Try again later.'
                         logging.error(msg % (new_target_ips, original_smt_ips))
+                        replace_hosts_entry(new_target, current_smt)
                         return current_smt
-                    replace_hosts_entry(current_smt, new_target)
                     set_as_current_smt(new_target)
                     return new_target
     else:
@@ -925,7 +927,8 @@ def has_region_changed(cfg):
     region = 'unknown'
     if plugin:
         region_hint = __get_region_server_args(plugin)
-        region = region_hint.split('=')[-1]
+        if region_hint:
+            region = region_hint.split('=')[-1]
 
     if framework == 'unknown' or region == 'unknown':
         # We cannot determine with certainty if anything has changed
@@ -937,7 +940,7 @@ def has_region_changed(cfg):
             registered_region = json.loads(
                 framework_file.read()
             )
-    except:
+    except Exception:
         return False
 
     if (
@@ -1034,6 +1037,16 @@ def import_smt_cert(smt):
     if not import_result:
         logging.error('SMT certificate import failed')
         return None
+    # Check if the underlying Python packages use certs that are built in
+    # bsc#1214801
+    for site_path in site.getsitepackages():
+        py_pack_certs = glob.glob(os.path.join(site_path, 'certifi/*.pem'))
+        if py_pack_certs:
+            logging.warning(
+                'SMT certificate imported, but "%s" exist. '
+                'This may lead to registration failure' % ' '.join(
+                    py_pack_certs)
+            )
 
     return 1
 
@@ -1043,7 +1056,9 @@ def is_new_registration():
     """Indicate whether a new registration is in process based on the
        marker file. Note it is the responsibility of the process to properly
        manage the marker file"""
-    return os.path.exists(os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER))
+    return os.path.exists(
+        os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER)
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -1401,7 +1416,8 @@ def write_framework_identifier(cfg):
     if plugin:
         identifier['plugin'] = plugin.__file__
         region_hint = __get_region_server_args(plugin)
-        identifier['region'] = region_hint.split('=')[-1]
+        if region_hint:
+            identifier['region'] = region_hint.split('=')[-1]
 
     with open(get_framework_identifier_path(), 'w') as framework_file:
         framework_file.write(json.dumps(identifier))

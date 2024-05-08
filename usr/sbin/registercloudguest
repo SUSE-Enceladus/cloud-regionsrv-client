@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (c) 2020, SUSE LLC, All rights reserved.
+# Copyright (c) 2024, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -53,7 +53,7 @@ urllib3.disable_warnings()
 registration_returncode = 0
 
 # ----------------------------------------------------------------------------
-def register_modules(extensions, products, registered=[]):
+def register_modules(extensions, products, registered=[], failed=[]):
     """Register modules obeying dependencies"""
     global registration_returncode
     for extension in extensions:
@@ -61,7 +61,7 @@ def register_modules(extensions, products, registered=[]):
         # baseproduct registration. No need to run another registration
         if extension.get('recommended'):
             register_modules(
-                extension.get('extensions'), products, registered
+                extension.get('extensions'), products, registered, failed
             )
             continue
         arch = extension.get('arch')
@@ -88,13 +88,28 @@ def register_modules(extensions, products, registered=[]):
                 stderr=subprocess.PIPE
             )
             res = p.communicate()
-            if p.returncode != 0:
+            if p.returncode:
                 registration_returncode = p.returncode
                 error_message = res[0].decode()
-                logging.error('\tRegistration failed: %s' % error_message)
+                if (
+                    registration_returncode == 67 and
+                    'registration code' in error_message.lower()
+                ):
+                    # SUSEConnect sets the following exit codes:
+                    # 0:  Registration successful
+                    # 64: Connection refused
+                    # 65: Access error, e.g. files not readable
+                    # 66: Parser error: Server JSON response was not parseable
+                    # 67: Server responded with error: see log output
+                    failed.append(triplet)
+                    # the registration should not be considered failed
+                    # because of extra modules registered
+                    registration_returncode = 0
+                else:
+                    logging.error('\tRegistration failed: %s' % error_message)
 
         register_modules(
-            extension.get('extensions'), products, registered
+            extension.get('extensions'), products, registered, failed
         )
 
 def cleanup():
@@ -118,7 +133,7 @@ argparse.add_argument(
     '-d', '--delay',
     default=0,
     dest='delay_time',
-    help='Delay the start of registartion by given value in seconds',
+    help='Delay the start of registration by given value in seconds',
     type=int
 )
 # default config file location not set it is encoded in the utils function
@@ -285,7 +300,11 @@ if proxy:
 if args.user_smt_ip:
     smt_xml = '<regionSMTdata><smtInfo '
     smt_xml += 'fingerprint="%s" ' % args.user_smt_fp
-    smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
+    smt_ip = ipaddress.ip_address(args.user_smt_ip)
+    if isinstance(smt_ip, ipaddress.IPv6Address):
+        smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
+    elif isinstance(smt_ip, ipaddress.IPv4Address):
+        smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
     smt_xml += 'SMTserverName="%s"' % args.user_smt_fqdn
     smt_xml += '/></regionSMTdata>'
     region_smt_data = etree.fromstring(smt_xml)
@@ -468,12 +487,27 @@ while not base_registered:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     res = p.communicate()
-    if p.returncode != 0:
+    if p.returncode:
         registration_returncode = p.returncode
         # Even on error SUSEConnect writes messages to stdout, go figure
         error_message = res[0].decode()
         failed_smts.append(registration_target.get_ipv4())
-        if len(failed_smts) == len(region_smt_servers):
+        if (
+            len(failed_smts) == len(region_smt_servers) or
+            (registration_returncode == 67 and
+             'registration code' in error_message.lower() and
+             args.reg_code)
+        ):
+            # there are no more RMT servers to try to register to or
+            # registration failed because of an invalid reg code
+            # and that SCC response will not change, independently
+            # of the RMT sibling selected
+            # SCC exit codes:
+            # 0: Registration successful
+            # 64: Connection refused
+            # 65: Access error, e.g. files not readable
+            # 66: Parser error: Server JSON response was not parseable
+            # 67: Server responded with error: see log output
             logging.error('Baseproduct registration failed')
             logging.error('\t%s' % error_message)
             cleanup()
@@ -537,19 +571,31 @@ if res.status_code != 200:
 
 prod_data = json.loads(res.text)
 extensions = prod_data.get('extensions')
-register_modules(extensions, products)
+failed_extensions = []
+register_modules(extensions, products, failed=failed_extensions)
 
-if registration_returncode != 0:
+if os.path.exists(instance_data_filepath):
+    os.unlink(instance_data_filepath)
+
+if registration_returncode:
     cleanup()
     print(
         'Registration failed, see /var/log/cloudregister for details',
         file=sys.stderr
     )
-else:
-    print('Registration succeeded')
+    sys.exit(registration_returncode)
 
-if os.path.exists(instance_data_filepath):
-    os.unlink(instance_data_filepath)
+print('Registration succeeded')
+
+if failed_extensions:
+    print(
+        'There are products that were not registered because they need '
+        'an additional registration code, to register them please run '
+        'the following command:'
+    )
+    activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
+    for failed_extension in failed_extensions:
+        print(activate_prod_cmd.format(failed_extension))
 
 # Enable Nvidia repo if repo(s) are configured and destination can be reached
 if utils.has_nvidia_support():

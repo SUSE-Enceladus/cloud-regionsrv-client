@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.1.2
+%define base_version 10.1.8
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
@@ -89,7 +89,7 @@ Requires:       cloud-regionsrv-client >= 6.0.0
 Guest registration plugin for images intended for Google Compute Engine
 
 %package plugin-ec2
-Version:        1.0.2
+Version:        1.0.4
 Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
 Group:          Productivity/Networking/Web/Servers
@@ -186,6 +186,9 @@ fi
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
 %{_mandir}/man*/*
+# Do not expect the user that needs containers to have root access
+# on the system
+%{_bindir}/cloudguestregistryauth
 %{_sbindir}/cloudguest-repo-service
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/createregioninfo

@@ -1,0 +1,6 @@
+[SUSE_Linux_Enterprise_Live_Foo_x86_64:SLE-Module-Live-Foo-SP5-Source-Pool]
+name=SLE-Module-Live-Foo15-SP5-Source-Pool
+enabled=0
+autorefresh=0
+baseurl=plugin:/susecloud?credentials=SUSE_Linux_Enterprise_Live_Foo_x86_64&path=/repo/SUSE/Products/SLE-Module-Live-Foo/15-SP5/x86_64/product_source/
+service=SUSE_Linux_Enterprise_Live_Foo_x86_64
