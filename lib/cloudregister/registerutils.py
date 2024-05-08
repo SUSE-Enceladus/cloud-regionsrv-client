@@ -159,10 +159,13 @@ def clear_rmt_as_scc_proxy_flag():
 def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
-    credentials_location = '/etc/zypp/credentials.d/'
+    
     if not repo_credentials or not isinstance(repo_credentials, str):
         return False
-
+    
+    base_credentials_location = '/etc/zypp/credentials.d/'
+    target_root = get_zypper_target_root()
+    credentials_location = target_root + base_credentials_location
     credentials_base = os.path.join(credentials_location, 'SCCcredentials')
     credentials_header = os.path.join(credentials_location, repo_credentials)
     ref_user, ref_pass = get_credentials(credentials_base)
@@ -522,7 +525,8 @@ def get_credentials_file(update_server, service_name=None):
     after the system is properly registered.
     """
     credentials_file = ''
-    credentials_loc = '/etc/zypp/credentials.d/'
+    target_root = get_zypper_target_root()
+    credentials_loc = target_root + '/etc/zypp/credentials.d/'
     credential_names = [
         '*' + update_server.get_FQDN().replace('.', '_'),
         'SCC*'
@@ -872,6 +876,21 @@ def get_zypper_pid_cache():
         return zypper_pid
     with open(get_state_dir() + 'zypper_pid') as zypper_state_file:
         return zypper_state_file.read()
+
+
+# ----------------------------------------------------------------------------
+def get_zypper_target_root():
+    """Return the target root if zypper has the --root argument to
+       specify a target directory in which to operate.
+    """
+    zypper_cmd = get_zypper_command()
+    target_root = ''
+    for root_arg in ('-R', '--root'):
+        if zypper_cmd and root_arg in zypper_cmd:
+            target_root = zypper_cmd.split(root_arg)[-1].split()[0].strip()
+            break
+
+    return target_root
 
 
 # ----------------------------------------------------------------------------
