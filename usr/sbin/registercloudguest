@@ -113,7 +113,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
             if 'transactional' in register_cmd:
                 cmd = [
                     register_cmd,
-                    sub_cmd,
+                    'register',
                     '--url',
                     'https://%s' % registration_target.get_FQDN(),
                     '--product',
