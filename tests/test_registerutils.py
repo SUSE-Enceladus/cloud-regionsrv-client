@@ -84,6 +84,45 @@ def test_get_zypper_pid_cache_no_cache(path_exists):
     assert utils.get_zypper_pid_cache() == 0
 
 
+@patch('cloudregister.registerutils.get_zypper_command')
+def test_get_zypper_target_root_no_zypper(zypp_cmd):
+    """Test behavior when zypper is not running"""
+    zypp_cmd.return_value = None
+    assert utils.get_zypper_target_root() == ''
+
+
+@patch('cloudregister.registerutils.get_zypper_command')
+def test_get_zypper_target_root_set_R_short(zypp_cmd):
+    """Test behavior when zypper is "running" and has root set using -R and no
+       other args"""
+    zypp_cmd.return_value = '-R /foobar'
+    assert utils.get_zypper_target_root() == '/foobar'
+
+
+@patch('cloudregister.registerutils.get_zypper_command')
+def test_get_zypper_target_root_set_R_long(zypp_cmd):
+    """Test behavior when zypper is "running" and has root set using -R and
+       other args"""
+    zypp_cmd.return_value = '-R /foobar --no-interactive'
+    assert utils.get_zypper_target_root() == '/foobar'
+
+
+@patch('cloudregister.registerutils.get_zypper_command')
+def test_get_zypper_target_root_set_root_short(zypp_cmd):
+    """Test behavior when zypper is "running" and has root set using --root
+       and no other args"""
+    zypp_cmd.return_value = '--root /foobar'
+    assert utils.get_zypper_target_root() == '/foobar'
+
+
+@patch('cloudregister.registerutils.get_zypper_command')
+def test_get_zypper_target_root_set_root_long(zypp_cmd):
+    """Test behavior when zypper is "running" and has root set using --root
+       and other args"""
+    zypp_cmd.return_value = '--root /foobar --no-interactive'
+    assert utils.get_zypper_target_root() == '/foobar'
+
+
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')

@@ -159,10 +159,10 @@ def clear_rmt_as_scc_proxy_flag():
 def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
-    
+
     if not repo_credentials or not isinstance(repo_credentials, str):
         return False
-    
+
     base_credentials_location = '/etc/zypp/credentials.d/'
     target_root = get_zypper_target_root()
     credentials_location = target_root + base_credentials_location
