@@ -19,6 +19,8 @@ After installing the test package with "zypper in"
   + no error no message
   + zypper lr has no repos
   + nothing in /etc/zypp/credentials.d
+  + nothing in /etc/zypp/services.d/
+  + no pkl files in /var/cache/cloudregister/
 - registercloudguest
   + no error
   + sucees message on stdout
@@ -75,6 +77,7 @@ After installing the test package with "zypper in"
   + no error no message
   + zypper lr has no repos
   + nothing in /etc/zypp/credentials.d
+  + nothing in /etc/zypp/services.d/
 - registercloudguest -r XXX
   + no error
   + sucees message on stdout

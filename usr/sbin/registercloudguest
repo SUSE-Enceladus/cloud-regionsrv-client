@@ -53,9 +53,49 @@ urllib3.disable_warnings()
 registration_returncode = 0
 
 # ----------------------------------------------------------------------------
+def get_register_cmd():
+    """Determine which command we need to use to register the system"""
+
+    register_cmd = '/usr/sbin/SUSEConnect'
+    # Figure out if we are on RO transactional-update system
+    p = subprocess.Popen(
+        ['findmnt', '--noheadings', '--json', '/'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    res = p.communicate()
+    # If we get an error from findmnt move forward on a best effort basis
+    if p.returncode:
+        logging.warning('Unable to find filesystem information for "/"')
+    else:
+        fsinfo = json.loads(res[0])
+        fsdata = fsinfo.get('filesystems')
+        if fsdata:
+            fsoptions = fsdata[0].get('options')
+            # If we are on a RO system we need to use the
+            # transactional-update command
+            if 'ro' in fsoptions.split(','):
+                cmd_name = 'transactional-update'
+                for path in ['/sbin/','/usr/sbin/']:
+                    exec_path = path + cmd_name
+                    if os.path.exists(exec_path):
+                        register_cmd = exec_path
+                        break
+                else:
+                    err_msg = 'transactional-update command not found.'
+                    err_msg += 'But is required on a RO filesystem for '
+                    err_msg += 'registration'
+                    logging.error(err_msg)
+                    print(err_msg, file=sys.stderr)
+                    sys.exit(1)
+
+    return register_cmd
+    
+# ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[], failed=[]):
     """Register modules obeying dependencies"""
     global registration_returncode
+    register_cmd = get_register_cmd()
     for extension in extensions:
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
@@ -70,13 +110,23 @@ def register_modules(extensions, products, registered=[], failed=[]):
         triplet = '/'.join((identifier, version, arch))
         if triplet in products and triplet not in registered:
             registered.append(triplet)
-            cmd = [
-                register_cmd,
-                '--url',
-                'https://%s' % registration_target.get_FQDN(),
-                '--product',
-                triplet
-            ]
+            if 'transactional' in register_cmd:
+                cmd = [
+                    register_cmd,
+                    'register',
+                    '--url',
+                    'https://%s' % registration_target.get_FQDN(),
+                    '--product',
+                    triplet
+                ]
+            else:
+                cmd = [
+                    register_cmd,
+                    '--url',
+                    'https://%s' % registration_target.get_FQDN(),
+                    '--product',
+                    triplet
+                ]
             if os.path.exists(instance_data_filepath):
                 cmd.append('--instance-data')
                 cmd.append(instance_data_filepath)
@@ -446,10 +496,11 @@ if instance_data:
 if not utils.is_registration_supported(cfg):
     sys.exit(0)
 
-# Check SUSE/SLES registration command to be present
-register_cmd = '/usr/sbin/SUSEConnect'
+register_cmd = get_register_cmd()
 if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
-    logging.error('No registration executable found')
+    err_msg = 'No registration executable found'
+    logging.error(err_msg)
+    print(err_msg, file=sys.stderr)
     sys.exit(1)
 
 # get product list
@@ -468,11 +519,20 @@ failed_smts = []
 
 while not base_registered:
     utils.add_hosts_entry(registration_target)
-    cmd = [
-        register_cmd,
-        '--url',
-        'https://%s' % registration_target.get_FQDN()
-    ]
+    sub_cmd = ''
+    if 'transactional' in register_cmd:
+        cmd = [
+            register_cmd,
+            'register',
+            '--url',
+            'https://%s' % registration_target.get_FQDN()
+        ]
+    else:
+        cmd = [
+            register_cmd,
+            '--url',
+            'https://%s' % registration_target.get_FQDN()
+        ]
     if os.path.exists(instance_data_filepath):
         cmd.append('--instance-data')
         cmd.append(instance_data_filepath)
@@ -511,6 +571,7 @@ while not base_registered:
             logging.error('Baseproduct registration failed')
             logging.error('\t%s' % error_message)
             cleanup()
+            print(error_message, file=sys.stderr)
             sys.exit(1)
         for smt_srv in region_smt_servers:
             target_smt_ipv4 = registration_target.get_ipv4()

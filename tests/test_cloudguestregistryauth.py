@@ -4,7 +4,6 @@ import sys
 
 from lxml import etree
 
-from cloudregister.smt import SMT
 from importlib.machinery import SourceFileLoader
 
 from pytest import raises
@@ -15,6 +14,10 @@ test_path = os.path.abspath(
     os.path.dirname(inspect.getfile(inspect.currentframe())))
 code_path = os.path.abspath('%s/../lib' % test_path)
 data_path = test_path + os.sep + 'data/'
+
+sys.path.insert(0, code_path)
+
+from cloudregister.smt import SMT # noqa
 
 sys.path.insert(0, code_path)
 
