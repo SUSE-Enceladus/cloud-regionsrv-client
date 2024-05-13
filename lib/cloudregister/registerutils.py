@@ -1458,12 +1458,12 @@ def has_ipv6_access():
 def has_network_access_by_ipversion(server_ip):
     """Check if we can connect to the given server"""
     try:
-        rmt_connection = socket.create_connection((server_ip, 443), timeout=2)
+        connection = socket.create_connection((server_ip, 443), timeout=2)
     except OSError as e:
         logging.info('Network access error: "%s"', e)
         return False
 
-    rmt_connection.close()
+    connection.close()
     return True
 
 
