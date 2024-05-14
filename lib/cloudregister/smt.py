@@ -53,7 +53,6 @@ class SMT:
             requests.packages.urllib3.exceptions.InsecureRequestWarning
         )
 
-
     # --------------------------------------------------------------------
     def __eq__(self, other_smt):
         if not isinstance(other_smt, SMT):
