@@ -214,6 +214,12 @@ argparse.add_argument(
     dest='user_smt_fqdn',
     help=help_msg
 )
+help_msg='The target registry server FQDN. '
+argparse.add_argument(
+    '--smt-registry-fqdn',
+    dest='user_registry_fqdn',
+    help=help_msg
+)
 help_msg='The target update server IP. '
 help_msg+='Use in exceptional cases only'
 argparse.add_argument(
@@ -347,7 +353,9 @@ if args.user_smt_ip:
         smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
     elif isinstance(smt_ip, ipaddress.IPv4Address):
         smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
-    smt_xml += 'SMTserverName="%s"' % args.user_smt_fqdn
+    smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+    smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+    smt_xml += 'SMTregistryName="%s"' % args.user_registry_fqdn
     smt_xml += '/></regionSMTdata>'
     region_smt_data = etree.fromstring(smt_xml)
 else:
@@ -414,7 +422,10 @@ if registration_smt:
                 registration_smt
             )
             if not utils.has_rmt_in_hosts(registration_smt):
-                utils.clean_hosts_file(registration_smt.get_FQDN())
+                utils.clean_hosts_file(
+                    registration_smt.get_FQDN(),
+                    registration_smt.get_registry_FQDN()
+                )
                 utils.add_hosts_entry(registration_smt)
         logging.info(msg)
         sys.exit(0)
@@ -583,7 +594,10 @@ while not base_registered:
                     )
                 )
                 utils.remove_registration_data()
-                utils.clean_hosts_file(registration_target.get_FQDN())
+                utils.clean_hosts_file(
+                    registration_target.get_FQDN(),
+                    registration_target.get_registry_FQDN()
+                )
                 registration_target = smt_srv
                 break
     else:

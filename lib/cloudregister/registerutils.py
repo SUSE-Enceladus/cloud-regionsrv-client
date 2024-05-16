@@ -56,10 +56,12 @@ def add_hosts_entry(smt_server):
     smt_ip = smt_server.get_ipv4()
     if has_ipv6_access(smt_server):
         smt_ip = smt_server.get_ipv6()
-    entry = '%s\t%s\t%s\n' % (
+    entry = '%s\t%s\t%s\n%s\t%s\n' % (
         smt_ip,
         smt_server.get_FQDN(),
-        smt_server.get_name()
+        smt_server.get_name(),
+        smt_ip,
+        smt_server.get_registry_FQDN()
     )
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
@@ -86,10 +88,12 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
-def clean_hosts_file(domain_name):
+def clean_hosts_file(domain_name, registry_name):
     """Remove the smt server entry from the /etc/hosts file"""
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
+    if isinstance(registry_name, str):
+        registry_name = registry_name.encode()
     new_hosts_content = []
     # Handle entries as bytes,
     # Yes, users put non ascii characters into /etc/hosts
@@ -97,12 +101,17 @@ def clean_hosts_file(domain_name):
         content = hosts_file.readlines()
 
     smt_announce_found = None
+    smt_domain_found = None
     for entry in content:
         if b'# Added by SMT' in entry:
             smt_announce_found = True
             continue
         if smt_announce_found and domain_name in entry:
             smt_announce_found = False
+            smt_domain_found = True
+            continue
+        if smt_domain_found and registry_name in entry:
+            smt_domain_found = False
             continue
         new_hosts_content.append(entry)
 
@@ -790,7 +799,7 @@ def get_smt(cache_refreshed=None):
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
                 # Assume the new server is in the same domain
-                clean_hosts_file(server.get_FQDN())
+                clean_hosts_file(server.get_FQDN(), server.get_registry_FQDN())
                 add_hosts_entry(server)
                 set_as_current_smt(server)
                 return server
@@ -1293,7 +1302,7 @@ def remove_registration_data():
             logging.warning('Unable to remove client registration from server')
             logging.warning(e)
             logging.info('Continue with local artifact removal')
-        clean_hosts_file(domain_name)
+        clean_hosts_file(domain_name, smt.get_registry_FQDN())
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     if is_scc_connected():
@@ -1327,7 +1336,7 @@ def remove_registration_data():
 
 # ----------------------------------------------------------------------------
 def replace_hosts_entry(current_smt, new_smt):
-    clean_hosts_file(current_smt.get_FQDN())
+    clean_hosts_file(current_smt.get_FQDN(), current_smt.get_registry_FQDN())
     add_hosts_entry(new_smt)
 
 
