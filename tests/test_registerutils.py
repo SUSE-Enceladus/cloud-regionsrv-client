@@ -747,7 +747,7 @@ def test_fetch_smt_data_metadata_server(
         etree.tostring(smt_server, encoding='utf-8')
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 @patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
 def test_fetch_smt_data_api_no_answer(
@@ -791,7 +791,7 @@ def test_fetch_smt_data_api_no_answer(
     ]
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -863,7 +863,7 @@ def test_fetch_smt_data_api_no_valid_ip(
     assert etree.tostring(smt_data, encoding='utf-8') == smt_xml.encode()
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -919,7 +919,7 @@ def test_fetch_smt_data_api_error_response(
     ]
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -968,7 +968,7 @@ def test_fetch_smt_data_api_exception(
     ]
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -3046,21 +3046,21 @@ def test_remove_service(
     mock_logging.info.not_called()
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 def test_has_ipv4_access(mock_has_network_access):
     mock_has_network_access.return_value = True
     assert utils.has_ipv4_access()
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ipversion')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
 def test_has_ipv6_access(mock_has_network_access):
     mock_has_network_access.return_value = True
     assert utils.has_ipv6_access()
 
 
 @patch('cloudregister.registerutils.socket.create_connection')
-def test_has_network_access_by_ipversion(mock_socket_create_connection):
-    assert utils.has_network_access_by_ipversion('1.1.1.1')
+def test_has_network_access_by_ip_address(mock_socket_create_connection):
+    assert utils.has_network_access_by_ip_address('1.1.1.1')
 
 
 # ---------------------------------------------------------------------------

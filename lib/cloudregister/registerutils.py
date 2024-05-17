@@ -1445,17 +1445,17 @@ def write_framework_identifier(cfg):
 # ----------------------------------------------------------------------------
 def has_ipv4_access():
     """Check if we have IPv4 network configuration"""
-    return has_network_access_by_ipversion('8.8.8.8')
+    return has_network_access_by_ip_address('8.8.8.8')
 
 
 # ----------------------------------------------------------------------------
 def has_ipv6_access():
     """Check if we have IPv6 network configuration"""
-    return has_network_access_by_ipversion('2001:4860:4860::8888')
+    return has_network_access_by_ip_address('2001:4860:4860::8888')
 
 
 # ----------------------------------------------------------------------------
-def has_network_access_by_ipversion(server_ip):
+def has_network_access_by_ip_address(server_ip):
     """Check if we can connect to the given server"""
     try:
         connection = socket.create_connection((server_ip, 443), timeout=2)
