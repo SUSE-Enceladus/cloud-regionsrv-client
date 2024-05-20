@@ -265,6 +265,14 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
+    if not utils.has_network_access_by_ipversion(args.user_smt_ip):
+        error_message = (
+            'Connection error: Could not establish a connection to {ip}.'
+            'Please, make sure the network configuration supports the '
+            'provided {ip} address version.'.format(ip=args.user_smt_ip)
+        )
+        sys.exit(error_message)
+
 
 if args.clean_up and args.force_new_registration:
     msg = '--clean and --force-new are incompatible, use one or the other'
@@ -428,7 +436,7 @@ if registration_smt:
             ):
                 continue
             smt_ip = new_target.get_ipv4()
-            if utils.has_ipv6_access(new_target):
+            if utils.has_rmt_ipv6_access(new_target):
                 smt_ip = new_target.get_ipv6()
             msg = 'Configured update server is unresponsive, switching '
             msg += 'to equivalent update server with ip %s' % smt_ip
