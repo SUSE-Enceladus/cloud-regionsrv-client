@@ -46,6 +46,10 @@ REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 
+requests.packages.urllib3.disable_warnings(
+    requests.packages.urllib3.exceptions.InsecureRequestWarning
+)
+
 
 # ----------------------------------------------------------------------------
 def add_hosts_entry(smt_server):
@@ -508,9 +512,6 @@ def get_credentials(credentials_file):
 # ----------------------------------------------------------------------------
 def refresh_registry_credentials():
     """Refresh registry credentials."""
-    # to silence InsecureRequestWarning
-    # should be fixed on a different PR
-    requests.packages.urllib3.disable_warnings()
     return get_activations()
 
 
