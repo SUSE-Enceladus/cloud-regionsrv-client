@@ -88,12 +88,10 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
-def clean_hosts_file(domain_name, registry_name):
-    """Remove the smt server entry from the /etc/hosts file"""
+def clean_hosts_file(domain_name):
+    """Remove the smt server and registry entries from the /etc/hosts file"""
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
-    if isinstance(registry_name, str):
-        registry_name = registry_name.encode()
     new_hosts_content = []
     # Handle entries as bytes,
     # Yes, users put non ascii characters into /etc/hosts
@@ -110,9 +108,12 @@ def clean_hosts_file(domain_name, registry_name):
             smt_announce_found = False
             smt_domain_found = True
             continue
-        if smt_domain_found and registry_name in entry:
+        if smt_domain_found:
             smt_domain_found = False
-            continue
+            if b'registry' in entry and domain_name in entry:
+                # registry entry is optional
+                continue
+
         new_hosts_content.append(entry)
 
     # Clean up empty lines at the end of the file such that there is only 1
@@ -799,7 +800,7 @@ def get_smt(cache_refreshed=None):
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
                 # Assume the new server is in the same domain
-                clean_hosts_file(server.get_FQDN(), server.get_registry_FQDN())
+                clean_hosts_file(server.get_domain_name())
                 add_hosts_entry(server)
                 set_as_current_smt(server)
                 return server
@@ -1302,7 +1303,7 @@ def remove_registration_data():
             logging.warning('Unable to remove client registration from server')
             logging.warning(e)
             logging.info('Continue with local artifact removal')
-        clean_hosts_file(domain_name, smt.get_registry_FQDN())
+        clean_hosts_file(domain_name)
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     if is_scc_connected():
@@ -1336,7 +1337,7 @@ def remove_registration_data():
 
 # ----------------------------------------------------------------------------
 def replace_hosts_entry(current_smt, new_smt):
-    clean_hosts_file(current_smt.get_FQDN(), current_smt.get_registry_FQDN())
+    clean_hosts_file(current_smt.get_domain_name())
     add_hosts_entry(new_smt)
 
 

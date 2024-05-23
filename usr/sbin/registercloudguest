@@ -421,10 +421,7 @@ if registration_smt:
                 registration_smt
             )
             if not utils.has_rmt_in_hosts(registration_smt):
-                utils.clean_hosts_file(
-                    registration_smt.get_FQDN(),
-                    registration_smt.get_registry_FQDN()
-                )
+                utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
         logging.info(msg)
         sys.exit(0)
@@ -593,10 +590,7 @@ while not base_registered:
                     )
                 )
                 utils.remove_registration_data()
-                utils.clean_hosts_file(
-                    registration_target.get_FQDN(),
-                    registration_target.get_registry_FQDN()
-                )
+                utils.clean_hosts_file(registration_target.get_domain_name())
                 registration_target = smt_srv
                 break
     else:
