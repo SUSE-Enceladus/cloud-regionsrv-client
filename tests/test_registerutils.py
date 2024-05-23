@@ -626,6 +626,41 @@ def test_add_hosts_entry(mock_has_ipv6_access):
         ]
 
 
+@patch('cloudregister.registerutils.has_ipv6_access')
+def test_add_hosts_entry_registry_optional_empty(mock_has_ipv6_access):
+    """Test hosts entry has a new entry added by us."""
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_has_ipv6_access.return_value = True
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.return_value = MagicMock(spec=io.IOBase)
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.add_hosts_entry(smt_server)
+        mock_open.assert_called_once_with('/etc/hosts', 'a')
+        file_content_comment = (
+            '\n# Added by SMT registration do not remove, '
+            'retain comment as well\n'
+        )
+        file_content_entry = (
+            '{ip}\t{fqdn}\t{name}\n'.format(
+                ip=smt_server.get_ipv6(),
+                fqdn=smt_server.get_FQDN(),
+                name=smt_server.get_name(),
+            )
+        )
+        assert file_handle.write.mock_calls == [
+             call(file_content_comment),
+             call(file_content_entry)
+        ]
+
+
 @patch('cloudregister.amazonec2.generateRegionSrvArgs')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 def test_add_region_server_args_to_URL(

@@ -56,13 +56,17 @@ def add_hosts_entry(smt_server):
     smt_ip = smt_server.get_ipv4()
     if has_ipv6_access(smt_server):
         smt_ip = smt_server.get_ipv6()
-    entry = '%s\t%s\t%s\n%s\t%s\n' % (
+    entry = '%s\t%s\t%s\n' % (
         smt_ip,
         smt_server.get_FQDN(),
-        smt_server.get_name(),
-        smt_ip,
-        smt_server.get_registry_FQDN()
+        smt_server.get_name()
     )
+    if smt_server.get_registry_FQDN():
+        entry += '%s\t%s\n' % (
+            smt_ip,
+            smt_server.get_registry_FQDN()
+        )
+
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
