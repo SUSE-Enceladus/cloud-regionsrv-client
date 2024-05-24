@@ -2602,7 +2602,7 @@ def test_store_smt_data(mock_os_fchmod, mock_pickle, mock_dump):
          SMTserverIP="192.168.1.1"
          SMTserverIPv6="fc00::1"
          SMTserverName="smt-foo.susecloud.net"
-         SMTregistryName="registry-foo.susecloud.net" 
+         SMTregistryName="registry-foo.susecloud.net"
         region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     with tempfile.TemporaryDirectory() as tmpdirname:
