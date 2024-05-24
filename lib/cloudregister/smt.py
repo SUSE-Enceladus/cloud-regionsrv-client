@@ -39,8 +39,11 @@ class SMT:
             self._region = smtXMLNode.attrib['region']
         except KeyError:
             self._region = 'unknown'
+        try:
+            self._registry_fqdn = smtXMLNode.attrib['SMTregistryName']
+        except KeyError:
+            self._registry_fqdn = ''
         self._fqdn = smtXMLNode.attrib['SMTserverName']
-        self._registry_fqdn = smtXMLNode.attrib['SMTregistryName']
         self._fingerprint = smtXMLNode.attrib['fingerprint']
         self._cert = None
         self._cert_names = ('smt.crt', 'rmt.crt')
