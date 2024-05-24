@@ -107,19 +107,12 @@ def clean_hosts_file(domain_name):
         content = hosts_file.readlines()
 
     smt_announce_found = None
-    smt_domain_found = None
     for entry in content:
         if b'# Added by SMT' in entry:
             smt_announce_found = True
             continue
-        if smt_announce_found and domain_name in entry:
-            smt_announce_found = False
-            smt_domain_found = True
-            continue
-        if smt_domain_found:
-            smt_domain_found = False
-            if b'registry' in entry and domain_name in entry:
-                # registry entry is optional
+        if smt_announce_found:
+            if domain_name in entry:
                 continue
 
         new_hosts_content.append(entry)

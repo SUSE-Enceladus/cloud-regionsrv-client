@@ -352,6 +352,42 @@ def test_clean_host_file_no_empty_bottom_lines():
     assert m().write.mock_calls == expected_write_calls
 
 
+def test_clean_host_file_no_empty_bottom_lines_user_interfered():
+    hosts_content = """
+# simulates hosts file containing the ipv6 we are looking for in the test
+
+1.2.3.4   smt-foo.susecloud.net  smt-foo
+
+# Added by SMT, please, do NOT remove this line
+2.3.4.5   smt-entry.susecloud.net smt-entry
+1.1.1.1   my.specialhost.us
+2.3.4.5   registry-entry.susecloud.net
+
+4.3.2.1   another_entry.whatever.com another_entry"""
+    expected_cleaned_hosts = """
+# simulates hosts file containing the ipv6 we are looking for in the test
+
+1.2.3.4   smt-foo.susecloud.net  smt-foo
+
+1.1.1.1   my.specialhost.us
+
+4.3.2.1   another_entry.whatever.com another_entry"""
+    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+        utils.clean_hosts_file('susecloud.net')
+
+    expected_write_calls = []
+    expected_lines = expected_cleaned_hosts.split('\n')
+    for line in expected_lines[:-1]:
+        line = line + '\n'
+        expected_write_calls.append(call(line.encode()))
+    if expected_lines[-1] != '':
+        expected_write_calls.append(call(expected_lines[-1].encode()))
+
+    expected_write_calls.append(call(b'\n'))
+
+    assert m().write.mock_calls == expected_write_calls
+
+
 def test_clean_host_file_one_empty_bottom_line():
     hosts_content = """
 # simulates hosts file containing the ipv6 we are looking for in the test
