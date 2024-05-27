@@ -45,6 +45,7 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
+REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -507,6 +508,44 @@ def get_credentials(credentials_file):
                             'credentials file "%s"' % entry)
 
     return (username, password)
+
+
+# ----------------------------------------------------------------------------
+def setup_registry(registry_fqdn, username, password):
+    set_registry_auth_token(registry_fqdn, username, password)
+
+
+# ----------------------------------------------------------------------------
+def set_registry_auth_token(registry_fqdn, username, password):
+    """Set the auth token to pull images from SUSE registry."""
+    auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+    registry_credentials = {}
+    registry_credentials[registry_fqdn] = {'auth': auth_token}
+
+    config_json = {}
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
+            config_json = json.load(cred_json)
+        # file exists
+        # set the new registry credentials,
+        # independently of what that content was
+        config_json['auths'].update(registry_credentials)
+    except (FileNotFoundError, KeyError):
+        # config file does not exist or "auths" key is not set
+        os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
+        config_json.update({'auths': registry_credentials})
+
+    with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
+        json.dump(config_json, cred_json_file)
+
+    logging.info(
+        'Credentials for the registry added in %s' % ' '.join(
+            REGISTRY_CREDENTIALS_PATH
+        )
+    )
 
 
 # ----------------------------------------------------------------------------
