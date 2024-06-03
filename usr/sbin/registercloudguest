@@ -355,7 +355,9 @@ if args.user_smt_ip:
         smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
     elif isinstance(smt_ip, ipaddress.IPv4Address):
         smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
-    smt_xml += 'SMTserverName="%s"' % args.user_smt_fqdn
+    smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+    registry_fqdn = 'registry-{}'.format(args.user_smt_fqdn.split('-')[1])
+    smt_xml += 'SMTregistryName="%s"' % registry_fqdn
     smt_xml += '/></regionSMTdata>'
     region_smt_data = etree.fromstring(smt_xml)
 else:
@@ -422,7 +424,7 @@ if registration_smt:
                 registration_smt
             )
             if not utils.has_rmt_in_hosts(registration_smt):
-                utils.clean_hosts_file(registration_smt.get_FQDN())
+                utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
         logging.info(msg)
         sys.exit(0)
@@ -591,7 +593,7 @@ while not base_registered:
                     )
                 )
                 utils.remove_registration_data()
-                utils.clean_hosts_file(registration_target.get_FQDN())
+                utils.clean_hosts_file(registration_target.get_domain_name())
                 registration_target = smt_srv
                 break
     else:
