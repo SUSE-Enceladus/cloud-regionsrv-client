@@ -50,8 +50,11 @@ Conflicts:      container-suseconnect
 %else
 %{?systemd_ordering}
 %endif
+BuildRequires:  gcc
+BuildRequires:  make
 BuildRequires:  python-rpm-macros
 BuildRequires:  python3-M2Crypto
+BuildRequires:  python3-devel
 BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
@@ -128,6 +131,7 @@ Enable/Disable Guest Registration for Microsoft Azure
 
 %build
 python3 setup.py build
+make exec
 
 %install
 cp -r etc %{buildroot}
