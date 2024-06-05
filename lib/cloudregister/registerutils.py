@@ -420,7 +420,6 @@ def find_repos(contains_name):
 # ----------------------------------------------------------------------------
 def get_activations():
     """Get the activated products from the update server"""
-    requests.packages.urllib3.disable_warnings()
     update_server = get_smt()
     user, password = get_credentials(get_credentials_file(update_server))
     if not (user and password):
