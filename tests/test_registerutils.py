@@ -22,8 +22,7 @@ import tempfile
 from pytest import raises
 from textwrap import dedent
 
-from unittest import mock
-from unittest.mock import patch, call, MagicMock, Mock
+from unittest.mock import patch, call, MagicMock, Mock, mock_open
 from lxml import etree
 
 test_path = os.path.abspath(
@@ -241,7 +240,7 @@ def test_has_rmt_in_hosts_has_ipv4():
     1.1.1.1   registry-foo.susecloud.net
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -258,7 +257,7 @@ def test_has_rmt_in_hosts_has_ipv4_6():
     11:22:33:44::00   registry-foo.susecloud.net
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -271,7 +270,7 @@ def test_has_rmt_in_hosts_ipv4_not_found():
     2.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is False
@@ -284,7 +283,7 @@ def test_has_rmt_in_hosts_has_ipv6():
     11:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -299,7 +298,7 @@ def test_has_rmt_in_hosts_has_ipv6_4():
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -312,7 +311,7 @@ def test_has_rmt_in_hosts_ipv6_not_found():
     22:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is False
@@ -336,7 +335,7 @@ def test_clean_host_file_no_empty_bottom_lines():
 
 
 4.3.2.1   another_entry.whatever.com another_entry"""
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net')
 
     expected_write_calls = []
@@ -372,7 +371,7 @@ def test_clean_host_file_no_empty_bottom_lines_user_interfered():
 1.1.1.1   my.specialhost.us
 
 4.3.2.1   another_entry.whatever.com another_entry"""
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net')
 
     expected_write_calls = []
@@ -408,7 +407,7 @@ def test_clean_host_file_one_empty_bottom_line():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -447,7 +446,7 @@ def test_clean_host_file_some_empty_bottom_lines():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -486,7 +485,7 @@ def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -525,7 +524,7 @@ def test_clean_host_file_one_empty_bottom_lines_smt_entry_is_last():
 4.3.2.1   another_entry.whatever.com another_entry
 """
 
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -561,7 +560,7 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -590,7 +589,7 @@ def test_clean_host_file_some_empty_bottom_lines_only_FQDN_not_registry():
 1.2.3.4   smt-foo.susecloud.net  smt-foo
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -606,7 +605,7 @@ def test_clean_host_file_some_empty_bottom_lines_only_FQDN_not_registry():
 
 def test_clean_host_file_raised_exception():
     hosts_content = ""
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net')
 
     assert m().write.mock_calls == []
@@ -1404,16 +1403,16 @@ def test_get_current_smt_no_registered(
 
     192.168.1.1   smt-foo.susecloud.net  smt-foo
     """
-    open_mock_hosts = mock.mock_open(read_data=hosts_content.encode())
-    open_mock = mock.mock_open(read_data=hosts_content)
+    open_mock_hosts = mock_open(read_data=hosts_content.encode())
+    open_mock = mock_open(read_data=hosts_content)
 
     def open_f(filename, *args, **kwargs):
         if filename == '/etc/hosts':
             return open_mock_hosts()
         return open_mock()
 
-    with mock.patch('builtins.open') as mock_open:
-        mock_open.side_effect = open_f
+    with patch('builtins.open') as m_open:
+        m_open.side_effect = open_f
         assert utils.get_current_smt() is None
 
 
@@ -1435,7 +1434,7 @@ def test_get_current_smt(mock_get_smt_from_store, mock_is_registered):
 
     192.168.1.1   smt-foo.susecloud.net  smt-foo
     """
-    with mock.patch('builtins.open', mock.mock_open(
+    with patch('builtins.open', mock_open(
         read_data=hosts_content.encode()
     )):
         assert utils.get_current_smt() == smt_server
@@ -1983,8 +1982,8 @@ def test_get_update_server_name_from_hosts(mock_get_available_smt_servers):
 
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
-    with mock.patch(
-        'builtins.open', mock.mock_open(read_data=hosts_content.encode())
+    with patch(
+        'builtins.open', mock_open(read_data=hosts_content.encode())
     ):
         assert utils.get_update_server_name_from_hosts() == \
             'smt-foo.susecloud.net'
@@ -1993,8 +1992,8 @@ def test_get_update_server_name_from_hosts(mock_get_available_smt_servers):
 @patch('cloudregister.registerutils.get_zypper_pid')
 def test_get_zypper_command(mock_zypper_pid):
     mock_zypper_pid.return_value = 42
-    with mock.patch(
-        'builtins.open', mock.mock_open(read_data='\x00foo')
+    with patch(
+        'builtins.open', mock_open(read_data='\x00foo')
     ):
         assert utils.get_zypper_command() == ' foo'
 
@@ -2114,7 +2113,7 @@ def test_has_services_service_plugin(mock_get_service_plugins):
 def test_has_services_service(mock_get_service_plugins):
     mock_get_service_plugins.return_value = ['foo']
     content = 'url=plugin:susecloud'
-    with mock.patch('builtins.open', mock.mock_open(read_data=content)):
+    with patch('builtins.open', mock_open(read_data=content)):
         assert utils.has_services('foo') is True
 
 
@@ -2326,7 +2325,7 @@ def test_set_proxy(mock_os_path_exists):
     HTTPS_PROXY="https://proxy.provider.de:3128/"
     NO_PROXY="localhost, 127.0.0.1"
     """
-    with mock.patch('builtins.open', mock.mock_open(read_data=proxy_content)):
+    with patch('builtins.open', mock_open(read_data=proxy_content)):
         assert utils.set_proxy() is True
 
 
@@ -2337,7 +2336,7 @@ def test_proxy_not_enable(mock_os_path_exists):
     proxy_content = """
     PROXY_ENABLED="no"
     """
-    with mock.patch('builtins.open', mock.mock_open(read_data=proxy_content)):
+    with patch('builtins.open', mock_open(read_data=proxy_content)):
         assert utils.set_proxy() is False
 
 
@@ -2708,15 +2707,15 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
     file_azo = ""
     with open('tests/data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
-    open_mock = mock.mock_open(read_data=file_azo)
+    open_mock = mock_open(read_data=file_azo)
 
     def open_f(filename, *args, **kwargs):
         return open_mock()
 
-    with patch('builtins.open', create=True) as mock_open:
-        mock_open.side_effect = open_f
+    with patch('builtins.open', create=True) as m_open:
+        m_open.side_effect = open_f
         utils.switch_smt_repos(new_smt_server)
-        assert mock_open.call_args_list == [
+        assert m_open.call_args_list == [
             call('tests/data/repo_foo.repo', 'r'),
             call('tests/data/repo_foo.repo', 'w')
         ]
@@ -2724,7 +2723,7 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
            'plugin:/susecloud',
            new_smt_server.get_FQDN()
         )
-        mock_open(
+        m_open(
             'tests/data/repo_foo.repo', 'w'
         ).write.assert_called_once_with(expected_content)
 
@@ -2753,15 +2752,15 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
     file_azo = ""
     with open('tests/data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
-    open_mock = mock.mock_open(read_data=file_azo)
+    open_mock = mock_open(read_data=file_azo)
 
     def open_f(filename, *args, **kwargs):
         return open_mock()
 
-    with patch('builtins.open', create=True) as mock_open:
-        mock_open.side_effect = open_f
+    with patch('builtins.open', create=True) as m_open:
+        m_open.side_effect = open_f
         utils.switch_smt_service(new_smt_server)
-        assert mock_open.call_args_list == [
+        assert m_open.call_args_list == [
             call('tests/data/service.service', 'r'),
             call('tests/data/service.service', 'w')
         ]
@@ -2769,7 +2768,7 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
             'plugin:/susecloud',
             new_smt_server.get_FQDN()
         )
-        mock_open(
+        m_open(
             'tests/data/repo_foo.repo', 'w'
         ).write.assert_called_once_with(expected_content)
 
