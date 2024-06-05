@@ -537,6 +537,13 @@ def set_registry_auth_token(registry_fqdn, username, password):
         # config file does not exist or "auths" key is not set
         os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
         config_json.update({'auths': registry_credentials})
+    except json.decoder.JSONDecodeError:
+        logging.info(
+            'Error found when opening {} file'.format(
+                REGISTRY_CREDENTIALS_PATH
+            )
+        )
+        config_json.update({'auths': registry_credentials})
 
     with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
         json.dump(config_json, cred_json_file)

@@ -14,6 +14,7 @@
 import configparser
 import inspect
 import io
+import json
 import os
 import pickle
 import requests
@@ -3115,6 +3116,33 @@ def test_setup_registry_content(mock_json_load, mock_json_dump):
             {
                 'auths': {
                     'some-doman.com': {'auth': 'foo'},
+                    'registry-supercloud.susecloud.net': {
+                        'auth': 'bG9naW46cGFzcw=='
+                    }
+                }
+            },
+            file_handle
+        )
+
+
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.json.load')
+def test_setup_registry_content_json_error(mock_json_load, mock_json_dump):
+    mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.setup_registry(
+            'registry-supercloud.susecloud.net',
+            'login',
+            'pass'
+        )
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'r'),
+            call('/etc/containers/config.json', 'w')
+        ]
+        mock_json_dump.assert_called_once_with(
+            {
+                'auths': {
                     'registry-supercloud.susecloud.net': {
                         'auth': 'bG9naW46cGFzcw=='
                     }
