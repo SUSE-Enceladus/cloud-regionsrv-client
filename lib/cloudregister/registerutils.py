@@ -539,9 +539,7 @@ def set_registry_auth_token(registry_fqdn, username, password):
         config_json.update({'auths': registry_credentials})
     except json.decoder.JSONDecodeError:
         logging.info(
-            'Error found when opening {} file'.format(
-                REGISTRY_CREDENTIALS_PATH
-            )
+            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
         )
         config_json.update({'auths': registry_credentials})
 
@@ -549,9 +547,7 @@ def set_registry_auth_token(registry_fqdn, username, password):
         json.dump(config_json, cred_json_file)
 
     logging.info(
-        'Credentials for the registry added in %s' % ' '.join(
-            REGISTRY_CREDENTIALS_PATH
-        )
+        'Credentials for the registry added in %s' % REGISTRY_CREDENTIALS_PATH
     )
 
 

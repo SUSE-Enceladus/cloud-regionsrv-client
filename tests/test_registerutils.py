@@ -3125,9 +3125,12 @@ def test_setup_registry_content(mock_json_load, mock_json_dump):
         )
 
 
+@patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
-def test_setup_registry_content_json_error(mock_json_load, mock_json_dump):
+def test_setup_registry_content_json_error(
+    mock_json_load, mock_json_dump, mock_logging
+):
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
@@ -3150,6 +3153,12 @@ def test_setup_registry_content_json_error(mock_json_load, mock_json_dump):
             },
             file_handle
         )
+        file_auth = '/etc/containers/config.json'
+        log_calls = [
+            call('Error found when opening {}'.format(file_auth)),
+            call('Credentials for the registry added in {}'.format(file_auth))
+        ]
+        assert mock_logging.info.call_args_list == log_calls
 
 
 # ---------------------------------------------------------------------------
