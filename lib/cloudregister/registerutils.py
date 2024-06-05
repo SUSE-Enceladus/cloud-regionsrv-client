@@ -517,12 +517,6 @@ def get_credentials(credentials_file):
 
 
 # ----------------------------------------------------------------------------
-def refresh_registry_credentials():
-    """Refresh registry credentials."""
-    return get_activations()
-
-
-# ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
     """Return the credentials filename.
     Credentials are stored per service. If there is a service
