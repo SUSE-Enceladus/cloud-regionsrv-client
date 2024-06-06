@@ -539,20 +539,23 @@ def set_registry_auth_token(registry_fqdn, username, password):
     ).encode()).decode()
     registry_credentials = {registry_fqdn: {'auth': auth_token}}
     config_json = {}
-    try:
-        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
-            config_json = json.load(cred_json)
-        # set the new registry credentials,
-        # independently of what that content was
-        config_json['auths'].update(registry_credentials)
-    except (FileNotFoundError, KeyError):
-        # file does not exist or "auths" key is not set
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
         config_json.update({'auths': registry_credentials})
-    except json.decoder.JSONDecodeError:
-        logging.info(
-            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
-        )
-        config_json.update({'auths': registry_credentials})
+    else:
+        try:
+            with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
+                config_json = json.load(cred_json)
+            # set the new registry credentials,
+            # independently of what that content was
+            config_json['auths'].update(registry_credentials)
+        except KeyError:
+            # file does not exist or "auths" key is not set
+            config_json.update({'auths': registry_credentials})
+        except json.decoder.JSONDecodeError:
+            logging.info(
+                'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
+            )
+            config_json.update({'auths': registry_credentials})
 
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:

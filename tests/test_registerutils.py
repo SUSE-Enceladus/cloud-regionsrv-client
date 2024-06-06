@@ -3264,7 +3264,7 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 def test_setup_registry_empty_file(
     mock_json_load, mock_json_dump, mock_os_makedirs, mock_os_path_exists
 ):
-    mock_os_path_exists.return_value = False
+    mock_os_path_exists.side_effect = [False, True]
     mock_json_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
@@ -3290,12 +3290,43 @@ def test_setup_registry_empty_file(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.os.makedirs')
+@patch('cloudregister.registerutils.json.dump')
+def test_setup_registry_file_not_exists(
+    mock_json_dump, mock_os_makedirs, mock_os_path_exists
+):
+    mock_os_path_exists.side_effect = [False, False]
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.setup_registry(
+            'registry-supercloud.susecloud.net',
+            'login',
+            'pass'
+        )
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'w')
+        mock_json_dump.assert_called_once_with(
+            {
+                'auths': {
+                    'registry-supercloud.susecloud.net': {
+                        'auth': 'bG9naW46cGFzcw=='
+                    }
+                }
+            },
+            file_handle
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content(
-    mock_json_load, mock_json_dump, mock_os_makedirs
+    mock_json_load, mock_json_dump,
+    mock_os_makedirs, mock_os_path_exists
 ):
+    mock_os_path_exists.side_effect = [False, True]
     mock_json_load.return_value = {
         'auths': {
             'some-doman.com': {'auth': 'foo'}
@@ -3325,13 +3356,16 @@ def test_setup_registry_content(
         )
 
 
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_json_error(
-    mock_json_load, mock_json_dump, mock_logging, mock_os_makedirs
+    mock_json_load, mock_json_dump, mock_logging,
+    mock_os_makedirs, mock_os_path_exists
 ):
+    mock_os_path_exists.side_effect = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
@@ -3362,13 +3396,16 @@ def test_setup_registry_content_json_error(
         assert mock_logging.info.call_args_list == log_calls
 
 
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_write_error(
-    mock_json_load, mock_json_dump, mock_logging, mock_os_makedirs
+    mock_json_load, mock_json_dump, mock_logging,
+    mock_os_makedirs, mock_os_path_exists
 ):
+    mock_os_path_exists.side_effect = [False, True]
     mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
         utils.setup_registry(
