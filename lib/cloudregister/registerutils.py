@@ -66,6 +66,12 @@ def add_hosts_entry(smt_server):
         smt_server.get_FQDN(),
         smt_server.get_name()
     )
+    if smt_server.get_registry_FQDN():
+        entry += '%s\t%s\n' % (
+            smt_ip,
+            smt_server.get_registry_FQDN()
+        )
+
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
@@ -92,7 +98,7 @@ def add_region_server_args_to_URL(api, cfg):
 
 # ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name):
-    """Remove the smt server entry from the /etc/hosts file"""
+    """Remove the smt server and registry entries from the /etc/hosts file"""
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
     new_hosts_content = []
@@ -106,9 +112,10 @@ def clean_hosts_file(domain_name):
         if b'# Added by SMT' in entry:
             smt_announce_found = True
             continue
-        if smt_announce_found and domain_name in entry:
-            smt_announce_found = False
-            continue
+        if smt_announce_found:
+            if domain_name in entry:
+                continue
+
         new_hosts_content.append(entry)
 
     # Clean up empty lines at the end of the file such that there is only 1
@@ -561,12 +568,6 @@ def set_registry_auth_token(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
-def refresh_registry_credentials():
-    """Refresh registry credentials."""
-    return get_activations()
-
-
-# ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
     """Return the credentials filename.
     Credentials are stored per service. If there is a service
@@ -842,7 +843,7 @@ def get_smt(cache_refreshed=None):
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
                 # Assume the new server is in the same domain
-                clean_hosts_file(server.get_FQDN())
+                clean_hosts_file(server.get_domain_name())
                 add_hosts_entry(server)
                 set_as_current_smt(server)
                 return server
@@ -1379,7 +1380,7 @@ def remove_registration_data():
 
 # ----------------------------------------------------------------------------
 def replace_hosts_entry(current_smt, new_smt):
-    clean_hosts_file(current_smt.get_FQDN())
+    clean_hosts_file(current_smt.get_domain_name())
     add_hosts_entry(new_smt)
 
 
