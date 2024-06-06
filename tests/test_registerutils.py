@@ -3177,7 +3177,6 @@ def test_setup_registry_content_write_error(
 ):
     mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
-        file_handle = mock_open.return_value.__enter__.return_value
         utils.setup_registry(
             'registry-supercloud.susecloud.net',
             'login',
