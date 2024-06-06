@@ -587,9 +587,8 @@ def remove_auth_token():
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
-        config_auths = config_json['auths']
         # unset the registry credentials
-        del config_auths[smt.get_registry_FQDN()]
+        del config_json['auths'][smt.get_registry_FQDN()]
     except KeyError:
         logging.info('No auth key present. Nothing to do.')
         return True
