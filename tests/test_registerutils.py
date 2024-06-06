@@ -3065,9 +3065,12 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
-def test_setup_registry_empty_file(mock_json_load, mock_json_dump):
+def test_setup_registry_empty_file(
+    mock_json_load, mock_json_dump, mock_os_makedirs
+):
     mock_json_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
@@ -3093,9 +3096,12 @@ def test_setup_registry_empty_file(mock_json_load, mock_json_dump):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
-def test_setup_registry_content(mock_json_load, mock_json_dump):
+def test_setup_registry_content(
+    mock_json_load, mock_json_dump, mock_os_makedirs
+):
     mock_json_load.return_value = {
         'auths': {
             'some-doman.com': {'auth': 'foo'}
@@ -3125,11 +3131,12 @@ def test_setup_registry_content(mock_json_load, mock_json_dump):
         )
 
 
+@patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_json_error(
-    mock_json_load, mock_json_dump, mock_logging
+    mock_json_load, mock_json_dump, mock_logging, mock_os_makedirs
 ):
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     with patch('builtins.open', create=True) as mock_open:
@@ -3156,9 +3163,33 @@ def test_setup_registry_content_json_error(
         file_auth = '/etc/containers/config.json'
         log_calls = [
             call('Error found when opening {}'.format(file_auth)),
-            call('Credentials for the registry added in {}'.format(file_auth))
+            call('Credentials for the registry set in {}'.format(file_auth))
         ]
         assert mock_logging.info.call_args_list == log_calls
+
+
+@patch('cloudregister.registerutils.os.makedirs')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.json.load')
+def test_setup_registry_content_write_error(
+    mock_json_load, mock_json_dump, mock_logging, mock_os_makedirs
+):
+    mock_json_dump.side_effect = Exception('something happened !')
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.setup_registry(
+            'registry-supercloud.susecloud.net',
+            'login',
+            'pass'
+        )
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'r'),
+            call('/etc/containers/config.json', 'w')
+        ]
+        mock_logging.error.assert_called_once_with(
+            'Could not set the registry credentials: something happened !'
+        )
 
 
 # ---------------------------------------------------------------------------

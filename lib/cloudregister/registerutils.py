@@ -512,7 +512,15 @@ def get_credentials(credentials_file):
 
 # ----------------------------------------------------------------------------
 def setup_registry(registry_fqdn, username, password):
-    set_registry_auth_token(registry_fqdn, username, password)
+    """Set all the necessary parts for the registry,
+       returns True if the setup completed, False otherwise."""
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH))
+
+    setup_registry_succeed = set_registry_auth_token(
+        registry_fqdn, username, password
+    )
+    return setup_registry_succeed
 
 
 # ----------------------------------------------------------------------------
@@ -522,20 +530,17 @@ def set_registry_auth_token(registry_fqdn, username, password):
         username=username,
         password=password
     ).encode()).decode()
-    registry_credentials = {}
-    registry_credentials[registry_fqdn] = {'auth': auth_token}
+    registry_credentials = {registry_fqdn: {'auth': auth_token}}
 
     config_json = {}
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
-        # file exists
         # set the new registry credentials,
         # independently of what that content was
         config_json['auths'].update(registry_credentials)
-    except (FileNotFoundError, KeyError):
-        # config file does not exist or "auths" key is not set
-        os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
+    except KeyError:
+        # "auths" key is not set
         config_json.update({'auths': registry_credentials})
     except json.decoder.JSONDecodeError:
         logging.info(
@@ -543,12 +548,17 @@ def set_registry_auth_token(registry_fqdn, username, password):
         )
         config_json.update({'auths': registry_credentials})
 
-    with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
-        json.dump(config_json, cred_json_file)
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
+            json.dump(config_json, cred_json_file)
+    except Exception as error:
+        logging.error('Could not set the registry credentials: %s' % error)
+        return
 
     logging.info(
-        'Credentials for the registry added in %s' % REGISTRY_CREDENTIALS_PATH
+        'Credentials for the registry set in %s' % REGISTRY_CREDENTIALS_PATH
     )
+    return True
 
 
 # ----------------------------------------------------------------------------
