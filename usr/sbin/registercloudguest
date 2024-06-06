@@ -164,6 +164,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
 
 def cleanup():
     """Remove any registration artifacts"""
+    utils.clean_registry_setup()
     utils.remove_registration_data()
     utils.clean_smt_cache()
     utils.clear_new_registration_flag()
