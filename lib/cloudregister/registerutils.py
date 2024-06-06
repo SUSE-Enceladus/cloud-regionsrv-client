@@ -568,6 +568,52 @@ def set_registry_auth_token(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
+def clean_registry_setup():
+    """Remove the data previously set to make the registry work."""
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        return
+
+    remove_auth_token()
+
+
+# ----------------------------------------------------------------------------
+def remove_auth_token():
+    """Remove the auth token from the config json file."""
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    if not smt:
+        return
+
+    logging.info('Unsetting the auth entry for %s' % smt.get_registry_FQDN())
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
+            config_json = json.load(cred_json)
+        config_auths = config_json['auths']
+        # unset the registry credentials
+        del config_auths[smt.get_registry_FQDN()]
+    except KeyError:
+        logging.info('No auth key present. Nothing to do.')
+        return True
+    except json.decoder.JSONDecodeError:
+        logging.info(
+            'Could not unset the registry credentials: '
+            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
+        )
+        return
+
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
+            json.dump(config_json, cred_json_file)
+    except Exception as error:
+        logging.error('Could not unset the registry credentials: %s' % error)
+        return
+
+    logging.info(
+        'Credentials for the registry unset in %s' % REGISTRY_CREDENTIALS_PATH
+    )
+    return True
+
+
+# ----------------------------------------------------------------------------
 def get_credentials_file(update_server, service_name=None):
     """Return the credentials filename.
     Credentials are stored per service. If there is a service

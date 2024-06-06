@@ -3325,6 +3325,7 @@ def test_setup_registry_content(
         )
 
 
+# ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
@@ -3362,6 +3363,7 @@ def test_setup_registry_content_json_error(
         assert mock_logging.info.call_args_list == log_calls
 
 
+# ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
@@ -3382,6 +3384,215 @@ def test_setup_registry_content_write_error(
         ]
         mock_logging.error.assert_called_once_with(
             'Could not set the registry credentials: something happened !'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registry_content_no_file(mock_os_path_exists):
+    mock_os_path_exists.return_value = False
+    assert utils.clean_registry_setup() is None
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.remove_auth_token')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registry_content_file_exists(
+    mock_os_path_exists, mock_remove_auth_token
+):
+    mock_os_path_exists.return_value = True
+    assert utils.clean_registry_setup() is None
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registry_content_no_smt_server(
+    mock_os_path_exists, mock_get_registered_smt, mock_get_smt_from_store
+):
+    mock_os_path_exists.return_value = True
+    mock_get_smt_from_store.return_value = None
+    assert utils.remove_auth_token() is None
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_remove_auth_token_empty_file(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.return_value = {}
+    with patch('builtins.open', create=True) as mock_open:
+        assert utils.remove_auth_token() is True
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
+        log_calls = [
+            call('Unsetting the auth entry for registry-foo.susecloud.net'),
+            call('No auth key present. Nothing to do.')
+        ]
+        assert mock_logging.info.call_args_list == log_calls
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_remove_auth_token_no_registry_entry_in_file(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.return_value = {
+        'auths': {'another_fqdn.com': 'bar'},
+        'more_keys': 'and_content'
+    }
+    with patch('builtins.open', create=True) as mock_open:
+        assert utils.remove_auth_token() is True
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
+        log_calls = [
+            call('Unsetting the auth entry for registry-foo.susecloud.net'),
+            call('No auth key present. Nothing to do.')
+        ]
+        assert mock_logging.info.call_args_list == log_calls
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_clean_registry_content_json_error(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
+    with patch('builtins.open', create=True) as mock_open:
+        utils.remove_auth_token()
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
+        log_calls = [
+            call('Unsetting the auth entry for registry-foo.susecloud.net'),
+            call(
+                'Could not unset the registry credentials: '
+                'Error found when opening /etc/containers/config.json'
+            )
+        ]
+        assert mock_logging.info.call_args_list == log_calls
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_remove_auth_token_content_write(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging, mock_json_dump
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.return_value = {
+        'auths': {
+            smt_server.get_registry_FQDN(): 'foo',
+            'another_fqdn.com': 'bar'
+        },
+        'more_keys': 'and_content'
+    }
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.remove_auth_token()
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'r'),
+            call('/etc/containers/config.json', 'w')
+        ]
+        mock_json_dump.assert_called_once_with(
+            {
+                'auths': {
+                    'another_fqdn.com': 'bar'
+                },
+                'more_keys': 'and_content'
+            },
+            file_handle
+        )
+        log_calls = [
+            call('Unsetting the auth entry for registry-foo.susecloud.net'),
+            call(
+                'Credentials for the registry unset '
+                'in /etc/containers/config.json'
+            )
+        ]
+        print(mock_logging.info.call_args_list)
+        assert mock_logging.info.call_args_list == log_calls
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_remove_auth_token_content_write_error(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging, mock_json_dump
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.return_value = {
+        'auths': {smt_server.get_registry_FQDN(): 'foo'}
+    }
+    mock_json_dump.side_effect = Exception('something happened !')
+    with patch('builtins.open', create=True) as mock_open:
+        utils.remove_auth_token()
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'r'),
+            call('/etc/containers/config.json', 'w')
+        ]
+        mock_logging.error.assert_called_once_with(
+            'Could not unset the registry credentials: something happened !'
         )
 
 
