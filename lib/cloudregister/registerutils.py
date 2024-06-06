@@ -66,6 +66,12 @@ def add_hosts_entry(smt_server):
         smt_server.get_FQDN(),
         smt_server.get_name()
     )
+    if smt_server.get_registry_FQDN():
+        entry += '%s\t%s\n' % (
+            smt_ip,
+            smt_server.get_registry_FQDN()
+        )
+
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
@@ -92,7 +98,7 @@ def add_region_server_args_to_URL(api, cfg):
 
 # ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name):
-    """Remove the smt server entry from the /etc/hosts file"""
+    """Remove the smt server and registry entries from the /etc/hosts file"""
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
     new_hosts_content = []
@@ -106,9 +112,10 @@ def clean_hosts_file(domain_name):
         if b'# Added by SMT' in entry:
             smt_announce_found = True
             continue
-        if smt_announce_found and domain_name in entry:
-            smt_announce_found = False
-            continue
+        if smt_announce_found:
+            if domain_name in entry:
+                continue
+
         new_hosts_content.append(entry)
 
     # Clean up empty lines at the end of the file such that there is only 1
@@ -561,9 +568,48 @@ def set_registry_auth_token(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
-def refresh_registry_credentials():
-    """Refresh registry credentials."""
-    return get_activations()
+def clean_registry_setup():
+    """Remove the data previously set to make the registry work."""
+    remove_auth_token()
+
+
+# ----------------------------------------------------------------------------
+def remove_auth_token():
+    """Remove the auth token from the config json file."""
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        return
+
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    if not smt:
+        return
+
+    logging.info('Unsetting the auth entry for %s' % smt.get_registry_FQDN())
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
+            config_json = json.load(cred_json)
+        # unset the registry credentials
+        del config_json['auths'][smt.get_registry_FQDN()]
+    except KeyError:
+        logging.info('No auth key present. Nothing to do.')
+        return True
+    except json.decoder.JSONDecodeError:
+        logging.info(
+            'Could not unset the registry credentials: '
+            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
+        )
+        return
+
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
+            json.dump(config_json, cred_json_file)
+    except Exception as error:
+        logging.error('Could not unset the registry credentials: %s' % error)
+        return
+
+    logging.info(
+        'Credentials for the registry unset in %s' % REGISTRY_CREDENTIALS_PATH
+    )
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -842,7 +888,7 @@ def get_smt(cache_refreshed=None):
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
                 # Assume the new server is in the same domain
-                clean_hosts_file(server.get_FQDN())
+                clean_hosts_file(server.get_domain_name())
                 add_hosts_entry(server)
                 set_as_current_smt(server)
                 return server
@@ -1379,7 +1425,7 @@ def remove_registration_data():
 
 # ----------------------------------------------------------------------------
 def replace_hosts_entry(current_smt, new_smt):
-    clean_hosts_file(current_smt.get_FQDN())
+    clean_hosts_file(current_smt.get_domain_name())
     add_hosts_entry(new_smt)
 
 
