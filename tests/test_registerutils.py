@@ -3065,12 +3065,14 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_empty_file(
-    mock_json_load, mock_json_dump, mock_os_makedirs
+    mock_json_load, mock_json_dump, mock_os_makedirs, mock_os_path_exists
 ):
+    mock_os_path_exists.return_value = False
     mock_json_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value

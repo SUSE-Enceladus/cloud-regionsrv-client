@@ -514,7 +514,7 @@ def get_credentials(credentials_file):
 def setup_registry(registry_fqdn, username, password):
     """Set all the necessary parts for the registry,
        returns True if the setup completed, False otherwise."""
-    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+    if not os.path.exists(os.path.dirname(REGISTRY_CREDENTIALS_PATH)):
         os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH))
 
     setup_registry_succeed = set_registry_auth_token(
@@ -531,7 +531,6 @@ def set_registry_auth_token(registry_fqdn, username, password):
         password=password
     ).encode()).decode()
     registry_credentials = {registry_fqdn: {'auth': auth_token}}
-
     config_json = {}
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
@@ -539,8 +538,8 @@ def set_registry_auth_token(registry_fqdn, username, password):
         # set the new registry credentials,
         # independently of what that content was
         config_json['auths'].update(registry_credentials)
-    except KeyError:
-        # "auths" key is not set
+    except (FileNotFoundError, KeyError):
+        # file does not exist or "auths" key is not set
         config_json.update({'auths': registry_credentials})
     except json.decoder.JSONDecodeError:
         logging.info(
