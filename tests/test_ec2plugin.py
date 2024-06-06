@@ -16,7 +16,7 @@ import os
 import requests
 import sys
 
-from mock import patch, call
+from unittest.mock import patch, call
 
 test_path = os.path.abspath(
     os.path.dirname(inspect.getfile(inspect.currentframe())))
