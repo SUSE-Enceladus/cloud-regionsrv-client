@@ -3417,13 +3417,14 @@ def test_clean_registry_content_no_smt_server(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
 def test_remove_auth_token_empty_file(
     mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging
+    mock_get_smt_from_store, mock_logging, mock_os_path_exists
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3446,13 +3447,14 @@ def test_remove_auth_token_empty_file(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
 def test_remove_auth_token_no_registry_entry_in_file(
     mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging
+    mock_get_smt_from_store, mock_logging, mock_os_path_exists
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3478,13 +3480,14 @@ def test_remove_auth_token_no_registry_entry_in_file(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
 def test_clean_registry_content_json_error(
     mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging
+    mock_get_smt_from_store, mock_logging, mock_os_path_exists
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3510,14 +3513,15 @@ def test_clean_registry_content_json_error(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
 def test_remove_auth_token_content_write(
-    mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging, mock_json_dump
+    mock_json_load, mock_get_registered_smt,  mock_get_smt_from_store,
+    mock_logging, mock_json_dump, mock_os_path_exists
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3563,14 +3567,15 @@ def test_remove_auth_token_content_write(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
 def test_remove_auth_token_content_write_error(
-    mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging, mock_json_dump
+    mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
+    mock_logging, mock_json_dump, mock_os_path_exists
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"

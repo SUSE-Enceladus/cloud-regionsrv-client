@@ -570,15 +570,15 @@ def set_registry_auth_token(registry_fqdn, username, password):
 # ----------------------------------------------------------------------------
 def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
-    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
-        return
-
     remove_auth_token()
 
 
 # ----------------------------------------------------------------------------
 def remove_auth_token():
     """Remove the auth token from the config json file."""
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        return
+
     smt = get_smt_from_store(__get_registered_smt_file_path())
     if not smt:
         return
