@@ -531,8 +531,9 @@ def setup_registry(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
-def set_registry_auth_token(registry_fqdn, username, password):
-    """Set the auth token to pull images from SUSE registry."""
+def get_registry_credentials():
+    """Read the registry credentials file
+       and return its content or an empty dict."""
     config_json = {}
     if os.path.exists(REGISTRY_CREDENTIALS_PATH):
         try:
@@ -550,6 +551,28 @@ def set_registry_auth_token(registry_fqdn, username, password):
             )
             exec_subprocess(mv_file_cmd.split())
 
+    return config_json
+
+
+# ----------------------------------------------------------------------------
+def write_registry_credentials(content):
+    """Update the registry credentials file with the value of 'content'."""
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
+            json.dump(content, cred_json_file)
+        logging.info(
+            'Credentials for the registry set in %s' %
+            REGISTRY_CREDENTIALS_PATH
+        )
+        return True
+    except Exception as error:
+        logging.error('Could not set the registry credentials: %s' % error)
+
+
+# ----------------------------------------------------------------------------
+def set_registry_auth_token(registry_fqdn, username, password):
+    """Set the auth token to pull images from SUSE registry."""
+    config_json = get_registry_credentials()
     auth_token = base64.b64encode('{username}:{password}'.format(
         username=username,
         password=password
@@ -562,17 +585,8 @@ def set_registry_auth_token(registry_fqdn, username, password):
         list(config_json.get('auths', {}).items()) +  # old content
         list(registry_credentials.items())            # new content
     )
-    try:
-        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
-    except Exception as error:
-        logging.error('Could not set the registry credentials: %s' % error)
-        return
-
-    logging.info(
-        'Credentials for the registry set in %s' % REGISTRY_CREDENTIALS_PATH
-    )
-    return True
+    updated = write_registry_credentials(config_json)
+    return updated
 
 
 # ----------------------------------------------------------------------------
