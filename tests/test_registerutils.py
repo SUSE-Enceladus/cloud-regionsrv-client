@@ -3356,6 +3356,7 @@ def test_setup_registry_content(
         )
 
 
+@patch('cloudregister.registerutils.exec_subprocess')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
@@ -3363,7 +3364,7 @@ def test_setup_registry_content(
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_json_error(
     mock_json_load, mock_json_dump, mock_logging,
-    mock_os_makedirs, mock_os_path_exists
+    mock_os_makedirs, mock_os_path_exists, mock_exec_subprocess
 ):
     mock_os_path_exists.side_effect = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
@@ -3388,12 +3389,22 @@ def test_setup_registry_content_json_error(
             },
             file_handle
         )
-        file_auth = '/etc/containers/config.json'
         log_calls = [
-            call('Error found when opening {}'.format(file_auth)),
-            call('Credentials for the registry set in {}'.format(file_auth))
+            call(
+                'Unable to parse existing /etc/containers/config.json, '
+                'preserving file as /etc/containers/config.json.bak, '
+                'writing new credentials'
+            ),
+            call(
+                'Credentials for the registry set '
+                'in /etc/containers/config.json'
+            )
         ]
         assert mock_logging.info.call_args_list == log_calls
+        mock_exec_subprocess.assert_called_once_with([
+            'mv', '-Z',
+            '/etc/containers/config.json', '/etc/containers/config.json.bak'
+        ])
 
 
 @patch('cloudregister.registerutils.os.path.exists')
@@ -3405,7 +3416,7 @@ def test_setup_registry_content_write_error(
     mock_json_load, mock_json_dump, mock_logging,
     mock_os_makedirs, mock_os_path_exists
 ):
-    mock_os_path_exists.side_effect = [False, True]
+    mock_os_path_exists.side_effect = [False, False]
     mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
         utils.setup_registry(
@@ -3413,10 +3424,9 @@ def test_setup_registry_content_write_error(
             'login',
             'pass'
         )
-        assert mock_open.call_args_list == [
-            call('/etc/containers/config.json', 'r'),
-            call('/etc/containers/config.json', 'w')
-        ]
+        mock_open.assert_called_once_with(
+            '/etc/containers/config.json', 'w'
+        )
         mock_logging.error.assert_called_once_with(
             'Could not set the registry credentials: something happened !'
         )

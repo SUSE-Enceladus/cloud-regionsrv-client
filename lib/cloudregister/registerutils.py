@@ -537,26 +537,30 @@ def set_registry_auth_token(registry_fqdn, username, password):
         username=username,
         password=password
     ).encode()).decode()
-    registry_credentials = {registry_fqdn: {'auth': auth_token}}
+    registry_credentials = {'auths': {registry_fqdn: {'auth': auth_token}}}
     config_json = {}
-    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
-        config_json.update({'auths': registry_credentials})
-    else:
+    if os.path.exists(REGISTRY_CREDENTIALS_PATH):
         try:
             with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
                 config_json = json.load(cred_json)
-            # set the new registry credentials,
-            # independently of what that content was
-            config_json['auths'].update(registry_credentials)
-        except KeyError:
-            # file does not exist or "auths" key is not set
-            config_json.update({'auths': registry_credentials})
         except json.decoder.JSONDecodeError:
             logging.info(
-                'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
+                'Unable to parse existing %s, preserving file as %s.bak, '
+                'writing new credentials' % (
+                    REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+                )
             )
-            config_json.update({'auths': registry_credentials})
-
+            mv_file_cmd = 'mv -Z {} {}.bak'.format(
+                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+            )
+            exec_subprocess(mv_file_cmd.split())
+    # set the new registry credentials,
+    # independently of what that content was,
+    # preserving the rest of the dictionary or keys, if any
+    config_json['auths'] = dict(
+        list(config_json.get('auths', {}).items()) +     # old content
+        list(registry_credentials.get('auths').items())  # new content
+    )
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
             json.dump(config_json, cred_json_file)
