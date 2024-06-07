@@ -531,85 +531,125 @@ def setup_registry(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
-def set_registry_auth_token(registry_fqdn, username, password):
-    """Set the auth token to pull images from SUSE registry."""
-    auth_token = base64.b64encode('{username}:{password}'.format(
-        username=username,
-        password=password
-    ).encode()).decode()
-    registry_credentials = {registry_fqdn: {'auth': auth_token}}
+def get_registry_credentials(unset):
+    """Read the registry credentials file
+       and return its content or an empty dict."""
     config_json = {}
+    failed = None
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        logging.info('Credentials file does not exist. Nothing to do')
+        return config_json, failed
+
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
-        # set the new registry credentials,
-        # independently of what that content was
-        config_json['auths'].update(registry_credentials)
-    except (FileNotFoundError, KeyError):
-        # file does not exist or "auths" key is not set
-        config_json.update({'auths': registry_credentials})
     except json.decoder.JSONDecodeError:
-        logging.info(
-            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
-        )
-        config_json.update({'auths': registry_credentials})
+        if unset:
+            logging.info(
+                'Unable to parse existing %s, '
+                'trying to unset the credentials' %
+                REGISTRY_CREDENTIALS_PATH
+            )
+            failed = __remove_auth_token()
+            message = 'Credentials unset'
+            if failed:
+                message = 'Unset the credentials failed'
+            logging.info(message)
+        else:
+            logging.info(
+                'Unable to parse existing %s, preserving file as %s.bak, '
+                'writing new credentials' % (
+                    REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+                )
+            )
+            # we want to remove the possible
+            # auth token present in the file
+            # before preserving it
+            mv_file_cmd = 'mv -Z {} {}.bak'.format(
+                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+            ).split()
+            failed = exec_subprocess(mv_file_cmd)
+            message = 'File not preserved' if failed else 'File preserved'
+            logging.info(message)
 
+    return config_json, failed
+
+
+# ----------------------------------------------------------------------------
+def write_registry_credentials(content):
+    """Update the registry credentials file with the value of 'content'."""
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
+            json.dump(content, cred_json_file)
+        logging.info(
+            'Credentials for the registry updated in %s' %
+            REGISTRY_CREDENTIALS_PATH
+        )
+        return True
     except Exception as error:
-        logging.error('Could not set the registry credentials: %s' % error)
-        return
+        logging.error('Could not update the registry credentials: %s' % error)
 
-    logging.info(
-        'Credentials for the registry set in %s' % REGISTRY_CREDENTIALS_PATH
+
+# ----------------------------------------------------------------------------
+def set_registry_auth_token(registry_fqdn, username, password):
+    """Set the auth token to access the SUSE registry."""
+    config_json, preserve_failed = get_registry_credentials(False)
+    if preserve_failed:
+        # there was an error parsing the credentials json file
+        # and we could not preserve the file
+        # we do not write anything new to the credentials file
+        return False
+
+    auth_token = __generate_registry_auth_token(username, password)
+    # set the new registry credentials,
+    # independently of what that content was,
+    # preserving the rest of the dictionary or keys, if any
+    registry_credentials = {registry_fqdn: {'auth': auth_token}}
+    config_json['auths'] = dict(
+        list(config_json.get('auths', {}).items()) +  # old content
+        list(registry_credentials.items())            # new content
     )
-    return True
+    updated = write_registry_credentials(config_json)
+    return updated
 
 
 # ----------------------------------------------------------------------------
 def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
-    remove_auth_token()
+    remove_auth_entry()
 
 
 # ----------------------------------------------------------------------------
-def remove_auth_token():
+def remove_auth_entry():
     """Remove the auth token from the config json file."""
-    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
-        return
-
-    smt = get_smt_from_store(__get_registered_smt_file_path())
-    if not smt:
-        return
-
-    logging.info('Unsetting the auth entry for %s' % smt.get_registry_FQDN())
-    try:
-        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
-            config_json = json.load(cred_json)
+    config_json, unset_failed = get_registry_credentials(True)
+    if config_json:
+        # we could open the credentials file
+        # and it is not empty
         # unset the registry credentials
-        del config_json['auths'][smt.get_registry_FQDN()]
-    except KeyError:
-        logging.info('No auth key present. Nothing to do.')
-        return True
-    except json.decoder.JSONDecodeError:
-        logging.info(
-            'Could not unset the registry credentials: '
-            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
-        )
-        return
+        entry = None
+        smt = get_smt_from_store(__get_registered_smt_file_path())
+        if smt and smt.get_registry_FQDN():
+            logging.info(
+                'Unsetting the auth entry for %s' % smt.get_registry_FQDN()
+            )
+            entry = smt.get_registry_FQDN()
+        else:
+            logging.info('Unsetting the auth entry based on the token')
+            auth_token = __generate_registry_auth_token()
+            entries = config_json.get('auths', {}).items()
+            entry = [entry for entry, auth in entries if auth == auth_token]
+            entry = ''.join(entry)
 
-    try:
-        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
-    except Exception as error:
-        logging.error('Could not unset the registry credentials: %s' % error)
-        return
+        config_json.get('auths', {}).pop(entry, {})
+        logging.info('Registry auth entry unset or not present on the file')
 
-    logging.info(
-        'Credentials for the registry unset in %s' % REGISTRY_CREDENTIALS_PATH
-    )
-    return True
+    if config_json or (not unset_failed and unset_failed is not None):
+        # file was not empty or
+        # file could not be parsed and the remove cmd did not fail
+        return write_registry_credentials(config_json)
+
+    return False
 
 
 # ----------------------------------------------------------------------------
@@ -1793,3 +1833,27 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
+
+
+# ----------------------------------------------------------------------------
+def __generate_registry_auth_token(username=None, password=None):
+    if not username:
+        username, password = get_credentials(
+            '/etc/zypp/credentials.d/SCCcredentials'
+        )
+
+    return base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+
+
+# ----------------------------------------------------------------------------
+def __remove_auth_token():
+    """Replace the registry auth token for a space in the credentials file."""
+    auth_token = __generate_registry_auth_token()
+    # replace the auth token for a space in the credentials file
+    remove_auth_token_cmd = "sed -i 's/{}/ /' {}".format(
+        auth_token, REGISTRY_CREDENTIALS_PATH
+    ).split()
+    return exec_subprocess(remove_auth_token_cmd)
