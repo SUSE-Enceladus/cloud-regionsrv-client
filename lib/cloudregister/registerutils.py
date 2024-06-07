@@ -533,11 +533,6 @@ def setup_registry(registry_fqdn, username, password):
 # ----------------------------------------------------------------------------
 def set_registry_auth_token(registry_fqdn, username, password):
     """Set the auth token to pull images from SUSE registry."""
-    auth_token = base64.b64encode('{username}:{password}'.format(
-        username=username,
-        password=password
-    ).encode()).decode()
-    registry_credentials = {'auths': {registry_fqdn: {'auth': auth_token}}}
     config_json = {}
     if os.path.exists(REGISTRY_CREDENTIALS_PATH):
         try:
@@ -554,12 +549,18 @@ def set_registry_auth_token(registry_fqdn, username, password):
                 REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
             )
             exec_subprocess(mv_file_cmd.split())
+
+    auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
     # set the new registry credentials,
     # independently of what that content was,
     # preserving the rest of the dictionary or keys, if any
+    registry_credentials = {registry_fqdn: {'auth': auth_token}}
     config_json['auths'] = dict(
-        list(config_json.get('auths', {}).items()) +     # old content
-        list(registry_credentials.get('auths').items())  # new content
+        list(config_json.get('auths', {}).items()) +  # old content
+        list(registry_credentials.items())            # new content
     )
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
