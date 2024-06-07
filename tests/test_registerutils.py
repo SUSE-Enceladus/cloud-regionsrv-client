@@ -3329,7 +3329,7 @@ def test_setup_registry_content(
     mock_os_path_exists.side_effect = [False, True]
     mock_json_load.return_value = {
         'auths': {
-            'some-doman.com': {'auth': 'foo'}
+            'some-domain.com': {'auth': 'foo'}
         }
     }
     with patch('builtins.open', create=True) as mock_open:
@@ -3433,18 +3433,6 @@ def test_clean_registry_content_file_exists(
 ):
     mock_os_path_exists.return_value = True
     assert utils.clean_registry_setup() is None
-
-
-# ---------------------------------------------------------------------------
-# @patch('cloudregister.registerutils.get_smt_from_store')
-# @patch('cloudregister.registerutils.__get_registered_smt_file_path')
-# @patch('cloudregister.registerutils.os.path.exists')
-# def test_clean_registry_content_no_smt_server(
-#     mock_os_path_exists, mock_get_registered_smt, mock_get_smt_from_store
-# ):
-#     mock_os_path_exists.return_value = True
-#     mock_get_smt_from_store.return_value = None
-#     assert utils.remove_auth_entry() is None
 
 
 # ---------------------------------------------------------------------------
