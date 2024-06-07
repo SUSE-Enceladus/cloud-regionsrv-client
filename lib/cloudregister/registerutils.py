@@ -535,6 +535,7 @@ def get_registry_credentials():
     """Read the registry credentials file
        and return its content or an empty dict."""
     config_json = {}
+    failed = False
     if os.path.exists(REGISTRY_CREDENTIALS_PATH):
         try:
             with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
@@ -546,12 +547,17 @@ def get_registry_credentials():
                     REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
                 )
             )
+            # we want to remove the possible
+            # auth token present in the file
+            # before preserving it
             mv_file_cmd = 'mv -Z {} {}.bak'.format(
                 REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-            )
-            exec_subprocess(mv_file_cmd.split())
+            ).split()
+            failed = exec_subprocess(mv_file_cmd)
+            message = 'File not preserved.' if failed else 'File preserved.'
+            logging.info(message)
 
-    return config_json
+    return config_json, failed
 
 
 # ----------------------------------------------------------------------------
@@ -572,7 +578,13 @@ def write_registry_credentials(content):
 # ----------------------------------------------------------------------------
 def set_registry_auth_token(registry_fqdn, username, password):
     """Set the auth token to access the SUSE registry."""
-    config_json = get_registry_credentials()
+    config_json, preserve_failed = get_registry_credentials()
+    if preserve_failed:
+        # there was an error parsing the credentials json file
+        # and we could not preserve the file
+        # we do not write anything new to the credentials file
+        return False
+
     auth_token = base64.b64encode('{username}:{password}'.format(
         username=username,
         password=password

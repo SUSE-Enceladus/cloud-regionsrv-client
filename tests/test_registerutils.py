@@ -3360,51 +3360,35 @@ def test_setup_registry_content(
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_json_error(
-    mock_json_load, mock_json_dump, mock_logging,
-    mock_os_makedirs, mock_os_path_exists, mock_exec_subprocess
+    mock_json_load, mock_logging, mock_os_makedirs,
+    mock_os_path_exists, mock_exec_subprocess
 ):
     mock_os_path_exists.side_effect = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     with patch('builtins.open', create=True) as mock_open:
-        file_handle = mock_open.return_value.__enter__.return_value
-        utils.setup_registry(
+        mock_exec_subprocess.return_value = 1
+        assert utils.setup_registry(
             'registry-supercloud.susecloud.net',
             'login',
             'pass'
-        )
-        assert mock_open.call_args_list == [
-            call('/etc/containers/config.json', 'r'),
-            call('/etc/containers/config.json', 'w')
-        ]
-        mock_json_dump.assert_called_once_with(
-            {
-                'auths': {
-                    'registry-supercloud.susecloud.net': {
-                        'auth': 'bG9naW46cGFzcw=='
-                    }
-                }
-            },
-            file_handle
-        )
+        ) is False
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
         log_calls = [
             call(
                 'Unable to parse existing /etc/containers/config.json, '
                 'preserving file as /etc/containers/config.json.bak, '
                 'writing new credentials'
             ),
-            call(
-                'Credentials for the registry set '
-                'in /etc/containers/config.json'
-            )
+            call('File not preserved.')
         ]
         assert mock_logging.info.call_args_list == log_calls
-        mock_exec_subprocess.assert_called_once_with([
-            'mv', '-Z',
-            '/etc/containers/config.json', '/etc/containers/config.json.bak'
-        ])
+        mock_exec_subprocess.assert_called_once_with(
+            ['mv', '-Z',
+             '/etc/containers/config.json',
+             '/etc/containers/config.json.bak']
+        )
 
 
 @patch('cloudregister.registerutils.os.path.exists')
