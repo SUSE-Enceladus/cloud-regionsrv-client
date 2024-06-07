@@ -571,7 +571,7 @@ def write_registry_credentials(content):
 
 # ----------------------------------------------------------------------------
 def set_registry_auth_token(registry_fqdn, username, password):
-    """Set the auth token to pull images from SUSE registry."""
+    """Set the auth token to access the SUSE registry."""
     config_json = get_registry_credentials()
     auth_token = base64.b64encode('{username}:{password}'.format(
         username=username,
