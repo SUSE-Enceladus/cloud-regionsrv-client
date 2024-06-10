@@ -46,6 +46,7 @@ REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
+BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -527,6 +528,8 @@ def setup_registry(registry_fqdn, username, password):
     setup_registry_succeed = set_registry_auth_token(
         registry_fqdn, username, password
     )
+    if setup_registry_succeed:
+        setup_registry_succeed = set_container_engines_env_vars()
     return setup_registry_succeed
 
 
@@ -600,6 +603,44 @@ def set_registry_auth_token(registry_fqdn, username, password):
     )
     updated = write_registry_credentials(config_json)
     return updated
+
+
+# ----------------------------------------------------------------------------
+def set_container_engines_env_vars():
+    """Set the environment variables needed available for
+    the container runtimes to find the config file."""
+    env_vars = [
+        {'REGISTRY_AUTH_FILE': REGISTRY_CREDENTIALS_PATH},
+        {'DOCKER_CONFIG': os.path.dirname(REGISTRY_CREDENTIALS_PATH)}
+    ]
+    export_registry_env_vars = [
+        '\nexport {}={}\n'.format(engine_var, value)
+        for env_var in env_vars for engine_var, value in env_var.items()
+    ]
+    return update_bashrc(''.join(export_registry_env_vars)) and source_env()
+
+
+# ----------------------------------------------------------------------------
+def update_bashrc(export_registry_env_vars):
+    """Add the env vars for the container engines
+    with the location of the config file to the bashrc local file."""
+    try:
+        with open(BASHRC_LOCAL_PATH, 'a') as basrhc_file:
+            basrhc_file.write(export_registry_env_vars)
+        logging.info('%s updated with registry env vars' % BASHRC_LOCAL_PATH)
+        return True
+    except OSError as error:
+        logging.error('Could not set the environment variables: %s' % error)
+
+
+# ----------------------------------------------------------------------------
+def source_env():
+    """Source the updated bashrc local file for the changes to take effect."""
+    source_cmd = 'source {}'.format(BASHRC_LOCAL_PATH).split()
+    sourced_env_vars_failed = exec_subprocess(source_cmd)
+    if sourced_env_vars_failed:
+        logging.info('Source %s failed' % BASHRC_LOCAL_PATH)
+    return not sourced_env_vars_failed
 
 
 # ----------------------------------------------------------------------------
