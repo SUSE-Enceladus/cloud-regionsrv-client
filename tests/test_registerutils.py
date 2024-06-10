@@ -3264,7 +3264,7 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 def test_setup_registry_empty_file(
     mock_json_load, mock_json_dump, mock_os_makedirs, mock_os_path_exists
 ):
-    mock_os_path_exists.side_effect = [False, True]
+    mock_os_path_exists.return_value = True
     mock_json_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
@@ -3326,7 +3326,7 @@ def test_setup_registry_content(
     mock_json_load, mock_json_dump,
     mock_os_makedirs, mock_os_path_exists
 ):
-    mock_os_path_exists.side_effect = [False, True]
+    mock_os_path_exists.return_value = True
     mock_json_load.return_value = {
         'auths': {
             'some-doman.com': {'auth': 'foo'}
@@ -3365,7 +3365,7 @@ def test_setup_registry_content_json_error(
     mock_json_load, mock_logging, mock_os_makedirs,
     mock_os_path_exists, mock_exec_subprocess
 ):
-    mock_os_path_exists.side_effect = [False, True]
+    mock_os_path_exists.return_value = True
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     with patch('builtins.open', create=True) as mock_open:
         mock_exec_subprocess.return_value = 1

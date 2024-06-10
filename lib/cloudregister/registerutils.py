@@ -521,8 +521,7 @@ def get_credentials(credentials_file):
 def setup_registry(registry_fqdn, username, password):
     """Set all the necessary parts for the registry,
        returns True if the setup completed, False otherwise."""
-    if not os.path.exists(os.path.dirname(REGISTRY_CREDENTIALS_PATH)):
-        os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH))
+    os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
 
     setup_registry_succeed = set_registry_auth_token(
         registry_fqdn, username, password
