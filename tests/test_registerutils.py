@@ -3535,9 +3535,9 @@ def test_clean_registry_content_json_error(
         log_calls = [
             call(
                 'Unable to parse existing /etc/containers/config.json, '
-                'trying to unset the credentials'
+                'preserving file as /etc/containers/config.json.bak'
             ),
-            call('Unset the credentials failed')
+            call('File not preserved')
         ]
         assert mock_logging.info.call_args_list == log_calls
 
@@ -3597,7 +3597,7 @@ def test_remove_auth_entry_content_write(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.__generate_registry_auth_token')
+@patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.logging')
@@ -3606,8 +3606,7 @@ def test_remove_auth_entry_content_write(
 @patch('cloudregister.registerutils.json.load')
 def test_remove_auth_entry_content_write_no_smt_toke_based(
     mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
-    mock_logging, mock_json_dump,
-    mock_os_path_exists, mock_generate_registry_auth_token
+    mock_logging, mock_json_dump, mock_os_path_exists, mock_get_credentials
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3619,12 +3618,12 @@ def test_remove_auth_entry_content_write_no_smt_toke_based(
     mock_get_smt_from_store.return_value = smt_server
     mock_json_load.return_value = {
         'auths': {
-            "registry-foo.susecloud.net": 'foo',
+            "registry-foo.susecloud.net": 'dXNlcm5hbWU6cGFzcw==',
             'another_fqdn.com': 'bar'
         },
         'more_keys': 'and_content'
     }
-    mock_generate_registry_auth_token.return_value = 'foo'
+    mock_get_credentials.return_value = 'username', 'pass'
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
         utils.remove_auth_entry()
