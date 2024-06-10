@@ -536,9 +536,18 @@ def get_registry_credentials():
     config_json = {}
     failed = False
     if os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        file_error = False
         try:
             with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
                 config_json = json.load(cred_json)
+        except OSError as error:
+            logging.info(
+                'Unable to open %s: %s, preserving file as %s.bak, '
+                'writing new credentials' % (
+                    REGISTRY_CREDENTIALS_PATH, error, REGISTRY_CREDENTIALS_PATH
+                )
+            )
+            file_error = True
         except json.decoder.JSONDecodeError:
             logging.info(
                 'Unable to parse existing %s, preserving file as %s.bak, '
@@ -546,9 +555,9 @@ def get_registry_credentials():
                     REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
                 )
             )
-            # we want to remove the possible
-            # auth token present in the file
-            # before preserving it
+            file_error = True
+
+        if file_error:
             mv_file_cmd = 'mv -Z {} {}.bak'.format(
                 REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
             ).split()

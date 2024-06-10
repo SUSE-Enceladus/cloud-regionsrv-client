@@ -3391,6 +3391,40 @@ def test_setup_registry_content_json_error(
         )
 
 
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.os.makedirs')
+@patch('cloudregister.registerutils.logging')
+def test_setup_registry_content_open_file_error(
+    mock_logging, mock_os_makedirs,
+    mock_os_path_exists, mock_exec_subprocess
+):
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no ! an error')
+        mock_exec_subprocess.return_value = 1
+        assert utils.setup_registry(
+            'registry-supercloud.susecloud.net',
+            'login',
+            'pass'
+        ) is False
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
+        log_calls = [
+            call(
+                'Unable to open /etc/containers/config.json: oh no ! an error,'
+                ' preserving file as /etc/containers/config.json.bak, '
+                'writing new credentials'
+            ),
+            call('File not preserved.')
+        ]
+        assert mock_logging.info.call_args_list == log_calls
+        mock_exec_subprocess.assert_called_once_with(
+            ['mv', '-Z',
+             '/etc/containers/config.json',
+             '/etc/containers/config.json.bak']
+        )
+
+
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
@@ -3401,7 +3435,7 @@ def test_setup_registry_content_write_error(
     mock_os_makedirs, mock_os_path_exists
 ):
     mock_os_path_exists.side_effect = [False, False]
-    mock_json_dump.side_effect = Exception('something happened !')
+    mock_json_dump.side_effect = TypeError('something happened !')
     with patch('builtins.open', create=True) as mock_open:
         utils.setup_registry(
             'registry-supercloud.susecloud.net',
