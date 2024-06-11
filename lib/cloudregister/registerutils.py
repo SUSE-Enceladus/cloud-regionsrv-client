@@ -45,6 +45,7 @@ OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
+REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -514,6 +515,98 @@ def get_credentials(credentials_file):
                             'credentials file "%s"' % entry)
 
     return (username, password)
+
+
+# ----------------------------------------------------------------------------
+def setup_registry(registry_fqdn, username, password):
+    """Set all the necessary parts for the registry,
+       returns True if the setup completed, False otherwise."""
+    os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
+
+    setup_registry_succeed = set_registry_auth_token(
+        registry_fqdn, username, password
+    )
+    return setup_registry_succeed
+
+
+# ----------------------------------------------------------------------------
+def get_registry_credentials():
+    """Read the registry credentials file
+       and return its content or an empty dict."""
+    config_json = {}
+    failed = False
+    if os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        file_error = False
+        try:
+            with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
+                config_json = json.load(cred_json)
+        except OSError as error:
+            logging.info(
+                'Unable to open %s: %s, preserving file as %s.bak, '
+                'writing new credentials' % (
+                    REGISTRY_CREDENTIALS_PATH, error, REGISTRY_CREDENTIALS_PATH
+                )
+            )
+            file_error = True
+        except json.decoder.JSONDecodeError:
+            logging.info(
+                'Unable to parse existing %s, preserving file as %s.bak, '
+                'writing new credentials' % (
+                    REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+                )
+            )
+            file_error = True
+
+        if file_error:
+            mv_file_cmd = 'mv -Z {} {}.bak'.format(
+                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+            ).split()
+            failed = exec_subprocess(mv_file_cmd)
+            message = 'File not preserved.' if failed else 'File preserved.'
+            logging.info(message)
+
+    return config_json, failed
+
+
+# ----------------------------------------------------------------------------
+def write_registry_credentials(content):
+    """Update the registry credentials file with the value of 'content'."""
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
+            json.dump(content, cred_json_file)
+        logging.info(
+            'Credentials for the registry set in %s' %
+            REGISTRY_CREDENTIALS_PATH
+        )
+        return True
+    except Exception as error:
+        logging.error('Could not set the registry credentials: %s' % error)
+
+
+# ----------------------------------------------------------------------------
+def set_registry_auth_token(registry_fqdn, username, password):
+    """Set the auth token to access the SUSE registry."""
+    config_json, preserve_failed = get_registry_credentials()
+    if preserve_failed:
+        # there was an error parsing the credentials json file
+        # and we could not preserve the file
+        # we do not write anything new to the credentials file
+        return False
+
+    auth_token = base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+    # set the new registry credentials,
+    # independently of what that content was,
+    # preserving the rest of the dictionary or keys, if any
+    registry_credentials = {registry_fqdn: {'auth': auth_token}}
+    config_json['auths'] = dict(
+        list(config_json.get('auths', {}).items()) +  # old content
+        list(registry_credentials.items())            # new content
+    )
+    updated = write_registry_credentials(config_json)
+    return updated
 
 
 # ----------------------------------------------------------------------------
