@@ -547,22 +547,8 @@ def get_registry_credentials(set_new):
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
     except json.decoder.JSONDecodeError:
-        message = (
-            'Unable to parse existing %s, preserving file as %s.bak'
-            % (REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH)
-        )
-        if set_new:
-            message += ', writing new credentials'
-        logging.info(message)
-        # we want to remove the possible
-        # auth token present in the file
-        # before preserving it
-        mv_file_cmd = 'mv -Z {} {}.bak'.format(
-            REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-        ).split()
-        failed = exec_subprocess(mv_file_cmd)
-        message = 'File not preserved' if failed else 'File preserved'
-        logging.info(message)
+        logging.info('Unable to parse existing %s' % REGISTRY_CREDENTIALS_PATH)
+        failed = __mv_file_backup(REGISTRY_CREDENTIALS_PATH)
 
     return config_json, failed
 
@@ -601,6 +587,7 @@ def set_registry_auth_token(registry_fqdn, username, password):
         list(config_json.get('auths', {}).items()) +  # old content
         list(registry_credentials.items())            # new content
     )
+    logging.info('Writing new credentials')
     updated = write_registry_credentials(config_json)
     return updated
 
@@ -613,24 +600,26 @@ def set_container_engines_env_vars():
         {'REGISTRY_AUTH_FILE': REGISTRY_CREDENTIALS_PATH},
         {'DOCKER_CONFIG': os.path.dirname(REGISTRY_CREDENTIALS_PATH)}
     ]
-    export_registry_env_vars = [
+    export_registry_env_vars = ''.join([
         '\nexport {}={}\n'.format(engine_var, value)
         for env_var in env_vars for engine_var, value in env_var.items()
-    ]
-    return update_bashrc(''.join(export_registry_env_vars)) and source_env()
+    ])
+    return update_bashrc(export_registry_env_vars, 'a') and source_env()
 
 
 # ----------------------------------------------------------------------------
-def update_bashrc(export_registry_env_vars):
-    """Add the env vars for the container engines
+def update_bashrc(content, mode):
+    """Update (add or remove) the env vars for the container engines
     with the location of the config file to the bashrc local file."""
     try:
-        with open(BASHRC_LOCAL_PATH, 'a') as basrhc_file:
-            basrhc_file.write(export_registry_env_vars)
-        logging.info('%s updated with registry env vars' % BASHRC_LOCAL_PATH)
+        with open(BASHRC_LOCAL_PATH, mode) as basrhc_file:
+            basrhc_file.write(content)
+        logging.info('%s updated' % BASHRC_LOCAL_PATH)
         return True
     except OSError as error:
-        logging.error('Could not set the environment variables: %s' % error)
+        logging.error('Could not update %s: %s' % (BASHRC_LOCAL_PATH, error))
+        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        return not failed
 
 
 # ----------------------------------------------------------------------------
@@ -647,6 +636,7 @@ def source_env():
 def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
     remove_auth_entry()
+    unset_env_vars()
 
 
 # ----------------------------------------------------------------------------
@@ -680,6 +670,73 @@ def remove_auth_entry():
         return write_registry_credentials(config_json)
 
     return False
+
+
+# ----------------------------------------------------------------------------
+def unset_env_vars():
+    """Remove the registry environment variables."""
+    env_vars = ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+    if not os.path.exists(BASHRC_LOCAL_PATH):
+        logging.info('%s file does not exist' % BASHRC_LOCAL_PATH)
+        # remove the enviroment variables from the env, if present
+        [os.environ.pop(env_var, {}) for env_var in env_vars]
+        logging.info(
+            '%s variables removed from the environment, if present'
+            % ' '.join(env_vars)
+        )
+        return True
+
+    lines, modified, preserved_failed, mv_backup = clean_bashrc_local(env_vars)
+    succeeded = True
+    if modified:
+        # we could access the file and registry env vars were found and removed
+        succeeded = update_bashrc(''.join(lines), 'w')
+    else:
+        # Either we could access the file and no registry env vars were found
+        # or we could not access the file and attempted to create a backup
+        # if backup scenario, log is already populated
+        if not mv_backup:
+            # we could access the bashrc local file and
+            # no env vars were found
+            logging.info(
+                'Environment variables not present in %s' % BASHRC_LOCAL_PATH
+            )
+            succeeded = True
+        elif preserved_failed:
+            # we could not access the bashrc local file
+            # the attempt to create a backup failed
+            succeeded = False
+
+    return succeeded
+
+
+# ----------------------------------------------------------------------------
+def clean_bashrc_local(env_vars):
+    """Return a list of lines excluding the environment variables,
+    if any, from the BASHRC_LOCAL_PATH file."""
+    bashrc_local_lines = []
+    try:
+        with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+            bashrc_local_lines = bashrc_local.readlines()
+    except OSError as error:
+        logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
+        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        return [], False, failed, True
+
+    bashrc_local_new_lines = []
+    modified = False
+    for bashrc_line in bashrc_local_lines:
+        skip = False
+        for env_var in env_vars:
+            if not bashrc_line.startswith('#') and env_var in bashrc_line:
+                skip = True
+                modified = True
+        if not skip:
+            bashrc_local_new_lines.append(bashrc_line)
+
+        print(bashrc_local_new_lines)
+
+    return bashrc_local_new_lines, modified, False, False
 
 
 # ----------------------------------------------------------------------------
@@ -1876,3 +1933,14 @@ def __generate_registry_auth_token(username=None, password=None):
         username=username,
         password=password
     ).encode()).decode()
+
+
+# ----------------------------------------------------------------------------
+def __mv_file_backup(filename):
+    message = ('Preserving file as %s.bak' % filename)
+    logging.info(message)
+    mv_file_cmd = 'mv -Z {} {}.bak'.format(filename, filename).split()
+    failed = exec_subprocess(mv_file_cmd)
+    message = 'File not preserved' if failed else 'File preserved'
+    logging.info(message)
+    return failed
