@@ -20,6 +20,7 @@ import pickle
 import requests
 import sys
 import tempfile
+import toml
 from pytest import raises
 from textwrap import dedent
 
@@ -3400,6 +3401,7 @@ def test_setup_registry_content_json_error_preserve_fail(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_registries_conf')
 @patch('cloudregister.registerutils.exec_subprocess')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
@@ -3407,11 +3409,12 @@ def test_setup_registry_content_json_error_preserve_fail(
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_json_error_preserve_ok(
     mock_json_load, mock_logging, mock_os_makedirs,
-    mock_os_path_exists, mock_exec_subprocess
+    mock_os_path_exists, mock_exec_subprocess, mock_set_reg_conf
 ):
     mock_os_path_exists.side_effect = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     mock_exec_subprocess.return_value = 1
+    mock_set_reg_conf.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         mock_exec_subprocess.return_value = 0
         assert utils.setup_registry(
@@ -3833,6 +3836,204 @@ def test_clean_bashrc_local_open_error(mock_logging, mock_mv_file_backup):
         mock_logging.info.assert_called_once_with(
             'Could not open /etc/bash.bashrc.local: oh no !'
         )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_set_registries_conf(mock_os_path_exists, mock_get_reg_conf_file):
+    mock_os_path_exists.return_value = True
+    mock_get_reg_conf_file.return_value = {}, True
+    assert utils.set_registries_conf('foo') is False
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('cloudregister.registerutils.os.path.exists')
+def test__set_registries_conf_podman_OK_content(
+    mock_os_path_exists, mock_get_reg_conf_file, mock_logging
+):
+    mock_os_path_exists.return_value = True
+    mock_get_reg_conf_file.return_value = {
+        'unqualified-search-registries': [
+            'registry-ec2.susecloud.net', 'registry.suse.com'
+        ],
+        'registry': [
+            {'location': 'registry-ec2.susecloud.net', 'insecure': False}
+        ]
+    }, False
+    assert utils.__set_registries_conf_podman(
+        'registry-ec2.susecloud.net'
+    ) is None
+    assert mock_logging.info.call_args_list == []
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.toml.dump')
+@patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('cloudregister.registerutils.os.path.exists')
+def test__set_registries_conf_podman_content_not_OK(
+    mock_os_path_exists, mock_get_reg_conf_file,
+    mock_toml_dump, mock_logging
+):
+    mock_os_path_exists.return_value = True
+    mock_get_reg_conf_file.return_value = {
+        'unqualified-search-registries': [
+            'foo.com', 'registry.suse.com'
+        ],
+        'registry': [
+            {'location': 'foo', 'insecure': False}
+        ]
+    }, False
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        assert utils.__set_registries_conf_podman('registry-ec2.susecloud.net')
+        mock_toml_dump.assert_called_once_with(
+            {
+                'unqualified-search-registries': [
+                    'registry-ec2.susecloud.net',
+                    'registry.suse.com',
+                    'foo.com'
+                ],
+                'registry': [
+                    {
+                        'location': 'foo',
+                        'insecure': False
+                    },
+                    {
+                        'location': 'registry-ec2.susecloud.net',
+                        'insecure': False
+                    }
+                ]
+            },
+            file_handle
+        )
+        assert mock_logging.info.call_args_list == [
+            call(
+                'Content for /etc/containers/registries.conf has changed, '
+                'updating the file'
+            ),
+            call('File /etc/containers/registries.conf updated')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.toml.dump')
+@patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('cloudregister.registerutils.os.path.exists')
+def test__set_registries_conf_podman_content_not_OK_wrong_order(
+    mock_os_path_exists, mock_get_reg_conf_file,
+    mock_toml_dump, mock_logging
+):
+    mock_os_path_exists.return_value = True
+    mock_get_reg_conf_file.return_value = {
+        'unqualified-search-registries': [
+            'foo.com', 'registry.suse.com', 'registry-ec2.susecloud.net'
+        ],
+        'registry': [
+            {'location': 'foo', 'insecure': False},
+            {'location': 'registry-ec2.susecloud.net', 'insecure': True}
+        ]
+    }, False
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        assert utils.__set_registries_conf_podman('registry-ec2.susecloud.net')
+        mock_toml_dump.assert_called_once_with(
+            {
+                'unqualified-search-registries': [
+                    'registry-ec2.susecloud.net',
+                    'registry.suse.com',
+                    'foo.com'
+                ],
+                'registry': [
+                    {
+                        'location': 'foo',
+                        'insecure': False
+                    },
+                    {
+                        'location': 'registry-ec2.susecloud.net',
+                        'insecure': False
+                    }
+                ]
+            },
+            file_handle
+        )
+        assert mock_logging.info.call_args_list == [
+            call(
+                'Content for /etc/containers/registries.conf has changed, '
+                'updating the file'
+            ),
+            call('File /etc/containers/registries.conf updated')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.toml.load')
+@patch('cloudregister.registerutils.os.path.exists')
+def test__set_registries_conf_podman_content_not_OK_wrong_order_file_error(
+    mock_os_path_exists, mock_toml_load, mock_logging
+):
+    mock_os_path_exists.return_value = True
+    mock_toml_load.return_value = {
+        'unqualified-search-registries': [
+            'foo.com', 'registry.suse.com', 'registry-ec2.susecloud.net'
+        ],
+        'registry': [
+            {'location': 'foo', 'insecure': False},
+            {'location': 'registry-ec2.susecloud.net', 'insecure': True}
+        ]
+    }
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = [
+            MagicMock(spec=io.IOBase).return_value,
+            OSError('oh no !')
+        ]
+        assert utils.__set_registries_conf_podman(
+            'registry-ec2.susecloud.net'
+        ) is None
+        assert mock_open.call_args_list == [
+            call('/etc/containers/registries.conf', 'r'),
+            call('/etc/containers/registries.conf', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call(
+                'Content for /etc/containers/registries.conf has changed, '
+                'updating the file'
+            )
+        ]
+        assert mock_logging.error.call_args_list == [
+            call( 'Could not update /etc/containers/registries.conf: oh no !')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.toml.load')
+@patch('cloudregister.registerutils.os.path.exists')
+def test__set_registries_conf_podman_content_not_OK_read_error(
+    mock_os_path_exists, mock_toml_load, mock_logging, mock_exec_subprocess
+):
+    mock_os_path_exists.return_value = True
+    mock_exec_subprocess.return_value = 1
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no !')
+        assert utils.__set_registries_conf_podman(
+            'registry-ec2.susecloud.net'
+        ) is False
+        assert mock_open.call_args_list == [
+            call('/etc/containers/registries.conf', 'r')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call(
+                'Could not open /etc/containers/registries.conf: oh no !, '
+                'preserving file as /etc/containers/registries.conf.bak'),
+            call('File not preserved.')
+        ]
 
 
 # ---------------------------------------------------------------------------

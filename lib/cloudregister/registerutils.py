@@ -30,6 +30,7 @@ import stat
 import subprocess
 import sys
 import time
+import toml
 
 from lxml import etree
 from pathlib import Path
@@ -47,6 +48,7 @@ REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
+REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -530,6 +532,8 @@ def setup_registry(registry_fqdn, username, password):
     )
     if setup_registry_succeed:
         setup_registry_succeed = set_container_engines_env_vars()
+    if setup_registry_succeed:
+        set_registries_conf(registry_fqdn)
     return setup_registry_succeed
 
 
@@ -606,6 +610,31 @@ def set_container_engines_env_vars():
     ])
     return update_bashrc(export_registry_env_vars, 'a') and source_env()
 
+# ----------------------------------------------------------------------------
+def set_registries_conf(registry_fqdn):
+    """Add the registry container engines search configuration."""
+    # only for Podman for now, Docker does not support search
+    return __set_registries_conf_podman(registry_fqdn)
+
+
+# ----------------------------------------------------------------------------
+def get_registry_conf_file():
+    try:
+        with open(REGISTRIES_CONF_PATH, 'r') as registries_conf_file:
+            return toml.load(registries_conf_file), False
+    except IOError as err:
+        logging.info(
+            'Could not open %s: %s, preserving file as %s.bak' % (
+                REGISTRIES_CONF_PATH, err, REGISTRIES_CONF_PATH
+            )
+        )
+        mv_file_cmd = 'mv -Z {} {}.bak'.format(
+            REGISTRIES_CONF_PATH, REGISTRIES_CONF_PATH
+        ).split()
+        failed = exec_subprocess(mv_file_cmd)
+        message = 'File not preserved.' if failed else 'File preserved.'
+        logging.info(message)
+        return [], failed
 
 # ----------------------------------------------------------------------------
 def update_bashrc(content, mode):
@@ -1944,3 +1973,76 @@ def __mv_file_backup(filename):
     message = 'File not preserved' if failed else 'File preserved'
     logging.info(message)
     return failed
+
+
+# ----------------------------------------------------------------------------
+def __set_registries_conf_podman(private_registry_fqdn):
+    """Set the registry search order for Podman."""
+    registries_conf = {}
+    if os.path.exists(REGISTRIES_CONF_PATH):
+        registries_conf, failed = get_registry_conf_file()
+        if failed:
+            return False
+
+    public_registry_fqdn = 'registry.suse.com'
+    unqualified_search_reg = []
+    unqualified_search_reg = registries_conf.get(
+        'unqualified-search-registries', []
+    )
+    modified = False
+    if unqualified_search_reg:
+        priv_index = -1
+        pub_index = -1
+        if private_registry_fqdn in unqualified_search_reg:
+            priv_index = unqualified_search_reg.index(private_registry_fqdn)
+        if public_registry_fqdn in unqualified_search_reg:
+            pub_index = unqualified_search_reg.index(public_registry_fqdn)
+
+        if not priv_index == 0 or not pub_index == 1:
+            if priv_index > 0:
+                unqualified_search_reg.pop(priv_index)
+            if pub_index > 0:
+                unqualified_search_reg.pop(pub_index)
+
+            for fqdn in [public_registry_fqdn, private_registry_fqdn]:
+                modified = True
+                unqualified_search_reg.insert(0, fqdn)
+
+    private_registry = {'location': private_registry_fqdn, 'insecure': False}
+    # a list of dictionaries
+    registry_mirrors = registries_conf.get('registry', [])
+    present = False
+    if private_registry in registry_mirrors:
+        # exact match
+        present = True
+    else:
+        for registry_mirror in registry_mirrors:
+            if registry_mirror.get('location', {}) == private_registry_fqdn:
+                present = True
+                if registry_mirror.get('insecure', True):
+                    # FQDN is correct
+                    # the insecure content is not correct
+                    modified = True
+                    registry_mirror['insecure'] = False
+
+    if not present:
+        modified = True
+        registry_mirrors.append(private_registry)
+
+    registries_conf['unqualified-search-registries'] = unqualified_search_reg
+    registries_conf['registry'] = registry_mirrors
+
+    if modified:
+        logging.info(
+            'Content for %s has changed, updating the file' %
+            REGISTRIES_CONF_PATH
+        )
+        try:
+            with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
+                toml.dump(registries_conf, registries_conf_file)
+            logging.info('File %s updated' % REGISTRIES_CONF_PATH)
+            return True
+        except (IOError, TypeError) as error:
+            logging.error(
+                'Could not update %s: %s' % (REGISTRIES_CONF_PATH, error)
+            )
