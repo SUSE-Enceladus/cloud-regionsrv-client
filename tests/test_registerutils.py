@@ -20,7 +20,6 @@ import pickle
 import requests
 import sys
 import tempfile
-import toml
 from pytest import raises
 from textwrap import dedent
 
@@ -3483,11 +3482,13 @@ def test_clean_registry_content_no_file(mock_os_path_exists):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.clean_registries_conf')
 @patch('cloudregister.registerutils.unset_env_vars')
 @patch('cloudregister.registerutils.remove_auth_entry')
 @patch('cloudregister.registerutils.os.path.exists')
 def test_clean_registry_content_file_exists(
-    mock_os_path_exists, mock_remove_auth_entry, mock_unset_env_vars
+    mock_os_path_exists, mock_remove_auth_entry,
+    mock_unset_env_vars, mock_clean_registries_conf
 ):
     mock_os_path_exists.return_value = True
     assert utils.clean_registry_setup() is None
@@ -4006,7 +4007,7 @@ def test__set_registries_conf_podman_content_not_OK_wrong_order_file_error(
             )
         ]
         assert mock_logging.error.call_args_list == [
-            call( 'Could not update /etc/containers/registries.conf: oh no !')
+            call('Could not update /etc/containers/registries.conf: oh no !')
         ]
 
 
@@ -4034,6 +4035,142 @@ def test__set_registries_conf_podman_content_not_OK_read_error(
                 'preserving file as /etc/containers/registries.conf.bak'),
             call('File not preserved.')
         ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registries_conf_no_file(mock_os_path_exists):
+    mock_os_path_exists.return_value = False
+    assert utils.clean_registries_conf()
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registries_conf_file_error_open(
+    mock_os_path_exists, mock_get_registry_conf_file
+):
+    mock_os_path_exists.return_value = True
+    mock_get_registry_conf_file.return_value = {}, 1
+    assert utils.clean_registries_conf() is False
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registries_conf_file_no_error_empty_content(
+    mock_os_path_exists, mock_get_registry_conf_file
+):
+    mock_os_path_exists.return_value = True
+    mock_get_registry_conf_file.return_value = {}, 0
+    assert utils.clean_registries_conf() is True
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.toml.dump')
+@patch('cloudregister.registerutils.toml.load')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registries_conf_file_clean_content_smt_OK(
+    mock_os_path_exists, mock_toml_load,
+    mock_toml_dump, mock_logging,
+    mock_get_registered_smt, mock_get_smt_from_store
+):
+    mock_os_path_exists.return_value = True
+    mock_toml_load.return_value = {
+        'unqualified-search-registries': [
+            'foo.com', 'registry.suse.com', 'registry-foo.susecloud.net'
+        ],
+        'registry': [
+            {'location': 'foo', 'insecure': False},
+            {'location': 'registry-foo.susecloud.net', 'insecure': False}
+        ]
+    }
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        assert utils.clean_registries_conf()
+        assert mock_open.call_args_list == [
+            call('/etc/containers/registries.conf', 'r'),
+            call('/etc/containers/registries.conf', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call(
+                'Registry content for /etc/containers/registries.conf has '
+                'been removed, updating the file'
+            ),
+            call('File /etc/containers/registries.conf updated')
+        ]
+        mock_toml_dump.assert_called_once_with(
+            {
+                'unqualified-search-registries': ['foo.com'],
+                'registry': [{'location': 'foo', 'insecure': False}]
+            },
+            file_handle
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.toml.dump')
+@patch('cloudregister.registerutils.toml.load')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registries_conf_file_clean_content_no_smt(
+    mock_os_path_exists, mock_toml_load,
+    mock_toml_dump, mock_logging,
+    mock_get_registered_smt, mock_get_smt_from_store
+):
+    mock_os_path_exists.return_value = True
+    mock_toml_load.return_value = {
+        'unqualified-search-registries': [
+            'foo.com', 'registry.suse.com', 'registry-foo.susecloud.net'
+        ],
+        'registry': [
+            {'location': 'foo', 'insecure': False},
+            {'location': 'registry-foo.susecloud.net', 'insecure': False}
+        ]
+    }
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        assert utils.clean_registries_conf()
+        assert mock_open.call_args_list == [
+            call('/etc/containers/registries.conf', 'r'),
+            call('/etc/containers/registries.conf', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call(
+                'Registry content for /etc/containers/registries.conf has '
+                'been removed, updating the file'
+            ),
+            call('File /etc/containers/registries.conf updated')
+        ]
+        mock_toml_dump.assert_called_once_with(
+            {
+                'unqualified-search-registries': ['foo.com'],
+                'registry': [{'location': 'foo', 'insecure': False}]
+            },
+            file_handle
+        )
 
 
 # ---------------------------------------------------------------------------

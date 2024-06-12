@@ -610,6 +610,7 @@ def set_container_engines_env_vars():
     ])
     return update_bashrc(export_registry_env_vars, 'a') and source_env()
 
+
 # ----------------------------------------------------------------------------
 def set_registries_conf(registry_fqdn):
     """Add the registry container engines search configuration."""
@@ -634,7 +635,8 @@ def get_registry_conf_file():
         failed = exec_subprocess(mv_file_cmd)
         message = 'File not preserved.' if failed else 'File preserved.'
         logging.info(message)
-        return [], failed
+        return {}, failed
+
 
 # ----------------------------------------------------------------------------
 def update_bashrc(content, mode):
@@ -666,6 +668,7 @@ def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
     remove_auth_entry()
     unset_env_vars()
+    clean_registries_conf()
 
 
 # ----------------------------------------------------------------------------
@@ -766,6 +769,100 @@ def clean_bashrc_local(env_vars):
         print(bashrc_local_new_lines)
 
     return bashrc_local_new_lines, modified, False, False
+
+
+# ----------------------------------------------------------------------------
+def clean_registries_conf():
+    """Clean up the registry content from the registries.conf file."""
+    if not os.path.exists(REGISTRIES_CONF_PATH):
+        return True
+
+    registries_conf, failed = get_registry_conf_file()
+    if failed:
+        return False
+
+    if not registries_conf and not failed:
+        logging.info('Either the file is empty or it has been backed up')
+        return True
+
+    modified = False
+    unqualified_search_reg = registries_conf.get(
+        'unqualified-search-registries', []
+    )
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    if unqualified_search_reg:
+        if smt and smt.get_registry_FQDN():
+            private_registry_fqdn = smt.get_registry_FQDN()
+            if private_registry_fqdn in unqualified_search_reg:
+                modified = True
+                unqualified_search_reg.pop(
+                    unqualified_search_reg.index(private_registry_fqdn)
+                )
+        else:
+            new_unq_search_reg = []
+            for fqdn in unqualified_search_reg:
+                if 'registry' in fqdn and 'susecloud.net' in fqdn:
+                    modified = True
+                    continue
+
+                new_unq_search_reg.append(fqdn)
+
+            if modified:
+                unqualified_search_reg = new_unq_search_reg
+
+        pub_registry_fqdn = 'registry.suse.com'
+        if pub_registry_fqdn in unqualified_search_reg:
+            modified = True
+            unqualified_search_reg.pop(
+                unqualified_search_reg.index(pub_registry_fqdn)
+            )
+
+        registries_conf['unqualified-search-registries'] = \
+            unqualified_search_reg
+
+    registries_list = registries_conf.get('registry', [])
+    if registries_list:
+        if smt and smt.get_registry_FQDN():
+            private_registry = {
+                'location': private_registry_fqdn,
+                'insecure': False
+            }
+            if private_registry in registries_list:
+                modified = True
+                registries_list.pop(registries_list.index(private_registry))
+        else:
+            registry_index = None
+            for reg_index, registry in enumerate(registries_list):
+                location = registry.get('location', {})
+                if 'registry' in location and 'susecloud.net' in location:
+                    registry_index = reg_index
+
+            if registry_index is not None:
+                modified = True
+                registries_list.pop(registry_index)
+
+        registries_conf['registry'] = registries_list
+
+    if modified:
+        logging.info(
+            'Registry content for %s has been removed, updating the file' %
+            REGISTRIES_CONF_PATH
+        )
+        return write_registries_conf(registries_conf)
+
+
+# ----------------------------------------------------------------------------
+def write_registries_conf(registries_conf):
+    """Write registries_conf content to /etc/containers/registries.conf."""
+    try:
+        with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
+            toml.dump(registries_conf, registries_conf_file)
+        logging.info('File %s updated' % REGISTRIES_CONF_PATH)
+        return True
+    except (IOError, TypeError) as error:
+        logging.error(
+            'Could not update %s: %s' % (REGISTRIES_CONF_PATH, error)
+        )
 
 
 # ----------------------------------------------------------------------------
@@ -2037,12 +2134,4 @@ def __set_registries_conf_podman(private_registry_fqdn):
             'Content for %s has changed, updating the file' %
             REGISTRIES_CONF_PATH
         )
-        try:
-            with open(REGISTRIES_CONF_PATH, 'w') as registries_conf_file:
-                toml.dump(registries_conf, registries_conf_file)
-            logging.info('File %s updated' % REGISTRIES_CONF_PATH)
-            return True
-        except (IOError, TypeError) as error:
-            logging.error(
-                'Could not update %s: %s' % (REGISTRIES_CONF_PATH, error)
-            )
+        return write_registries_conf(registries_conf)
