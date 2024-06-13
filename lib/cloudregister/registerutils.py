@@ -530,73 +530,77 @@ def setup_registry(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
-def get_registry_credentials():
+def get_registry_credentials(set_new):
     """Read the registry credentials file
        and return its content or an empty dict."""
     config_json = {}
-    failed = False
-    if os.path.exists(REGISTRY_CREDENTIALS_PATH):
+    status = None
+    # status can have 3 values
+    # - None, meaning opening the file suceeded
+    # - 0, meaning opening the file failed but preserving succeeded
+    # - <returncode> of the op or -1, meaning preserving it failed
+    file_error = True
+    try:
+        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
+            config_json = json.load(cred_json)
+    except OSError as error:
+        logging.info(str(error))
+        action = 'open'
+    except json.decoder.JSONDecodeError:
+        action = 'parse'
+    else:
         file_error = False
-        try:
-            with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
-                config_json = json.load(cred_json)
-        except OSError as error:
-            logging.info(
-                'Unable to open %s: %s, preserving file as %s.bak, '
-                'writing new credentials' % (
-                    REGISTRY_CREDENTIALS_PATH, error, REGISTRY_CREDENTIALS_PATH
-                )
-            )
-            file_error = True
-        except json.decoder.JSONDecodeError:
-            logging.info(
-                'Unable to parse existing %s, preserving file as %s.bak, '
-                'writing new credentials' % (
-                    REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-                )
-            )
-            file_error = True
 
-        if file_error:
-            mv_file_cmd = 'mv -Z {} {}.bak'.format(
-                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-            ).split()
-            failed = exec_subprocess(mv_file_cmd)
-            message = 'File not preserved.' if failed else 'File preserved.'
-            logging.info(message)
+    if file_error:
+        error_msg = 'Unable to %s existing %s, preserving file as %s.bak' % (
+            action, REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+        )
+        if set_new:
+            error_msg += ', writing new credentials'
+        logging.info(error_msg)
+        mv_file_cmd = 'mv -Z {} {}.bak'.format(
+            REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+        ).split()
+        status = exec_subprocess(mv_file_cmd)
+        message = 'File not preserved.' if status else 'File preserved.'
+        logging.info(message)
 
-    return config_json, failed
+    return config_json, status
 
 
 # ----------------------------------------------------------------------------
-def write_registry_credentials(content):
+def write_registry_credentials(content, set_new):
     """Update the registry credentials file with the value of 'content'."""
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
             json.dump(content, cred_json_file)
-        logging.info(
-            'Credentials for the registry set in %s' %
-            REGISTRY_CREDENTIALS_PATH
+        action_done = 'added' if set_new else 'removed'
+        message = 'Credentials for the registry {} in {}'.format(
+            action_done, REGISTRY_CREDENTIALS_PATH
         )
+        logging.info(message)
         return True
     except Exception as error:
-        logging.error('Could not set the registry credentials: %s' % error)
+        action_done = 'add' if set_new else 'remove'
+        message = 'Could not {} the registry credentials: {}'.format(
+            action_done, error
+        )
+        logging.error(message)
 
 
 # ----------------------------------------------------------------------------
 def set_registry_auth_token(registry_fqdn, username, password):
     """Set the auth token to access the SUSE registry."""
-    config_json, preserve_failed = get_registry_credentials()
-    if preserve_failed:
-        # there was an error parsing the credentials json file
-        # and we could not preserve the file
-        # we do not write anything new to the credentials file
-        return False
+    config_json = {}
+    if os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        config_json, preserve_status = get_registry_credentials(set_new=True)
+        if preserve_status:
+            # there was an error parsing the credentials json file
+            # and we could not preserve the file
+            # we do not write anything new to the credentials file
+            return False
 
-    auth_token = base64.b64encode('{username}:{password}'.format(
-        username=username,
-        password=password
-    ).encode()).decode()
+    auth_token = __generate_registry_auth_token(username, password)
     # set the new registry credentials,
     # independently of what that content was,
     # preserving the rest of the dictionary or keys, if any
@@ -605,8 +609,112 @@ def set_registry_auth_token(registry_fqdn, username, password):
         list(config_json.get('auths', {}).items()) +  # old content
         list(registry_credentials.items())            # new content
     )
-    updated = write_registry_credentials(config_json)
+    updated = write_registry_credentials(content=config_json, set_new=True)
     return updated
+
+
+# ----------------------------------------------------------------------------
+def clean_registry_setup():
+    """Remove the data previously set to make the registry work."""
+    clean_registry_auth()
+
+
+# ----------------------------------------------------------------------------
+def clean_registry_auth():
+    """Clean the auth token from the config json file."""
+    if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        logging.info('Credentials file does not exist. Nothing to do')
+        return True
+
+    config_json, preserve_status = get_registry_credentials(set_new=False)
+    if (
+        (not config_json or config_json == {'auths': {}}) and
+        not preserve_status
+    ):
+        # credentials file is empty or
+        # credentials file is not empty but its content is useless or
+        # could not access the file but the backup suceeded
+        if preserve_status is None:
+            logging.info('JSON content is empty')
+            os.unlink(REGISTRY_CREDENTIALS_PATH)
+        return True
+
+    if preserve_status:
+        return False
+
+    # we could open the credentials file
+    # and it is not empty
+    # unset the registry credentials
+    entry = None
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    try:
+        if same_registry_auth_content(config_json, smt):
+            # if the content of the registry auth file is only
+            # our auth info, remove the file
+            logging.info(
+                'Registry authentication config only contains managed content.'
+                'Removing the file %s' % REGISTRY_CREDENTIALS_PATH
+            )
+            os.unlink(REGISTRY_CREDENTIALS_PATH)
+            return True
+
+        if smt and smt.get_registry_FQDN():
+            logging.info(
+                'Unsetting the auth entry for %s' % smt.get_registry_FQDN()
+            )
+            entry = smt.get_registry_FQDN()
+        else:
+            logging.info('Unsetting the auth entry based on the token')
+            auth_token = __generate_registry_auth_token()
+            entries = config_json.get('auths', {}).items()
+            entry = [entry for entry, auth in entries
+                     if auth == auth_token and 'registry' in entry and
+                     'susecloud.net' in entry]
+            entry = ''.join(entry)
+
+        if config_json.get('auths', {}).pop(entry, {}):
+            # file was not empty or
+            # file could not be parsed and the remove cmd did not fail
+            # there is content worth updating the credentials file
+            # the dictionary has changed since read from the auth config file
+            # we write the changed dictionary back to the file
+            logging.info('Registry auth entry unset')
+            return write_registry_credentials(
+                content=config_json, set_new=False
+            )
+    except AttributeError:
+        logging.error('The entry for "auths" key is not a dictionary')
+        logging.info(
+            'Preserving file %s as %s.bak' % (
+                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+            )
+        )
+        mv_file_cmd = 'mv -Z {} {}.bak'.format(
+            REGISTRATION_DATA_DIR, REGISTRY_CREDENTIALS_PATH
+        )
+        status = exec_subprocess(mv_file_cmd)
+        message = 'File not preserved.' if status else 'File preserved.'
+        logging.info(message)
+
+
+# ----------------------------------------------------------------------------
+def same_registry_auth_content(content, smt):
+    """Check if the registry auth content contains only SUSE registry info."""
+    auth_token = __generate_registry_auth_token()
+    one_key = len(content.keys()) == 1
+    if smt and smt.get_registry_FQDN():
+        expected_content = {'auths': {smt.get_registry_FQDN(): auth_token}}
+        different_auth_token = False
+        if one_key:
+            different_auth_token = content.get('auths', {}).get(
+                smt.get_registry_FQDN()
+            )
+
+        # if that is True is safe to remove the file
+        return content == expected_content or different_auth_token
+    elif one_key and content.get('auths'):
+        one_auths_key = len(content.get('auths').keys()) == 1
+        return one_auths_key and auth_token in content.get('auths').values()
 
 
 # ----------------------------------------------------------------------------
@@ -620,6 +728,7 @@ def get_credentials_file(update_server, service_name=None):
     after the system is properly registered.
     """
     credentials_file = ''
+
     target_root = get_zypper_target_root()
     credentials_loc = target_root + '/etc/zypp/credentials.d/'
     credential_names = [
@@ -1790,3 +1899,16 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
+
+
+# ----------------------------------------------------------------------------
+def __generate_registry_auth_token(username=None, password=None):
+    if not (username and password):
+        username, password = get_credentials(
+            '/etc/zypp/credentials.d/SCCcredentials'
+        )
+
+    return base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
