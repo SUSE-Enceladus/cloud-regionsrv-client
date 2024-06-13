@@ -527,14 +527,11 @@ def setup_registry(registry_fqdn, username, password):
     if not os.path.exists(os.path.dirname(REGISTRY_CREDENTIALS_PATH)):
         os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH))
 
-    setup_registry_succeed = set_registry_auth_token(
-        registry_fqdn, username, password
-    )
-    if setup_registry_succeed:
-        setup_registry_succeed = set_container_engines_env_vars()
-    if setup_registry_succeed:
+    return (
+        set_registry_auth_token(registry_fqdn, username, password) and
+        set_container_engines_env_vars() and
         set_registries_conf(registry_fqdn)
-    return setup_registry_succeed
+    )
 
 
 # ----------------------------------------------------------------------------

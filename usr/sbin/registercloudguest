@@ -649,6 +649,19 @@ if registration_returncode:
     )
     sys.exit(registration_returncode)
 
+if not utils.setup_registry(
+    registration_target.get_registry_FQDN(),
+    user,
+    password
+):
+    # we treat regular registration and registry setup as a whole
+    # if any of them fail, registration command failed
+    cleanup()
+    sys.exit(
+        'Registration failed: could not setup the registry, '
+        'see /var/log/cloudregister for details'
+    )
+
 print('Registration succeeded')
 
 if failed_extensions:

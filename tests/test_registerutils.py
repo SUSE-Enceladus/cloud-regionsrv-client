@@ -3476,6 +3476,30 @@ def test_setup_registry_content_write_error(
 
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.set_registries_conf')
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
+@patch('cloudregister.registerutils.set_registry_auth_token')
+def test_setup_registry_check_chain(
+    mock_set_reg_auth_token,
+    mock_set_container_eng_env_vars,
+    mock_set_registries_conf,
+    mock_os_path_exists,
+):
+    mock_os_path_exists.return_value = True
+    mock_set_reg_auth_token.return_value = True
+    mock_set_container_eng_env_vars.return_value = False
+    mock_set_registries_conf.return_value = False
+    assert utils.setup_registry(
+        'registry-supercloud.susecloud.net',
+        'login',
+        'pass'
+    ) is False
+    assert mock_set_container_eng_env_vars.call_count == 1
+    assert mock_set_registries_conf.call_count == 0
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 def test_clean_registry_content_no_file(mock_os_path_exists):
     mock_os_path_exists.return_value = False
     assert utils.clean_registry_setup() is None
