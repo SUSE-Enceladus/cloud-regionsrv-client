@@ -806,6 +806,7 @@ def unset_env_vars():
 def clean_bashrc_local(env_vars):
     """
     Clean the registry env vars, if any, from the BASHRC_LOCAL_PATH file
+
     :returns:
         - bashrc_local_new_lines: list - the new lines after cleaning
         - modified: bool - whether the content of the file was modified
