@@ -728,6 +728,7 @@ def get_credentials_file(update_server, service_name=None):
     after the system is properly registered.
     """
     credentials_file = ''
+
     target_root = get_zypper_target_root()
     credentials_loc = target_root + '/etc/zypp/credentials.d/'
     credential_names = [
