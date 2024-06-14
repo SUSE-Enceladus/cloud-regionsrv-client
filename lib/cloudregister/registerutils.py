@@ -31,6 +31,7 @@ import subprocess
 import sys
 import time
 import toml
+import yaml
 
 from lxml import etree
 from pathlib import Path
@@ -49,6 +50,7 @@ RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
+SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -615,7 +617,12 @@ def set_container_engines_env_vars():
 def set_registries_conf(registry_fqdn):
     """Add the registry container engines search configuration."""
     # only for Podman for now, Docker does not support search
-    return __set_registries_conf_podman(registry_fqdn)
+    reg_conf_podman_set = __set_registries_conf_podman(registry_fqdn)
+    reg_conf_suma_set = True
+    if is_suma_instance():
+        reg_conf_suma_set = __set_registry_fqdn_suma(registry_fqdn)
+
+    return reg_conf_podman_set and reg_conf_suma_set
 
 
 # ----------------------------------------------------------------------------
@@ -2135,3 +2142,83 @@ def __set_registries_conf_podman(private_registry_fqdn):
             REGISTRIES_CONF_PATH
         )
         return write_registries_conf(registries_conf)
+
+
+# ----------------------------------------------------------------------------
+def __set_registry_fqdn_suma(private_registry_fqdn):
+    """Set the registry FQDN for SUMa SUMA_REGISTRY_CONF_PATH file."""
+    suma_yaml_content = {}
+    os.makedirs(os.path.dirname(SUMA_REGISTRY_CONF_PATH), exist_ok=True)
+    suma_yaml_content, failed = get_suma_registry_content()
+    if failed:
+        return False
+
+    if suma_yaml_content.get('registry', {}) != private_registry_fqdn:
+        # registry value does not match the update server registry FQDN
+        # or there is no registry entry
+        # set the content
+        suma_yaml_content.update({'registry': private_registry_fqdn})
+        return __write_suma_conf(suma_yaml_content)
+
+    # the registry value inside the file has the update server registry FQDN
+    return True
+
+
+# ----------------------------------------------------------------------------
+def is_suma_instance():
+    """Return a list containing the SUMA product if present."""
+    products_list = glob.glob('/etc/products.d/*.prod')
+    suma_prod = [
+        product for product in products_list if 'suse' in product.lower() and
+        'manager' in product.lower()
+    ]
+    return suma_prod
+
+
+# ----------------------------------------------------------------------------
+def get_suma_registry_content():
+    """Return the content of the SUMA_REGISTRY_CONF_PATH."""
+    file_error = True
+    suma_reg_config_data = {}
+    try:
+        with open(SUMA_REGISTRY_CONF_PATH, 'r') as suma_reg_config:
+            suma_reg_config_data = yaml.safe_load(suma_reg_config)
+    except IOError as error:
+        logging.info(str(error))
+        action = 'open'
+    except yaml.YAMLError:
+        action = 'parse'
+    else:
+        file_error = False
+
+    if file_error:
+        logging.info('Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH))
+        failed = __mv_file_backup(SUMA_REGISTRY_CONF_PATH)
+        return {}, failed
+
+    return suma_reg_config_data, False
+
+
+# ----------------------------------------------------------------------------
+def __write_suma_conf(updated_content):
+    """Update the SUMA SUMA_REGISTRY_CONF_PATH file with the new content."""
+    file_error = True
+    try:
+        with open(SUMA_REGISTRY_CONF_PATH, 'w') as suma_config:
+            yaml.dump(updated_content, suma_config, default_flow_style=False)
+        logging.info('%s updated' % SUMA_REGISTRY_CONF_PATH)
+        file_error = False
+    except IOError as error:
+        logging.info(str(error))
+        action = 'open'
+    except yaml.YAMLError:
+        action = 'parse'
+    else:
+        file_error = False
+
+    if file_error:
+        message = 'Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH)
+        logging.info(message)
+        return False
+
+    return True

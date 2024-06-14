@@ -3,3 +3,5 @@ requests
 dnspython
 M2Crypto
 toml
+PyYAML
+

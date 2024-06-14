@@ -20,6 +20,7 @@ import pickle
 import requests
 import sys
 import tempfile
+import yaml
 from pytest import raises
 from textwrap import dedent
 
@@ -3840,10 +3841,14 @@ def test_clean_bashrc_local_open_error(mock_logging, mock_mv_file_backup):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.is_suma_instance')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test_set_registries_conf(mock_os_path_exists, mock_get_reg_conf_file):
+def test_set_registries_conf(
+    mock_os_path_exists, mock_get_reg_conf_file, mock_is_suma
+):
     mock_os_path_exists.return_value = True
+    mock_is_suma.return_value = False
     mock_get_reg_conf_file.return_value = {}, True
     assert utils.set_registries_conf('foo') is False
 
@@ -4171,6 +4176,203 @@ def test_clean_registries_conf_file_clean_content_no_smt(
             },
             file_handle
         )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.__set_registries_conf_podman')
+@patch('cloudregister.registerutils.is_suma_instance')
+def test_suma_registry_conf_no_suma_instance(
+    mock_is_suma, mock_set_podman, mock_fqdn_suma
+):
+    mock_is_suma.return_value = False
+    mock_set_podman.return_value = True
+    assert utils.set_registries_conf('foo.com')
+    assert mock_fqdn_suma.call_count == 0
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.__set_registries_conf_podman')
+@patch('cloudregister.registerutils.is_suma_instance')
+def test_suma_registry_conf_suma_instance(
+    mock_is_suma, mock_set_podman, mock_fqdn_suma
+):
+    mock_is_suma.return_value = True
+    mock_set_podman.return_value = True
+    mock_fqdn_suma.return_value = True
+    assert utils.set_registries_conf('registry-fqdn.com')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.glob.glob')
+def test_is_suma_instance_not(mock_glob_glob):
+    mock_glob_glob.return_value = ['/etc/products.d/some-product.prod']
+    assert utils.is_suma_instance() == []
+
+
+@patch('cloudregister.registerutils.glob.glob')
+def test_is_suma_instance(mock_glob_glob):
+    mock_glob_glob.return_value = ['/etc/products.d/SUSE-Manager-Server.prod']
+    assert utils.is_suma_instance() == [
+        '/etc/products.d/SUSE-Manager-Server.prod'
+    ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_suma_registry_content')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_suma_registry_conf_suma_instance_error_get_suma_content(
+    _, mock_get_suma_registry_content
+):
+    mock_get_suma_registry_content.return_value = {}, 1
+    assert utils.__set_registry_fqdn_suma('foo.com') is False
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.yaml.dump')
+@patch('cloudregister.registerutils.yaml.safe_load')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_suma_registry_conf_suma_instance_file_exists(
+    _, mock_logging, mock_yaml_safe_load, mock_yaml_dump
+):
+    mock_yaml_safe_load.return_value = {}
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.return_value = MagicMock(spec=io.IOBase)
+        file_handle = mock_open.return_value.__enter__.return_value
+        # mock_open.side_effect = IOError('oh no ! an error')
+        assert utils.__set_registry_fqdn_suma('foo.com')
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'r'),
+            call('/etc/uyuni/uyuni-tools.yaml', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml updated')
+        ]
+        mock_yaml_dump.assert_called_once_with(
+           {'registry': 'foo.com'},
+           file_handle,
+           default_flow_style=False
+       )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.yaml.dump')
+@patch('cloudregister.registerutils.yaml.safe_load')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_suma_registry_conf_suma_instance_file_exists_different_fqdn(
+    _, mock_logging, mock_yaml_safe_load, mock_yaml_dump
+):
+    mock_yaml_safe_load.return_value = {'registry': 'not-our-fqdn'}
+    with patch('builtins.open', create=True) as mock_open:
+        # mock_open.return_value = MagicMock(spec=io.IOBase)
+        file_handle = mock_open.return_value.__enter__.return_value
+        assert utils.__set_registry_fqdn_suma('foo.com')
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'r'),
+            call('/etc/uyuni/uyuni-tools.yaml', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml updated')
+        ]
+        mock_yaml_dump.assert_called_once_with(
+           {'registry': 'foo.com'},
+           file_handle,
+           default_flow_style=False
+       )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.yaml.safe_load')
+@patch('cloudregister.registerutils.os.makedirs')
+def test_suma_registry_conf_suma_instance_file_exists_same_fqdn(
+    _, mock_yaml_safe_load
+):
+    mock_yaml_safe_load.return_value = {'registry': 'foo.com'}
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        assert utils.__set_registry_fqdn_suma('foo.com')
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'r')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.yaml.safe_load')
+def test_get_suma_registry_content_error_yaml(
+    mock_yaml_safe_load, mock_logging, mock_mv
+):
+    mock_yaml_safe_load.side_effect = yaml.YAMLError('some loading error')
+    mock_mv.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        result, failed = utils.get_suma_registry_content()
+        assert result == {}
+        assert failed == 0
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'r')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call('Could not parse /etc/uyuni/uyuni-tools.yaml')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+def test_get_suma_registry_content_error_open_file(mock_logging, mock_mv):
+    mock_mv.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = IOError('opening file error')
+        result, failed = utils.get_suma_registry_content()
+        assert result == {}
+        assert failed == 0
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'r')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call('opening file error'),
+            call('Could not open /etc/uyuni/uyuni-tools.yaml')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+def test_write_suma_conf_error_open_file(mock_logging, mock_mv):
+    mock_mv.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = IOError('opening file error')
+        assert utils.__write_suma_conf('foo') is False
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call('opening file error'),
+            call('Could not open /etc/uyuni/uyuni-tools.yaml')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.yaml.dump')
+def test_write_suma_conf_error_yaml(
+    mock_yaml_dump, mock_logging, mock_mv
+):
+    mock_yaml_dump.side_effect = yaml.YAMLError('some loading error')
+    mock_mv.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        assert utils.__write_suma_conf('foo') is False
+        assert mock_open.call_args_list == [
+            call('/etc/uyuni/uyuni-tools.yaml', 'w')
+        ]
+        assert mock_logging.info.call_args_list == [
+            call('Could not parse /etc/uyuni/uyuni-tools.yaml')
+        ]
 
 
 # ---------------------------------------------------------------------------
