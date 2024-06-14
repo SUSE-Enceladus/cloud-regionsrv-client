@@ -4241,7 +4241,6 @@ def test_suma_registry_conf_suma_instance_file_exists(
     with patch('builtins.open', create=True) as mock_open:
         mock_open.return_value = MagicMock(spec=io.IOBase)
         file_handle = mock_open.return_value.__enter__.return_value
-        # mock_open.side_effect = IOError('oh no ! an error')
         assert utils.__set_registry_fqdn_suma('foo.com')
         assert mock_open.call_args_list == [
             call('/etc/uyuni/uyuni-tools.yaml', 'r'),
@@ -4254,7 +4253,7 @@ def test_suma_registry_conf_suma_instance_file_exists(
            {'registry': 'foo.com'},
            file_handle,
            default_flow_style=False
-       )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -4267,7 +4266,6 @@ def test_suma_registry_conf_suma_instance_file_exists_different_fqdn(
 ):
     mock_yaml_safe_load.return_value = {'registry': 'not-our-fqdn'}
     with patch('builtins.open', create=True) as mock_open:
-        # mock_open.return_value = MagicMock(spec=io.IOBase)
         file_handle = mock_open.return_value.__enter__.return_value
         assert utils.__set_registry_fqdn_suma('foo.com')
         assert mock_open.call_args_list == [
@@ -4278,10 +4276,10 @@ def test_suma_registry_conf_suma_instance_file_exists_different_fqdn(
             call('/etc/uyuni/uyuni-tools.yaml updated')
         ]
         mock_yaml_dump.assert_called_once_with(
-           {'registry': 'foo.com'},
-           file_handle,
-           default_flow_style=False
-       )
+            {'registry': 'foo.com'},
+            file_handle,
+            default_flow_style=False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -4292,7 +4290,6 @@ def test_suma_registry_conf_suma_instance_file_exists_same_fqdn(
 ):
     mock_yaml_safe_load.return_value = {'registry': 'foo.com'}
     with patch('builtins.open', create=True) as mock_open:
-        file_handle = mock_open.return_value.__enter__.return_value
         assert utils.__set_registry_fqdn_suma('foo.com')
         assert mock_open.call_args_list == [
             call('/etc/uyuni/uyuni-tools.yaml', 'r')
