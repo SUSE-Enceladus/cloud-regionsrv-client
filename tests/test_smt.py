@@ -18,7 +18,7 @@ import sys
 import tempfile
 
 from lxml import etree
-from mock import patch, Mock
+from unittest.mock import patch, Mock
 from textwrap import dedent
 from M2Crypto import X509
 
