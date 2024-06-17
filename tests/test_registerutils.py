@@ -3256,12 +3256,14 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_empty_file(
-    mock_json_load, mock_json_dump, mock_os_makedirs, mock_os_path_exists
+    mock_json_load, mock_json_dump, mock_os_makedirs,
+    mock_os_path_exists, mock_set_container_engines_env_vars
 ):
     mock_os_path_exists.return_value = True
     mock_json_load.return_value = {}
@@ -3289,11 +3291,13 @@ def test_setup_registry_empty_file(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 def test_setup_registry_file_not_exists(
-    mock_json_dump, mock_os_makedirs, mock_os_path_exists
+    mock_json_dump, mock_os_makedirs,
+    mock_os_path_exists, mock_set_env_vars
 ):
     mock_os_path_exists.side_effect = [False, False]
     with patch('builtins.open', create=True) as mock_open:
@@ -3303,7 +3307,9 @@ def test_setup_registry_file_not_exists(
             'login',
             'pass'
         )
-        mock_open.assert_called_once_with('/etc/containers/config.json', 'w')
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'w')
+        ]
         mock_json_dump.assert_called_once_with(
             {
                 'auths': {
@@ -3317,13 +3323,15 @@ def test_setup_registry_file_not_exists(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content(
     mock_json_load, mock_json_dump,
-    mock_os_makedirs, mock_os_path_exists
+    mock_os_makedirs, mock_os_path_exists,
+    mock_set_env_vars
 ):
     mock_os_path_exists.return_value = True
     mock_json_load.return_value = {
@@ -3361,12 +3369,13 @@ def test_setup_registry_content(
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.load')
-def test_setup_registry_content_json_error(
+def test_setup_registry_content_json_error_preserve_fail(
     mock_json_load, mock_logging, mock_os_makedirs,
     mock_os_path_exists, mock_exec_subprocess
 ):
-    mock_os_path_exists.return_value = True
+    mock_os_path_exists.return_value = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
+    mock_exec_subprocess.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
         mock_exec_subprocess.return_value = 1
         assert utils.setup_registry(
@@ -3439,7 +3448,8 @@ def test_setup_registry_content_write_error(
     mock_os_makedirs, mock_os_path_exists
 ):
     mock_os_path_exists.side_effect = [False, False]
-    mock_json_dump.side_effect = TypeError('something happened !')
+    mock_os_path_exists.return_value = False
+    mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
         utils.setup_registry(
             'registry-supercloud.susecloud.net',
@@ -3451,6 +3461,156 @@ def test_setup_registry_content_write_error(
         )
         mock_logging.error.assert_called_once_with(
             'Could not add the registry credentials: something happened !'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.update_bashrc')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_set_container_engines_env_vars_new(
+    mock_os_path_exists, mock_logging, mock_up_bashrc
+):
+    bashrc_content = """
+export foo=bar
+"""
+    expected_ouput = (
+        '\nexport REGISTRY_AUTH_FILE=/etc/containers/config.json\n'
+        '\nexport DOCKER_CONFIG=/etc/containers\n'
+    )
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', mock_open(read_data=bashrc_content)):
+        utils.set_container_engines_env_vars()
+        mock_up_bashrc.assert_called_once_with(expected_ouput, 'a')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_set_container_engines_env_vars_no_update(
+    mock_os_path_exists, mock_logging
+):
+    bashrc_content = """
+export foo=bar
+
+export REGISTRY_AUTH_FILE=/etc/containers/config.json
+
+export DOCKER_CONFIG=/etc/containers
+
+"""
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', mock_open(read_data=bashrc_content)):
+        utils.set_container_engines_env_vars()
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_set_container_engines_env_vars_file_error(
+    mock_os_path_exists, mock_logging, mock_mv
+):
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('an error !')
+        assert utils.set_container_engines_env_vars() is False
+        assert mock_logging.info.call_args_list == [
+            call('Could not open /etc/bash.bashrc.local: an error !')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+def test_update_bashrc_open_file_OK(
+    mock_logging
+):
+
+    with patch('builtins.open', create=True) as mock_open:
+        assert utils.update_bashrc({'foo': 'bar'}, 'w')
+        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'w')
+        mock_logging.info.assert_called_once_with(
+            '/etc/bash.bashrc.local updated'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.clean_bashrc_local')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.logging')
+def test_unset_env_vars_no_env_vars_in_file(
+    mock_logging, mock_os_path_exists, mock_clean_bashrc_local
+):
+    mock_os_path_exists.return_value = True
+    mock_clean_bashrc_local.return_value = [], False, False, False
+    assert utils.unset_env_vars() is True
+    mock_logging.info.assert_called_once_with(
+        'Environment variables not present in /etc/bash.bashrc.local'
+    )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.clean_bashrc_local')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_unset_env_vars_no_file_access_no_backup(
+    mock_os_path_exists, mock_clean_bashrc_local
+):
+    mock_os_path_exists.return_value = True
+    mock_clean_bashrc_local.return_value = [], False, True, True
+    assert utils.unset_env_vars() is False
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.update_bashrc')
+@patch('cloudregister.registerutils.clean_bashrc_local')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_unset_env_vars_modified_content(
+    mock_os_path_exists, mock_clean_bashrc_local, mock_update_bashrc
+):
+    mock_os_path_exists.return_value = True
+    mock_clean_bashrc_local.return_value = ['no-registry'], True, False, False
+    mock_update_bashrc.return_value = True
+    assert utils.unset_env_vars() is True
+    mock_update_bashrc.called_once_with('no-registry', 'w')
+
+
+# ---------------------------------------------------------------------------
+def test_clean_bashrc_local():
+    bashrc_content = """
+export foo=bar
+
+export REGISTRY_AUTH_FILE=/etc/containers/config.json
+
+export DOCKER_CONFIG=/etc/containers
+
+"""
+    with patch('builtins.open', mock_open(read_data=bashrc_content)):
+        new_lines, modified, keep_failed, mv = utils.clean_bashrc_local(
+            ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+        )
+        assert new_lines == ['\n', 'export foo=bar\n', '\n', '\n', '\n']
+        assert modified
+        assert modified is True
+        assert not keep_failed
+        assert not mv
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+def test_clean_bashrc_local_open_error(mock_logging, mock_mv_file_backup):
+    mock_mv_file_backup.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no !')
+        new_lines, modified, keep_failed, mv = utils.clean_bashrc_local(
+            ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+        )
+        assert new_lines == []
+        assert not modified
+        assert not keep_failed
+        assert mv
+        mock_mv_file_backup.assert_called_once_with('/etc/bash.bashrc.local')
+        mock_logging.info.assert_called_once_with(
+            'Could not open /etc/bash.bashrc.local: oh no !'
         )
 
 
@@ -3820,6 +3980,19 @@ def test_clean_registry_auth_content_not_relevant_json(
     mock_same_registry_auth_content.return_value = False
     assert utils.clean_registry_auth()
     mock_logging.info.called_once_with('JSON content is empty')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+def test_update_bashrc_open_file_error(mock_logging):
+
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no !')
+        utils.update_bashrc({'foo': 'bar'}, 'a')
+        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'a')
+        mock_logging.error.assert_called_once_with(
+            'Could not update /etc/bash.bashrc.local: oh no !'
+        )
 
 
 # ---------------------------------------------------------------------------

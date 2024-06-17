@@ -46,6 +46,7 @@ REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
+BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -526,6 +527,8 @@ def setup_registry(registry_fqdn, username, password):
     setup_registry_succeed = set_registry_auth_token(
         registry_fqdn, username, password
     )
+    if setup_registry_succeed:
+        setup_registry_succeed = set_container_engines_env_vars()
     return setup_registry_succeed
 
 
@@ -614,9 +617,57 @@ def set_registry_auth_token(registry_fqdn, username, password):
 
 
 # ----------------------------------------------------------------------------
+def set_container_engines_env_vars():
+    """Set the environment variables needed for the container runtimes
+    to find the config file."""
+    env_vars = {
+        'REGISTRY_AUTH_FILE': REGISTRY_CREDENTIALS_PATH,
+        'DOCKER_CONFIG': os.path.dirname(REGISTRY_CREDENTIALS_PATH)
+    }
+    bashrc_local_lines = []
+    if os.path.exists(BASHRC_LOCAL_PATH):
+        try:
+            with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+                bashrc_local_lines = bashrc_local.read()
+        except OSError as error:
+            logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
+            failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+            if failed:
+                return False
+
+    keys_to_add = ''
+    for env_var_key, env_var_value in env_vars.items():
+        if env_var_key not in bashrc_local_lines:
+            keys_to_add += (
+                '{}export {}={}{}'.format(
+                    os.linesep, env_var_key, env_var_value, os.linesep
+                )
+            )
+
+    if keys_to_add:
+        return update_bashrc(keys_to_add, 'a')
+
+
+# ----------------------------------------------------------------------------
+def update_bashrc(content, mode):
+    """Update the env vars for the container engines
+    with the location of the config file to the bashrc local file."""
+    try:
+        with open(BASHRC_LOCAL_PATH, mode) as bashrc_file:
+            bashrc_file.write(content)
+        logging.info('%s updated' % BASHRC_LOCAL_PATH)
+        return True
+    except OSError as error:
+        logging.error('Could not update %s: %s' % (BASHRC_LOCAL_PATH, error))
+        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        return not failed
+
+
+# ----------------------------------------------------------------------------
 def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
     clean_registry_auth()
+    unset_env_vars()
 
 
 # ----------------------------------------------------------------------------
@@ -659,6 +710,7 @@ def clean_registry_auth():
             return True
 
         if smt and smt.get_registry_FQDN():
+
             logging.info(
                 'Unsetting the auth entry for %s' % smt.get_registry_FQDN()
             )
@@ -715,6 +767,73 @@ def same_registry_auth_content(content, smt):
     elif one_key and content.get('auths'):
         one_auths_key = len(content.get('auths').keys()) == 1
         return one_auths_key and auth_token in content.get('auths').values()
+
+
+# ----------------------------------------------------------------------------
+def unset_env_vars():
+    """Remove the registry environment variables."""
+    env_vars = ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+    if not os.path.exists(BASHRC_LOCAL_PATH):
+        logging.info('%s file does not exist' % BASHRC_LOCAL_PATH)
+        # remove the enviroment variables from the env, if present
+        return True
+
+    lines, modified, preserved_failed, mv_backup = clean_bashrc_local(env_vars)
+    succeeded = True
+    if modified:
+        # we could access the file and registry env vars were found and removed
+        succeeded = update_bashrc(''.join(lines), 'w')
+    else:
+        # Either we could access the file and no registry env vars were found
+        # or we could not access the file and attempted to create a backup
+        # if backup scenario, log is already populated
+        if not mv_backup:
+            # we could access the bashrc local file and
+            # no env vars were found
+            logging.info(
+                'Environment variables not present in %s' % BASHRC_LOCAL_PATH
+            )
+            succeeded = True
+        elif preserved_failed:
+            # we could not access the bashrc local file
+            # the attempt to create a backup failed
+            succeeded = False
+
+    return succeeded
+
+
+# ----------------------------------------------------------------------------
+def clean_bashrc_local(env_vars):
+    """
+    Clean the registry env vars, if any, from the BASHRC_LOCAL_PATH file
+
+    :returns:
+        - bashrc_local_new_lines: list - the new lines after cleaning
+        - modified: bool - whether the content of the file was modified
+        - preserved_failed: bool - if accessing the file failed,
+                                   whether preserve op failed
+        - mv_backup: bool: whether the backup file operation suceeded
+    """
+    bashrc_local_lines = []
+    try:
+        with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+            bashrc_local_lines = bashrc_local.readlines()
+    except OSError as error:
+        logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
+        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        return [], False, failed, True
+
+    bashrc_local_new_lines = []
+    modified = False
+    for bashrc_line in bashrc_local_lines:
+        for env_var in env_vars:
+            if not bashrc_line.startswith('#') and env_var in bashrc_line:
+                modified = True
+                break
+        else:
+            bashrc_local_new_lines.append(bashrc_line)
+
+    return bashrc_local_new_lines, modified, False, False
 
 
 # ----------------------------------------------------------------------------
@@ -1912,3 +2031,14 @@ def __generate_registry_auth_token(username=None, password=None):
         username=username,
         password=password
     ).encode()).decode()
+
+
+# ----------------------------------------------------------------------------
+def __mv_file_backup(filename):
+    message = ('Preserving file as %s.bak' % filename)
+    logging.info(message)
+    mv_file_cmd = 'mv -Z {} {}.bak'.format(filename, filename).split()
+    failed = exec_subprocess(mv_file_cmd)
+    message = 'File not preserved' if failed else 'File preserved'
+    logging.info(message)
+    return failed
