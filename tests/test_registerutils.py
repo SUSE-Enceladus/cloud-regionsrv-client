@@ -3307,7 +3307,9 @@ def test_setup_registry_file_not_exists(
             'login',
             'pass'
         )
-        mock_open.assert_called_once_with('/etc/containers/config.json', 'w')
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'w')
+        ]
         mock_json_dump.assert_called_once_with(
             {
                 'auths': {
@@ -3490,8 +3492,11 @@ def test_set_container_engines_env_vars_no_update(
 ):
     bashrc_content = """
 export foo=bar
+
 export REGISTRY_AUTH_FILE=/etc/containers/config.json
+
 export DOCKER_CONFIG=/etc/containers
+
 """
     mock_os_path_exists.return_value = True
     with patch('builtins.open', mock_open(read_data=bashrc_content)):
@@ -3512,21 +3517,6 @@ def test_set_container_engines_env_vars_file_error(
         assert mock_logging.info.call_args_list == [
             call('Could not open /etc/bash.bashrc.local: an error !')
         ]
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.logging')
-def test_update_bashrc_open_file_error(
-    mock_logging
-):
-
-    with patch('builtins.open', create=True) as mock_open:
-        mock_open.side_effect = OSError('oh no !')
-        utils.update_bashrc({'foo': 'bar'}, 'a')
-        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'a')
-        mock_logging.error.assert_called_once_with(
-            'Could not update /etc/bash.bashrc.local: oh no !'
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -3990,6 +3980,19 @@ def test_clean_registry_auth_content_not_relevant_json(
     mock_same_registry_auth_content.return_value = False
     assert utils.clean_registry_auth()
     mock_logging.info.called_once_with('JSON content is empty')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+def test_update_bashrc_open_file_error(mock_logging):
+
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no !')
+        utils.update_bashrc({'foo': 'bar'}, 'a')
+        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'a')
+        mock_logging.error.assert_called_once_with(
+            'Could not update /etc/bash.bashrc.local: oh no !'
+        )
 
 
 # ---------------------------------------------------------------------------
