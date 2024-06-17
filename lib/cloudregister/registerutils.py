@@ -46,6 +46,7 @@ REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
+BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -521,95 +522,317 @@ def get_credentials(credentials_file):
 def setup_registry(registry_fqdn, username, password):
     """Set all the necessary parts for the registry,
        returns True if the setup completed, False otherwise."""
-    if not os.path.exists(os.path.dirname(REGISTRY_CREDENTIALS_PATH)):
-        os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH))
+    os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
 
     setup_registry_succeed = set_registry_auth_token(
         registry_fqdn, username, password
     )
+    if setup_registry_succeed:
+        setup_registry_succeed = set_container_engines_env_vars()
     return setup_registry_succeed
 
 
 # ----------------------------------------------------------------------------
-def set_registry_auth_token(registry_fqdn, username, password):
-    """Set the auth token to pull images from SUSE registry."""
-    auth_token = base64.b64encode('{username}:{password}'.format(
-        username=username,
-        password=password
-    ).encode()).decode()
-    registry_credentials = {registry_fqdn: {'auth': auth_token}}
+def get_registry_credentials(set_new):
+    """Read the registry credentials file
+       and return its content or an empty dict."""
     config_json = {}
+    status = None
+    # status can have 3 values
+    # - None, meaning opening the file suceeded
+    # - 0, meaning opening the file failed but preserving succeeded
+    # - <returncode> of the op or -1, meaning preserving it failed
+    file_error = True
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
-        # set the new registry credentials,
-        # independently of what that content was
-        config_json['auths'].update(registry_credentials)
-    except (FileNotFoundError, KeyError):
-        # file does not exist or "auths" key is not set
-        config_json.update({'auths': registry_credentials})
+    except OSError as error:
+        logging.info(str(error))
+        action = 'open'
     except json.decoder.JSONDecodeError:
-        logging.info(
-            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
-        )
-        config_json.update({'auths': registry_credentials})
+        action = 'parse'
+    else:
+        file_error = False
 
+    if file_error:
+        error_msg = 'Unable to %s existing %s, preserving file as %s.bak' % (
+            action, REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+        )
+        if set_new:
+            error_msg += ', writing new credentials'
+        logging.info(error_msg)
+        mv_file_cmd = 'mv -Z {} {}.bak'.format(
+            REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+        ).split()
+        status = exec_subprocess(mv_file_cmd)
+        message = 'File not preserved.' if status else 'File preserved.'
+        logging.info(message)
+
+    return config_json, status
+
+
+# ----------------------------------------------------------------------------
+def write_registry_credentials(content, set_new):
+    """Update the registry credentials file with the value of 'content'."""
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
+            json.dump(content, cred_json_file)
+        action_done = 'added' if set_new else 'removed'
+        message = 'Credentials for the registry {} in {}'.format(
+            action_done, REGISTRY_CREDENTIALS_PATH
+        )
+        logging.info(message)
+        return True
     except Exception as error:
-        logging.error('Could not set the registry credentials: %s' % error)
-        return
+        action_done = 'add' if set_new else 'remove'
+        message = 'Could not {} the registry credentials: {}'.format(
+            action_done, error
+        )
+        logging.error(message)
 
-    logging.info(
-        'Credentials for the registry set in %s' % REGISTRY_CREDENTIALS_PATH
+
+# ----------------------------------------------------------------------------
+def set_registry_auth_token(registry_fqdn, username, password):
+    """Set the auth token to access the SUSE registry."""
+    config_json = {}
+    if os.path.exists(REGISTRY_CREDENTIALS_PATH):
+        config_json, preserve_status = get_registry_credentials(set_new=True)
+        if preserve_status:
+            # there was an error parsing the credentials json file
+            # and we could not preserve the file
+            # we do not write anything new to the credentials file
+            return False
+
+    auth_token = __generate_registry_auth_token(username, password)
+    # set the new registry credentials,
+    # independently of what that content was,
+    # preserving the rest of the dictionary or keys, if any
+    registry_credentials = {registry_fqdn: {'auth': auth_token}}
+    config_json['auths'] = dict(
+        list(config_json.get('auths', {}).items()) +  # old content
+        list(registry_credentials.items())            # new content
     )
-    return True
+    updated = write_registry_credentials(content=config_json, set_new=True)
+    return updated
+
+
+# ----------------------------------------------------------------------------
+def set_container_engines_env_vars():
+    """Set the environment variables needed for the container runtimes
+    to find the config file."""
+    env_vars = {
+        'REGISTRY_AUTH_FILE': REGISTRY_CREDENTIALS_PATH,
+        'DOCKER_CONFIG': os.path.dirname(REGISTRY_CREDENTIALS_PATH)
+    }
+    bashrc_local_lines = []
+    if os.path.exists(BASHRC_LOCAL_PATH):
+        try:
+            with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+                bashrc_local_lines = bashrc_local.read()
+        except OSError as error:
+            logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
+            failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+            if failed:
+                return False
+
+    keys_to_add = ''
+    for env_var_key, env_var_value in env_vars.items():
+        if env_var_key not in bashrc_local_lines:
+            keys_to_add += (
+                '{}export {}={}{}'.format(
+                    os.linesep, env_var_key, env_var_value, os.linesep
+                )
+            )
+
+    if keys_to_add:
+        return update_bashrc(keys_to_add, 'a')
+
+
+# ----------------------------------------------------------------------------
+def update_bashrc(content, mode):
+    """Update the env vars for the container engines
+    with the location of the config file to the bashrc local file."""
+    try:
+        with open(BASHRC_LOCAL_PATH, mode) as bashrc_file:
+            bashrc_file.write(content)
+        logging.info('%s updated' % BASHRC_LOCAL_PATH)
+        return True
+    except OSError as error:
+        logging.error('Could not update %s: %s' % (BASHRC_LOCAL_PATH, error))
+        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        return not failed
 
 
 # ----------------------------------------------------------------------------
 def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
-    remove_auth_token()
+    clean_registry_auth()
+    unset_env_vars()
 
 
 # ----------------------------------------------------------------------------
-def remove_auth_token():
-    """Remove the auth token from the config json file."""
+def clean_registry_auth():
+    """Clean the auth token from the config json file."""
     if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
-        return
-
-    smt = get_smt_from_store(__get_registered_smt_file_path())
-    if not smt:
-        return
-
-    logging.info('Unsetting the auth entry for %s' % smt.get_registry_FQDN())
-    try:
-        with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
-            config_json = json.load(cred_json)
-        # unset the registry credentials
-        del config_json['auths'][smt.get_registry_FQDN()]
-    except KeyError:
-        logging.info('No auth key present. Nothing to do.')
+        logging.info('Credentials file does not exist. Nothing to do')
         return True
-    except json.decoder.JSONDecodeError:
-        logging.info(
-            'Could not unset the registry credentials: '
-            'Error found when opening %s' % REGISTRY_CREDENTIALS_PATH
-        )
-        return
 
+    config_json, preserve_status = get_registry_credentials(set_new=False)
+    if (
+        (not config_json or config_json == {'auths': {}}) and
+        not preserve_status
+    ):
+        # credentials file is empty or
+        # credentials file is not empty but its content is useless or
+        # could not access the file but the backup suceeded
+        if preserve_status is None:
+            logging.info('JSON content is empty')
+            os.unlink(REGISTRY_CREDENTIALS_PATH)
+        return True
+
+    if preserve_status:
+        return False
+
+    # we could open the credentials file
+    # and it is not empty
+    # unset the registry credentials
+    entry = None
+    smt = get_smt_from_store(__get_registered_smt_file_path())
     try:
-        with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
-            json.dump(config_json, cred_json_file)
-    except Exception as error:
-        logging.error('Could not unset the registry credentials: %s' % error)
-        return
+        if same_registry_auth_content(config_json, smt):
+            # if the content of the registry auth file is only
+            # our auth info, remove the file
+            logging.info(
+                'Registry authentication config only contains managed content.'
+                'Removing the file %s' % REGISTRY_CREDENTIALS_PATH
+            )
+            os.unlink(REGISTRY_CREDENTIALS_PATH)
+            return True
 
-    logging.info(
-        'Credentials for the registry unset in %s' % REGISTRY_CREDENTIALS_PATH
-    )
-    return True
+        if smt and smt.get_registry_FQDN():
+
+            logging.info(
+                'Unsetting the auth entry for %s' % smt.get_registry_FQDN()
+            )
+            entry = smt.get_registry_FQDN()
+        else:
+            logging.info('Unsetting the auth entry based on the token')
+            auth_token = __generate_registry_auth_token()
+            entries = config_json.get('auths', {}).items()
+            entry = [entry for entry, auth in entries
+                     if auth == auth_token and 'registry' in entry and
+                     'susecloud.net' in entry]
+            entry = ''.join(entry)
+
+        if config_json.get('auths', {}).pop(entry, {}):
+            # file was not empty or
+            # file could not be parsed and the remove cmd did not fail
+            # there is content worth updating the credentials file
+            # the dictionary has changed since read from the auth config file
+            # we write the changed dictionary back to the file
+            logging.info('Registry auth entry unset')
+            return write_registry_credentials(
+                content=config_json, set_new=False
+            )
+    except AttributeError:
+        logging.error('The entry for "auths" key is not a dictionary')
+        logging.info(
+            'Preserving file %s as %s.bak' % (
+                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
+            )
+        )
+        mv_file_cmd = 'mv -Z {} {}.bak'.format(
+            REGISTRATION_DATA_DIR, REGISTRY_CREDENTIALS_PATH
+        )
+        status = exec_subprocess(mv_file_cmd)
+        message = 'File not preserved.' if status else 'File preserved.'
+        logging.info(message)
+
+
+# ----------------------------------------------------------------------------
+def same_registry_auth_content(content, smt):
+    """Check if the registry auth content contains only SUSE registry info."""
+    auth_token = __generate_registry_auth_token()
+    one_key = len(content.keys()) == 1
+    if smt and smt.get_registry_FQDN():
+        expected_content = {'auths': {smt.get_registry_FQDN(): auth_token}}
+        different_auth_token = False
+        if one_key:
+            different_auth_token = content.get('auths', {}).get(
+                smt.get_registry_FQDN()
+            )
+
+        # if that is True is safe to remove the file
+        return content == expected_content or different_auth_token
+    elif one_key and content.get('auths'):
+        one_auths_key = len(content.get('auths').keys()) == 1
+        return one_auths_key and auth_token in content.get('auths').values()
+
+
+# ----------------------------------------------------------------------------
+def unset_env_vars():
+    """Remove the registry environment variables."""
+    env_vars = ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+    if not os.path.exists(BASHRC_LOCAL_PATH):
+        logging.info('%s file does not exist' % BASHRC_LOCAL_PATH)
+        # remove the enviroment variables from the env, if present
+        return True
+
+    lines, modified, preserved_failed, mv_backup = clean_bashrc_local(env_vars)
+    succeeded = True
+    if modified:
+        # we could access the file and registry env vars were found and removed
+        succeeded = update_bashrc(''.join(lines), 'w')
+    else:
+        # Either we could access the file and no registry env vars were found
+        # or we could not access the file and attempted to create a backup
+        # if backup scenario, log is already populated
+        if not mv_backup:
+            # we could access the bashrc local file and
+            # no env vars were found
+            logging.info(
+                'Environment variables not present in %s' % BASHRC_LOCAL_PATH
+            )
+            succeeded = True
+        elif preserved_failed:
+            # we could not access the bashrc local file
+            # the attempt to create a backup failed
+            succeeded = False
+
+    return succeeded
+
+
+# ----------------------------------------------------------------------------
+def clean_bashrc_local(env_vars):
+    """
+    Clean the registry env vars, if any, from the BASHRC_LOCAL_PATH file
+    :returns:
+        - bashrc_local_new_lines: list - the new lines after cleaning
+        - modified: bool - whether the content of the file was modified
+        - preserved_failed: bool - if accessing the file failed,
+                                   whether preserve op failed
+        - mv_backup: bool: whether the backup file operation suceeded
+    """
+    bashrc_local_lines = []
+    try:
+        with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+            bashrc_local_lines = bashrc_local.readlines()
+    except OSError as error:
+        logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
+        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        return [], False, failed, True
+
+    bashrc_local_new_lines = []
+    modified = False
+    for bashrc_line in bashrc_local_lines:
+        for env_var in env_vars:
+            if not bashrc_line.startswith('#') and env_var in bashrc_line:
+                modified = True
+                break
+        else:
+            bashrc_local_new_lines.append(bashrc_line)
+
+    return bashrc_local_new_lines, modified, False, False
 
 
 # ----------------------------------------------------------------------------
@@ -623,6 +846,7 @@ def get_credentials_file(update_server, service_name=None):
     after the system is properly registered.
     """
     credentials_file = ''
+
     target_root = get_zypper_target_root()
     credentials_loc = target_root + '/etc/zypp/credentials.d/'
     credential_names = [
@@ -1793,3 +2017,27 @@ def __replace_url_target(config_files, new_smt):
                     current_service_server,
                     new_smt.get_FQDN())
                 )
+
+
+# ----------------------------------------------------------------------------
+def __generate_registry_auth_token(username=None, password=None):
+    if not (username and password):
+        username, password = get_credentials(
+            '/etc/zypp/credentials.d/SCCcredentials'
+        )
+
+    return base64.b64encode('{username}:{password}'.format(
+        username=username,
+        password=password
+    ).encode()).decode()
+
+
+# ----------------------------------------------------------------------------
+def __mv_file_backup(filename):
+    message = ('Preserving file as %s.bak' % filename)
+    logging.info(message)
+    mv_file_cmd = 'mv -Z {} {}.bak'.format(filename, filename).split()
+    failed = exec_subprocess(mv_file_cmd)
+    message = 'File not preserved' if failed else 'File preserved'
+    logging.info(message)
+    return failed

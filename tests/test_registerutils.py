@@ -23,8 +23,7 @@ import tempfile
 from pytest import raises
 from textwrap import dedent
 
-from unittest import mock
-from unittest.mock import patch, call, MagicMock, Mock
+from unittest.mock import patch, call, MagicMock, Mock, mock_open
 from lxml import etree
 
 test_path = os.path.abspath(
@@ -242,7 +241,7 @@ def test_has_rmt_in_hosts_has_ipv4():
     1.1.1.1   registry-foo.susecloud.net
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -259,7 +258,7 @@ def test_has_rmt_in_hosts_has_ipv4_6():
     11:22:33:44::00   registry-foo.susecloud.net
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -272,7 +271,7 @@ def test_has_rmt_in_hosts_ipv4_not_found():
     2.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is False
@@ -285,7 +284,7 @@ def test_has_rmt_in_hosts_has_ipv6():
     11:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -300,7 +299,7 @@ def test_has_rmt_in_hosts_has_ipv6_4():
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is True
@@ -313,7 +312,7 @@ def test_has_rmt_in_hosts_ipv6_not_found():
     22:22:33:44::00   smt-foo.susecloud.net  smt-foo
     """
     server = MockServer()
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content)):
+    with patch('builtins.open', mock_open(read_data=hosts_content)):
         has_entry = utils.has_rmt_in_hosts(server)
 
     assert has_entry is False
@@ -337,7 +336,7 @@ def test_clean_host_file_no_empty_bottom_lines():
 
 
 4.3.2.1   another_entry.whatever.com another_entry"""
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net')
 
     expected_write_calls = []
@@ -373,7 +372,7 @@ def test_clean_host_file_no_empty_bottom_lines_user_interfered():
 1.1.1.1   my.specialhost.us
 
 4.3.2.1   another_entry.whatever.com another_entry"""
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net')
 
     expected_write_calls = []
@@ -409,7 +408,7 @@ def test_clean_host_file_one_empty_bottom_line():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -448,7 +447,7 @@ def test_clean_host_file_some_empty_bottom_lines():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -487,7 +486,7 @@ def test_clean_host_file_some_empty_bottom_lines_smt_entry_is_last():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -526,7 +525,7 @@ def test_clean_host_file_one_empty_bottom_lines_smt_entry_is_last():
 4.3.2.1   another_entry.whatever.com another_entry
 """
 
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -562,7 +561,7 @@ def test_clean_host_file_no_empty_bottom_lines_smt_entry_is_last():
 
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -591,7 +590,7 @@ def test_clean_host_file_some_empty_bottom_lines_only_FQDN_not_registry():
 1.2.3.4   smt-foo.susecloud.net  smt-foo
 4.3.2.1   another_entry.whatever.com another_entry
 """
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net'.encode())
 
     expected_write_calls = []
@@ -607,7 +606,7 @@ def test_clean_host_file_some_empty_bottom_lines_only_FQDN_not_registry():
 
 def test_clean_host_file_raised_exception():
     hosts_content = ""
-    with mock.patch('builtins.open', mock.mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
         utils.clean_hosts_file('susecloud.net')
 
     assert m().write.mock_calls == []
@@ -1405,16 +1404,16 @@ def test_get_current_smt_no_registered(
 
     192.168.1.1   smt-foo.susecloud.net  smt-foo
     """
-    open_mock_hosts = mock.mock_open(read_data=hosts_content.encode())
-    open_mock = mock.mock_open(read_data=hosts_content)
+    open_mock_hosts = mock_open(read_data=hosts_content.encode())
+    open_mock = mock_open(read_data=hosts_content)
 
     def open_f(filename, *args, **kwargs):
         if filename == '/etc/hosts':
             return open_mock_hosts()
         return open_mock()
 
-    with mock.patch('builtins.open') as mock_open:
-        mock_open.side_effect = open_f
+    with patch('builtins.open') as m_open:
+        m_open.side_effect = open_f
         assert utils.get_current_smt() is None
 
 
@@ -1436,7 +1435,7 @@ def test_get_current_smt(mock_get_smt_from_store, mock_is_registered):
 
     192.168.1.1   smt-foo.susecloud.net  smt-foo
     """
-    with mock.patch('builtins.open', mock.mock_open(
+    with patch('builtins.open', mock_open(
         read_data=hosts_content.encode()
     )):
         assert utils.get_current_smt() == smt_server
@@ -1984,8 +1983,8 @@ def test_get_update_server_name_from_hosts(mock_get_available_smt_servers):
 
     1.1.1.1   smt-foo.susecloud.net  smt-foo
     """
-    with mock.patch(
-        'builtins.open', mock.mock_open(read_data=hosts_content.encode())
+    with patch(
+        'builtins.open', mock_open(read_data=hosts_content.encode())
     ):
         assert utils.get_update_server_name_from_hosts() == \
             'smt-foo.susecloud.net'
@@ -1994,8 +1993,8 @@ def test_get_update_server_name_from_hosts(mock_get_available_smt_servers):
 @patch('cloudregister.registerutils.get_zypper_pid')
 def test_get_zypper_command(mock_zypper_pid):
     mock_zypper_pid.return_value = 42
-    with mock.patch(
-        'builtins.open', mock.mock_open(read_data='\x00foo')
+    with patch(
+        'builtins.open', mock_open(read_data='\x00foo')
     ):
         assert utils.get_zypper_command() == ' foo'
 
@@ -2115,7 +2114,7 @@ def test_has_services_service_plugin(mock_get_service_plugins):
 def test_has_services_service(mock_get_service_plugins):
     mock_get_service_plugins.return_value = ['foo']
     content = 'url=plugin:susecloud'
-    with mock.patch('builtins.open', mock.mock_open(read_data=content)):
+    with patch('builtins.open', mock_open(read_data=content)):
         assert utils.has_services('foo') is True
 
 
@@ -2327,7 +2326,7 @@ def test_set_proxy(mock_os_path_exists):
     HTTPS_PROXY="https://proxy.provider.de:3128/"
     NO_PROXY="localhost, 127.0.0.1"
     """
-    with mock.patch('builtins.open', mock.mock_open(read_data=proxy_content)):
+    with patch('builtins.open', mock_open(read_data=proxy_content)):
         assert utils.set_proxy() is True
 
 
@@ -2338,7 +2337,7 @@ def test_proxy_not_enable(mock_os_path_exists):
     proxy_content = """
     PROXY_ENABLED="no"
     """
-    with mock.patch('builtins.open', mock.mock_open(read_data=proxy_content)):
+    with patch('builtins.open', mock_open(read_data=proxy_content)):
         assert utils.set_proxy() is False
 
 
@@ -2709,15 +2708,15 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
     file_azo = ""
     with open('tests/data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
-    open_mock = mock.mock_open(read_data=file_azo)
+    open_mock = mock_open(read_data=file_azo)
 
     def open_f(filename, *args, **kwargs):
         return open_mock()
 
-    with patch('builtins.open', create=True) as mock_open:
-        mock_open.side_effect = open_f
+    with patch('builtins.open', create=True) as m_open:
+        m_open.side_effect = open_f
         utils.switch_smt_repos(new_smt_server)
-        assert mock_open.call_args_list == [
+        assert m_open.call_args_list == [
             call('tests/data/repo_foo.repo', 'r'),
             call('tests/data/repo_foo.repo', 'w')
         ]
@@ -2725,7 +2724,7 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
            'plugin:/susecloud',
            new_smt_server.get_FQDN()
         )
-        mock_open(
+        m_open(
             'tests/data/repo_foo.repo', 'w'
         ).write.assert_called_once_with(expected_content)
 
@@ -2754,15 +2753,15 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
     file_azo = ""
     with open('tests/data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
-    open_mock = mock.mock_open(read_data=file_azo)
+    open_mock = mock_open(read_data=file_azo)
 
     def open_f(filename, *args, **kwargs):
         return open_mock()
 
-    with patch('builtins.open', create=True) as mock_open:
-        mock_open.side_effect = open_f
+    with patch('builtins.open', create=True) as m_open:
+        m_open.side_effect = open_f
         utils.switch_smt_service(new_smt_server)
-        assert mock_open.call_args_list == [
+        assert m_open.call_args_list == [
             call('tests/data/service.service', 'r'),
             call('tests/data/service.service', 'w')
         ]
@@ -2770,7 +2769,7 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
             'plugin:/susecloud',
             new_smt_server.get_FQDN()
         )
-        mock_open(
+        m_open(
             'tests/data/repo_foo.repo', 'w'
         ).write.assert_called_once_with(expected_content)
 
@@ -3257,14 +3256,16 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_empty_file(
-    mock_json_load, mock_json_dump, mock_os_makedirs, mock_os_path_exists
+    mock_json_load, mock_json_dump, mock_os_makedirs,
+    mock_os_path_exists, mock_set_container_engines_env_vars
 ):
-    mock_os_path_exists.return_value = False
+    mock_os_path_exists.return_value = True
     mock_json_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
@@ -3290,15 +3291,50 @@ def test_setup_registry_empty_file(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.os.makedirs')
+@patch('cloudregister.registerutils.json.dump')
+def test_setup_registry_file_not_exists(
+    mock_json_dump, mock_os_makedirs,
+    mock_os_path_exists, mock_set_env_vars
+):
+    mock_os_path_exists.side_effect = [False, False]
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.setup_registry(
+            'registry-supercloud.susecloud.net',
+            'login',
+            'pass'
+        )
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'w')
+        mock_json_dump.assert_called_once_with(
+            {
+                'auths': {
+                    'registry-supercloud.susecloud.net': {
+                        'auth': 'bG9naW46cGFzcw=='
+                    }
+                }
+            },
+            file_handle
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.set_container_engines_env_vars')
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content(
-    mock_json_load, mock_json_dump, mock_os_makedirs
+    mock_json_load, mock_json_dump,
+    mock_os_makedirs, mock_os_path_exists,
+    mock_set_env_vars
 ):
+    mock_os_path_exists.return_value = True
     mock_json_load.return_value = {
         'auths': {
-            'some-doman.com': {'auth': 'foo'}
+            'some-domain.com': {'auth': 'foo'}
         }
     }
     with patch('builtins.open', create=True) as mock_open:
@@ -3315,7 +3351,7 @@ def test_setup_registry_content(
         mock_json_dump.assert_called_once_with(
             {
                 'auths': {
-                    'some-doman.com': {'auth': 'foo'},
+                    'some-domain.com': {'auth': 'foo'},
                     'registry-supercloud.susecloud.net': {
                         'auth': 'bG9naW46cGFzcw=='
                     }
@@ -3326,51 +3362,91 @@ def test_setup_registry_content(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
-def test_setup_registry_content_json_error(
-    mock_json_load, mock_json_dump, mock_logging, mock_os_makedirs
+def test_setup_registry_content_json_error_preserve_fail(
+    mock_json_load, mock_logging, mock_os_makedirs,
+    mock_os_path_exists, mock_exec_subprocess
 ):
+    mock_os_path_exists.return_value = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
+    mock_exec_subprocess.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
-        file_handle = mock_open.return_value.__enter__.return_value
-        utils.setup_registry(
+        mock_exec_subprocess.return_value = 1
+        assert utils.setup_registry(
             'registry-supercloud.susecloud.net',
             'login',
             'pass'
-        )
-        assert mock_open.call_args_list == [
-            call('/etc/containers/config.json', 'r'),
-            call('/etc/containers/config.json', 'w')
-        ]
-        mock_json_dump.assert_called_once_with(
-            {
-                'auths': {
-                    'registry-supercloud.susecloud.net': {
-                        'auth': 'bG9naW46cGFzcw=='
-                    }
-                }
-            },
-            file_handle
-        )
-        file_auth = '/etc/containers/config.json'
+        ) is False
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
         log_calls = [
-            call('Error found when opening {}'.format(file_auth)),
-            call('Credentials for the registry set in {}'.format(file_auth))
+            call(
+                'Unable to parse existing /etc/containers/config.json, '
+                'preserving file as /etc/containers/config.json.bak, '
+                'writing new credentials'
+            ),
+            call('File not preserved.')
         ]
         assert mock_logging.info.call_args_list == log_calls
+        mock_exec_subprocess.assert_called_once_with(
+            ['mv', '-Z',
+             '/etc/containers/config.json',
+             '/etc/containers/config.json.bak']
+        )
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.os.makedirs')
+@patch('cloudregister.registerutils.logging')
+def test_setup_registry_content_open_file_error(
+    mock_logging, mock_os_makedirs,
+    mock_os_path_exists, mock_exec_subprocess
+):
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no ! an error')
+        mock_exec_subprocess.return_value = 1
+        assert utils.setup_registry(
+            'registry-supercloud.susecloud.net',
+            'login',
+            'pass'
+        ) is False
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
+        log_calls = [
+            call('oh no ! an error'),
+            call(
+                'Unable to open existing /etc/containers/config.json, '
+                'preserving file as /etc/containers/config.json.bak, '
+                'writing new credentials'
+            ),
+            call('File not preserved.')
+        ]
+        print(mock_logging.info.call_args_list)
+        assert mock_logging.info.call_args_list == log_calls
+        mock_exec_subprocess.assert_called_once_with(
+            ['mv', '-Z',
+             '/etc/containers/config.json',
+             '/etc/containers/config.json.bak']
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_write_error(
-    mock_json_load, mock_json_dump, mock_logging, mock_os_makedirs
+    mock_json_load, mock_json_dump, mock_logging,
+    mock_os_makedirs, mock_os_path_exists
 ):
+    mock_os_path_exists.side_effect = [False, False]
+    mock_os_path_exists.return_value = False
     mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
         utils.setup_registry(
@@ -3378,53 +3454,204 @@ def test_setup_registry_content_write_error(
             'login',
             'pass'
         )
-        assert mock_open.call_args_list == [
-            call('/etc/containers/config.json', 'r'),
-            call('/etc/containers/config.json', 'w')
-        ]
+        mock_open.assert_called_once_with(
+            '/etc/containers/config.json', 'w'
+        )
         mock_logging.error.assert_called_once_with(
-            'Could not set the registry credentials: something happened !'
+            'Could not add the registry credentials: something happened !'
         )
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.update_bashrc')
+@patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.path.exists')
-def test_clean_registry_content_no_file(mock_os_path_exists):
+def test_set_container_engines_env_vars_new(
+    mock_os_path_exists, mock_logging, mock_up_bashrc
+):
+    bashrc_content = """
+export foo=bar
+"""
+    expected_ouput = (
+        '\nexport REGISTRY_AUTH_FILE=/etc/containers/config.json\n'
+        '\nexport DOCKER_CONFIG=/etc/containers\n'
+    )
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', mock_open(read_data=bashrc_content)):
+        utils.set_container_engines_env_vars()
+        mock_up_bashrc.assert_called_once_with(expected_ouput, 'a')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_set_container_engines_env_vars_no_update(
+    mock_os_path_exists, mock_logging
+):
+    bashrc_content = """
+export foo=bar
+export REGISTRY_AUTH_FILE=/etc/containers/config.json
+export DOCKER_CONFIG=/etc/containers
+"""
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', mock_open(read_data=bashrc_content)):
+        utils.set_container_engines_env_vars()
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_set_container_engines_env_vars_file_error(
+    mock_os_path_exists, mock_logging, mock_mv
+):
+    mock_os_path_exists.return_value = True
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('an error !')
+        assert utils.set_container_engines_env_vars() is False
+        assert mock_logging.info.call_args_list == [
+            call('Could not open /etc/bash.bashrc.local: an error !')
+        ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+def test_update_bashrc_open_file_error(
+    mock_logging
+):
+
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no !')
+        utils.update_bashrc({'foo': 'bar'}, 'a')
+        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'a')
+        mock_logging.error.assert_called_once_with(
+            'Could not update /etc/bash.bashrc.local: oh no !'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+def test_update_bashrc_open_file_OK(
+    mock_logging
+):
+
+    with patch('builtins.open', create=True) as mock_open:
+        assert utils.update_bashrc({'foo': 'bar'}, 'w')
+        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'w')
+        mock_logging.info.assert_called_once_with(
+            '/etc/bash.bashrc.local updated'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.clean_bashrc_local')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.logging')
+def test_unset_env_vars_no_env_vars_in_file(
+    mock_logging, mock_os_path_exists, mock_clean_bashrc_local
+):
+    mock_os_path_exists.return_value = True
+    mock_clean_bashrc_local.return_value = [], False, False, False
+    assert utils.unset_env_vars() is True
+    mock_logging.info.assert_called_once_with(
+        'Environment variables not present in /etc/bash.bashrc.local'
+    )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.clean_bashrc_local')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_unset_env_vars_no_file_access_no_backup(
+    mock_os_path_exists, mock_clean_bashrc_local
+):
+    mock_os_path_exists.return_value = True
+    mock_clean_bashrc_local.return_value = [], False, True, True
+    assert utils.unset_env_vars() is False
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.update_bashrc')
+@patch('cloudregister.registerutils.clean_bashrc_local')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_unset_env_vars_modified_content(
+    mock_os_path_exists, mock_clean_bashrc_local, mock_update_bashrc
+):
+    mock_os_path_exists.return_value = True
+    mock_clean_bashrc_local.return_value = ['no-registry'], True, False, False
+    mock_update_bashrc.return_value = True
+    assert utils.unset_env_vars() is True
+    mock_update_bashrc.called_once_with('no-registry', 'w')
+
+
+# ---------------------------------------------------------------------------
+def test_clean_bashrc_local():
+    bashrc_content = """
+export foo=bar
+
+export REGISTRY_AUTH_FILE=/etc/containers/config.json
+
+export DOCKER_CONFIG=/etc/containers
+
+"""
+    with patch('builtins.open', mock_open(read_data=bashrc_content)):
+        new_lines, modified, keep_failed, mv = utils.clean_bashrc_local(
+            ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+        )
+        assert new_lines == ['\n', 'export foo=bar\n', '\n', '\n', '\n']
+        assert modified
+        assert modified is True
+        assert not keep_failed
+        assert not mv
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.logging')
+def test_clean_bashrc_local_open_error(mock_logging, mock_mv_file_backup):
+    mock_mv_file_backup.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        mock_open.side_effect = OSError('oh no !')
+        new_lines, modified, keep_failed, mv = utils.clean_bashrc_local(
+            ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
+        )
+        assert new_lines == []
+        assert not modified
+        assert not keep_failed
+        assert mv
+        mock_mv_file_backup.assert_called_once_with('/etc/bash.bashrc.local')
+        mock_logging.info.assert_called_once_with(
+            'Could not open /etc/bash.bashrc.local: oh no !'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.os.path.exists')
+def test_clean_registry_content_no_file(mock_os_path_exists, mock_os_unlink):
     mock_os_path_exists.return_value = False
     assert utils.clean_registry_setup() is None
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.remove_auth_token')
+@patch('cloudregister.registerutils.clean_registry_auth')
 @patch('cloudregister.registerutils.os.path.exists')
 def test_clean_registry_content_file_exists(
-    mock_os_path_exists, mock_remove_auth_token
+    mock_os_path_exists, mock_clean_registry_auth
 ):
     mock_os_path_exists.return_value = True
     assert utils.clean_registry_setup() is None
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.get_smt_from_store')
-@patch('cloudregister.registerutils.__get_registered_smt_file_path')
-@patch('cloudregister.registerutils.os.path.exists')
-def test_clean_registry_content_no_smt_server(
-    mock_os_path_exists, mock_get_registered_smt, mock_get_smt_from_store
-):
-    mock_os_path_exists.return_value = True
-    mock_get_smt_from_store.return_value = None
-    assert utils.remove_auth_token() is None
-
-
-# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
-def test_remove_auth_token_empty_file(
-    mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging, mock_os_path_exists
+def test_clean_registry_auth_empty_file(
+    mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
+    mock_logging, mock_os_path_exists, mock_os_unlink
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3436,25 +3663,27 @@ def test_remove_auth_token_empty_file(
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
     mock_json_load.return_value = {}
+    mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
-        assert utils.remove_auth_token() is True
-        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
-        log_calls = [
-            call('Unsetting the auth entry for registry-foo.susecloud.net'),
-            call('No auth key present. Nothing to do.')
+        assert utils.clean_registry_auth()
+        mock_open.assert_called_once_with(
+            '/etc/containers/config.json', 'r'
+        )
+        assert mock_logging.info.call_args_list == [
+            call('JSON content is empty')
         ]
-        assert mock_logging.info.call_args_list == log_calls
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__generate_registry_auth_token')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
-def test_remove_auth_token_no_registry_entry_in_file(
-    mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging, mock_os_path_exists
+def test_clean_registry_auth_no_registry_entry_in_file(
+    mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
+    mock_logging, mock_os_path_exists, mock_generate_registry_auth_token
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3465,29 +3694,72 @@ def test_remove_auth_token_no_registry_entry_in_file(
         />''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
+    mock_generate_registry_auth_token.return_value = 'auth_token'
     mock_json_load.return_value = {
         'auths': {'another_fqdn.com': 'bar'},
         'more_keys': 'and_content'
     }
     with patch('builtins.open', create=True) as mock_open:
-        assert utils.remove_auth_token() is True
+        assert utils.clean_registry_auth() is None
         mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
-        log_calls = [
-            call('Unsetting the auth entry for registry-foo.susecloud.net'),
-            call('No auth key present. Nothing to do.')
-        ]
-        assert mock_logging.info.call_args_list == log_calls
+        mock_logging.info.assert_called_once_with(
+            'Unsetting the auth entry for registry-foo.susecloud.net'
+        )
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__generate_registry_auth_token')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_clean_registry_auth_no_registry_entry_in_file_wrong_dict_content(
+    mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
+    mock_logging, mock_os_path_exists, mock_generate_registry_auth_token,
+    mock_exec_subprocess
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_generate_registry_auth_token.return_value = 'auth_token'
+    mock_json_load.return_value = {'auths': 'bar'}
+    mock_exec_subprocess.return_value = 0
+    with patch('builtins.open', create=True) as mock_open:
+        assert utils.clean_registry_auth() is None
+        mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
+        mock_logging.info.call_args_list == [
+            call('Unsetting the auth entry for registry-foo.susecloud.net'),
+            call(
+                'Preserving file /etc/containers/config.json as '
+                '/etc/containers/config.json.bak'
+            ),
+            call('File preserved.')
+        ]
+        mock_logging.error.assert_called_once_with(
+            'The entry for "auths" key is not a dictionary'
+        )
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
 def test_clean_registry_content_json_error(
-    mock_json_load, mock_get_registered_smt,
-    mock_get_smt_from_store, mock_logging, mock_os_path_exists
+    mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
+    mock_logging, mock_os_path_exists, mock_get_credentials,
+    mock_exec_subprocess
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3499,29 +3771,33 @@ def test_clean_registry_content_json_error(
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
+    mock_get_credentials.return_value = ('SCC_login', 'password')
+    mock_exec_subprocess.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
-        utils.remove_auth_token()
+        utils.clean_registry_auth()
         mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
         log_calls = [
-            call('Unsetting the auth entry for registry-foo.susecloud.net'),
             call(
-                'Could not unset the registry credentials: '
-                'Error found when opening /etc/containers/config.json'
-            )
+                'Unable to parse existing /etc/containers/config.json, '
+                'preserving file as /etc/containers/config.json.bak'
+            ),
+            call('File not preserved.')
         ]
         assert mock_logging.info.call_args_list == log_calls
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__generate_registry_auth_token')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
-def test_remove_auth_token_content_write(
-    mock_json_load, mock_get_registered_smt,  mock_get_smt_from_store,
-    mock_logging, mock_json_dump, mock_os_path_exists
+def test_clean_registry_auth_content_write(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging, mock_json_dump,
+    mock_os_path_exists, mock_generate_registry_auth_token
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3532,6 +3808,7 @@ def test_remove_auth_token_content_write(
         />''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
+    mock_generate_registry_auth_token.return_value = 'foo'
     mock_json_load.return_value = {
         'auths': {
             smt_server.get_registry_FQDN(): 'foo',
@@ -3541,7 +3818,7 @@ def test_remove_auth_token_content_write(
     }
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
-        utils.remove_auth_token()
+        utils.clean_registry_auth()
         assert mock_open.call_args_list == [
             call('/etc/containers/config.json', 'r'),
             call('/etc/containers/config.json', 'w')
@@ -3557,25 +3834,83 @@ def test_remove_auth_token_content_write(
         )
         log_calls = [
             call('Unsetting the auth entry for registry-foo.susecloud.net'),
+            call('Registry auth entry unset'),
             call(
-                'Credentials for the registry unset '
+                'Credentials for the registry removed '
                 'in /etc/containers/config.json'
             )
         ]
-        print(mock_logging.info.call_args_list)
         assert mock_logging.info.call_args_list == log_calls
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.json.dump')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.json.load')
-def test_remove_auth_token_content_write_error(
+def test_clean_registry_auth_content_write_no_smt_token_based(
     mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
-    mock_logging, mock_json_dump, mock_os_path_exists
+    mock_logging, mock_json_dump, mock_os_path_exists, mock_get_credentials
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.return_value = {
+        'auths': {                        # username:pass encoded
+            "registry-foo.susecloud.net": 'dXNlcm5hbWU6cGFzcw==',
+            'another_fqdn.com': 'bar'
+        },
+        'more_keys': 'and_content'
+    }
+    mock_get_credentials.return_value = 'username', 'pass'
+    with patch('builtins.open', create=True) as mock_open:
+        file_handle = mock_open.return_value.__enter__.return_value
+        utils.clean_registry_auth()
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'r'),
+            call('/etc/containers/config.json', 'w')
+        ]
+        mock_json_dump.assert_called_once_with(
+            {
+                'auths': {
+                    'another_fqdn.com': 'bar'
+                },
+                'more_keys': 'and_content'
+            },
+            file_handle
+        )
+        log_calls = [
+            call('Unsetting the auth entry based on the token'),
+            call('Registry auth entry unset'),
+            call(
+                'Credentials for the registry removed '
+                'in /etc/containers/config.json'
+            )
+        ]
+        assert mock_logging.info.call_args_list == log_calls
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__generate_registry_auth_token')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_clean_registry_auth_content_same_entry_only(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging, mock_json_dump,
+    mock_os_path_exists, mock_os_unlink, mock_generate_auth_token
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3591,14 +3926,70 @@ def test_remove_auth_token_content_write_error(
     }
     mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
-        utils.remove_auth_token()
+        utils.clean_registry_auth()
         assert mock_open.call_args_list == [
-            call('/etc/containers/config.json', 'r'),
-            call('/etc/containers/config.json', 'w')
+            call('/etc/containers/config.json', 'r')
         ]
-        mock_logging.error.assert_called_once_with(
-            'Could not unset the registry credentials: something happened !'
-        )
+        mock_os_unlink.assert_called_once_with('/etc/containers/config.json')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.__generate_registry_auth_token')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.json.dump')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.json.load')
+def test_clean_registry_auth_content_same_entry_only_token_based(
+    mock_json_load, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging, mock_json_dump,
+    mock_os_path_exists, mock_os_unlink, mock_generate_auth_token
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_json_load.return_value = {'auths': {'foo.susecloud.net': 'foo'}}
+    mock_json_dump.side_effect = Exception('something happened !')
+    mock_generate_auth_token.return_value = 'foo'
+    with patch('builtins.open', create=True) as mock_open:
+        utils.clean_registry_auth()
+        assert mock_open.call_args_list == [
+            call('/etc/containers/config.json', 'r')
+        ]
+        mock_os_unlink.assert_called_once_with('/etc/containers/config.json')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.same_registry_auth_content')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_smt_from_store')
+@patch('cloudregister.registerutils.__get_registered_smt_file_path')
+@patch('cloudregister.registerutils.get_registry_credentials')
+def test_clean_registry_auth_content_not_relevant_json(
+    mock_get_registry_credentials, mock_get_registered_smt,
+    mock_get_smt_from_store, mock_logging,
+    mock_os_unlink, mock_same_registry_auth_content
+):
+    smt_data_ipv46 = dedent('''\
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_smt_from_store.return_value = smt_server
+    mock_get_registry_credentials.return_value = {'auths': {}}, None
+    mock_same_registry_auth_content.return_value = False
+    assert utils.clean_registry_auth()
+    mock_logging.info.called_once_with('JSON content is empty')
 
 
 # ---------------------------------------------------------------------------
