@@ -30,6 +30,7 @@ import stat
 import subprocess
 import sys
 import time
+import toml
 
 from lxml import etree
 from pathlib import Path
@@ -47,6 +48,8 @@ REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
+REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
+DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -529,6 +532,8 @@ def setup_registry(registry_fqdn, username, password):
     )
     if setup_registry_succeed:
         setup_registry_succeed = set_container_engines_env_vars()
+    if setup_registry_succeed:
+        set_registries_conf(registry_fqdn)
     return setup_registry_succeed
 
 
@@ -649,6 +654,45 @@ def set_container_engines_env_vars():
 
 
 # ----------------------------------------------------------------------------
+def set_registries_conf(registry_fqdn):
+    """Add the registry container engines search configuration."""
+    return (
+        __set_registries_conf_podman(registry_fqdn) and
+        __set_registries_conf_docker(registry_fqdn)
+    )
+
+
+# ----------------------------------------------------------------------------
+def get_registry_conf_file(container_path, container):
+    registries_conf = {}
+    try:
+        with open(container_path, 'r') as registries_conf_file:
+            if container == 'podman':
+                registries_conf = toml.load(registries_conf_file)
+            if container == 'docker':
+                registries_conf = json.load(registries_conf_file)
+            return registries_conf, False
+    except IOError as error:
+        logging.info(str(error))
+        action = 'open'
+    except json.decoder.JSONDecodeError:
+        action = 'parse'
+
+    logging.info(
+        'Could not %s %s, preserving file as %s.bak' % (
+            action, container_path, container_path
+        )
+    )
+    mv_file_cmd = 'mv -Z {} {}.bak'.format(
+        container_path, container_path
+    ).split()
+    failed = exec_subprocess(mv_file_cmd)
+    message = 'File not preserved.' if failed else 'File preserved.'
+    logging.info(message)
+    return {}, failed
+
+
+# ----------------------------------------------------------------------------
 def update_bashrc(content, mode):
     """Update the env vars for the container engines
     with the location of the config file to the bashrc local file."""
@@ -668,6 +712,7 @@ def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
     clean_registry_auth()
     unset_env_vars()
+    clean_registries_conf()
 
 
 # ----------------------------------------------------------------------------
@@ -710,7 +755,6 @@ def clean_registry_auth():
             return True
 
         if smt and smt.get_registry_FQDN():
-
             logging.info(
                 'Unsetting the auth entry for %s' % smt.get_registry_FQDN()
             )
@@ -834,6 +878,199 @@ def clean_bashrc_local(env_vars):
             bashrc_local_new_lines.append(bashrc_line)
 
     return bashrc_local_new_lines, modified, False, False
+
+
+# ----------------------------------------------------------------------------
+def clean_registries_conf():
+    """Clean up the registry content from Podman and/or Docker config files."""
+    clean_registries_conf_podman()
+    clean_registries_conf_docker()
+
+
+# ----------------------------------------------------------------------------
+def clean_registries_conf_podman():
+    """Clean up the registry content from the REGISTRIES_CONF_PATH file."""
+    if not os.path.exists(REGISTRIES_CONF_PATH):
+        return True
+
+    registries_conf, failed = get_registry_conf_file(
+        REGISTRIES_CONF_PATH, 'podman'
+    )
+    if failed:
+        return False
+
+    if not registries_conf and not failed:
+        logging.info(
+            'Either %s is empty or it has been backed up' %
+            REGISTRIES_CONF_PATH
+        )
+        return True
+
+    modified = False
+    unqualified_search_reg = registries_conf.get(
+        'unqualified-search-registries', []
+    )
+    pub_registry_fqdn = 'registry.suse.com'
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    if unqualified_search_reg:
+        if smt and smt.get_registry_FQDN():
+            private_registry_fqdn = smt.get_registry_FQDN()
+            if private_registry_fqdn in unqualified_search_reg:
+                unqualified_search_reg.pop(
+                    unqualified_search_reg.index(private_registry_fqdn)
+                )
+                modified = True
+            if pub_registry_fqdn in unqualified_search_reg:
+                unqualified_search_reg.pop(
+                    unqualified_search_reg.index(pub_registry_fqdn)
+                )
+                modified = True
+        else:
+            new_unq_search_reg = []
+            for fqdn in unqualified_search_reg:
+                if (
+                    ('registry' in fqdn and 'susecloud.net' in fqdn) or
+                    pub_registry_fqdn in fqdn
+                ):
+                    modified = True
+                    continue
+                new_unq_search_reg.append(fqdn)
+
+            if modified:
+                unqualified_search_reg = new_unq_search_reg
+
+        if modified:
+            registries_conf['unqualified-search-registries'] = \
+                unqualified_search_reg
+
+    registries = registries_conf.get('registry', [])
+    if registries:
+        if smt and smt.get_registry_FQDN():
+            private_registry = {
+                'location': private_registry_fqdn,
+                'insecure': False
+            }
+            if private_registry in registries:
+                registries.pop(registries.index(private_registry))
+                modified = True
+        else:
+            registry_index = None
+            for reg_index, registry in enumerate(registries):
+                location = registry.get('location', {})
+                if 'registry' in location and 'susecloud.net' in location:
+                    registry_index = reg_index
+
+            if registry_index is not None:
+                registries.pop(registry_index)
+                modified = True
+
+        if modified:
+            registries_conf['registry'] = registries
+
+    if (
+        modified and (
+            registries_conf.get('registry') or
+            registries_conf.get('unqualified-search-registries')
+        )
+    ):
+        logging.info(
+            'SUSE registry information has been removed from %s' %
+            REGISTRIES_CONF_PATH
+        )
+        return write_registries_conf(
+            registries_conf, REGISTRIES_CONF_PATH, 'podman'
+        )
+    elif modified:
+        os.unlink(REGISTRIES_CONF_PATH)
+        logging.info(
+            '%s removed, empty content after removing SUSE registry info' %
+            REGISTRIES_CONF_PATH
+        )
+
+
+# ----------------------------------------------------------------------------
+def clean_registries_conf_docker():
+    """Clean up the registry content from the DOCKER_CONFIG_PATH file."""
+    if not os.path.exists(DOCKER_CONFIG_PATH):
+        return True
+
+    registries_conf, failed = get_registry_conf_file(
+        DOCKER_CONFIG_PATH, 'docker'
+    )
+    if failed:
+        return False
+
+    if not registries_conf:
+        return True
+
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    private_fqdn = None
+    if smt and smt.get_registry_FQDN():
+        private_fqdn = smt.get_registry_FQDN()
+
+    modified = False
+    registry_mirrors = registries_conf.get('registry-mirrors', [])
+    if private_fqdn:
+        if private_fqdn in registry_mirrors:
+            registry_mirrors.pop(
+                registry_mirrors.index(private_fqdn)
+            )
+            modified = True
+
+        if 'registry.suse.com' in registry_mirrors:
+            registry_mirrors.pop(
+                registry_mirrors.index('registry.suse.com')
+            )
+            modified = True
+    else:
+        new_mirrors = []
+        for registry in registry_mirrors:
+            if (
+                ('registry' in registry and 'susecloud.net' in registry) or
+                'registry.suse.com' in registry
+            ):
+                modified = True
+                continue
+            new_mirrors.append(registry)
+
+        if modified:
+            registries_conf['registry-mirrors'] = new_mirrors
+
+    if modified and registries_conf.get('registry-mirrors'):
+        logging.info(
+            'Registry content for %s has been removed, updating that file' %
+            DOCKER_CONFIG_PATH
+        )
+        return write_registries_conf(
+            registries_conf, DOCKER_CONFIG_PATH, 'docker'
+        )
+    elif modified:
+        os.unlink(DOCKER_CONFIG_PATH)
+        logging.info(
+            '%s removed, empty content after removing registry info' %
+            DOCKER_CONFIG_PATH
+        )
+
+
+# ----------------------------------------------------------------------------
+def write_registries_conf(registries_conf, container_path, container_name):
+    """Write registries_conf content to container_path."""
+    try:
+        if container_name == 'podman':
+            with open(container_path, 'w') as registries_conf_file:
+                toml.dump(registries_conf, registries_conf_file)
+        if container_name == 'docker':
+            with open(container_path, 'w') as registries_conf_file:
+                json.dump(registries_conf, registries_conf_file)
+        logging.info('File %s updated' % container_path)
+        return True
+    except IOError as error:
+        logging.info(str(error))
+        action = 'open'
+    except TypeError:
+        action = 'write'
+
+    logging.error('Could not %s %s' % (action, container_path))
 
 
 # ----------------------------------------------------------------------------
@@ -2042,3 +2279,118 @@ def __mv_file_backup(filename):
     message = 'File not preserved' if failed else 'File preserved'
     logging.info(message)
     return failed
+
+
+# ----------------------------------------------------------------------------
+def __set_registries_conf_podman(private_registry_fqdn):
+    """Set the registry search order for Podman."""
+    registries_conf = {}
+    if os.path.exists(REGISTRIES_CONF_PATH):
+        registries_conf, failed = get_registry_conf_file(
+            REGISTRIES_CONF_PATH, 'podman'
+        )
+        if failed:
+            return False
+
+    public_registry_fqdn = 'registry.suse.com'
+    unqualified_search_reg = []
+    unqualified_search_reg = registries_conf.get(
+        'unqualified-search-registries', []
+    )
+    modified = False
+    if unqualified_search_reg:
+        priv_index = -1
+        pub_index = -1
+        if private_registry_fqdn in unqualified_search_reg:
+            priv_index = unqualified_search_reg.index(private_registry_fqdn)
+        if public_registry_fqdn in unqualified_search_reg:
+            pub_index = unqualified_search_reg.index(public_registry_fqdn)
+
+        if not priv_index == 0 or not pub_index == 1:
+            if priv_index > 0:
+                unqualified_search_reg.pop(priv_index)
+            if pub_index > 0:
+                unqualified_search_reg.pop(pub_index)
+            modified = True
+
+    if modified or not unqualified_search_reg:
+        [
+            unqualified_search_reg.insert(0, fqdn) for fqdn in
+            [public_registry_fqdn, private_registry_fqdn]
+        ]
+
+    private_registry = {'location': private_registry_fqdn, 'insecure': False}
+    # a list of dictionaries
+    registry_mirrors = registries_conf.get('registry', [])
+    present = False
+    if private_registry in registry_mirrors:
+        # exact match
+        present = True
+    else:
+        for registry_mirror in registry_mirrors:
+            if registry_mirror.get('location', {}) == private_registry_fqdn:
+                present = True
+                if registry_mirror.get('insecure', True):
+                    # FQDN is correct
+                    # the insecure content is not correct
+                    registry_mirror['insecure'] = False
+                    modified = True
+
+    if not present:
+        registry_mirrors.append(private_registry)
+        modified = True
+
+    registries_conf['unqualified-search-registries'] = unqualified_search_reg
+    registries_conf['registry'] = registry_mirrors
+
+    if modified:
+        logging.info(
+            'Content for %s has changed, updating the file' %
+            REGISTRIES_CONF_PATH
+        )
+        return write_registries_conf(
+            registries_conf, REGISTRIES_CONF_PATH, 'podman'
+        )
+
+
+# ----------------------------------------------------------------------------
+def __set_registries_conf_docker(private_registry_fqdn):
+    # search is disabled for Docker server side for private registry
+    public_registry_fqdn = 'https://registry.suse.com'
+    docker_cfg_json = {}
+    registry_mirrors = []
+    os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
+    if os.path.exists(DOCKER_CONFIG_PATH):
+        docker_cfg_json, failed = get_registry_conf_file(
+            DOCKER_CONFIG_PATH, 'docker'
+        )
+        if failed:
+            return False
+
+    registry_mirrors = docker_cfg_json.get('registry-mirrors', [])
+    modified = False
+    if registry_mirrors:
+        priv_index = -1
+        pub_index = -1
+
+        if private_registry_fqdn in registry_mirrors:
+            priv_index = registry_mirrors.index(private_registry_fqdn)
+        if public_registry_fqdn in registry_mirrors:
+            pub_index = registry_mirrors.index(public_registry_fqdn)
+
+        if not priv_index == 0 or not pub_index == 1:
+            if priv_index > 0:
+                registry_mirrors.pop(priv_index)
+            if pub_index > 0:
+                registry_mirrors.pop(pub_index)
+            modified = True
+
+    if modified or not registry_mirrors:
+        [
+            registry_mirrors.insert(0, fqdn) for fqdn in
+            [public_registry_fqdn, private_registry_fqdn]
+        ]
+        docker_cfg_json['registry-mirrors'] = registry_mirrors
+        return write_registries_conf(
+            docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
+        )
