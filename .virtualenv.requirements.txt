@@ -2,3 +2,4 @@ lxml
 requests
 dnspython
 M2Crypto
+toml
