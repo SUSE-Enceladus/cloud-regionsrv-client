@@ -3243,6 +3243,12 @@ def test_remove_service(
     mock_logging.info.not_called()
 
 
+@patch('socket.create_connection')
+def test_network_access_error(mock_socket_create_connection):
+    mock_socket_create_connection.side_effect = OSError
+    assert utils.has_network_access_by_ip_address('some_ip') is False
+
+
 @patch('cloudregister.registerutils.has_network_access_by_ip_address')
 def test_has_ipv4_access(mock_has_network_access):
     mock_has_network_access.return_value = True
