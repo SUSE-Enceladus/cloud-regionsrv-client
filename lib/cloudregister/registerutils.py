@@ -47,7 +47,7 @@ REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
-BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
+PROFILE_LOCAL_PATH = '/etc/profile.local'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 
@@ -630,13 +630,13 @@ def set_container_engines_env_vars():
         'DOCKER_CONFIG': os.path.dirname(REGISTRY_CREDENTIALS_PATH)
     }
     bashrc_local_lines = []
-    if os.path.exists(BASHRC_LOCAL_PATH):
+    if os.path.exists(PROFILE_LOCAL_PATH):
         try:
-            with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+            with open(PROFILE_LOCAL_PATH, 'r') as bashrc_local:
                 bashrc_local_lines = bashrc_local.read()
         except OSError as error:
-            logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
-            failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+            logging.info('Could not open %s: %s' % (PROFILE_LOCAL_PATH, error))
+            failed = __mv_file_backup(PROFILE_LOCAL_PATH)
             if failed:
                 return False
 
@@ -697,13 +697,13 @@ def update_bashrc(content, mode):
     """Update the env vars for the container engines
     with the location of the config file to the bashrc local file."""
     try:
-        with open(BASHRC_LOCAL_PATH, mode) as bashrc_file:
+        with open(PROFILE_LOCAL_PATH, mode) as bashrc_file:
             bashrc_file.write(content)
-        logging.info('%s updated' % BASHRC_LOCAL_PATH)
+        logging.info('%s updated' % PROFILE_LOCAL_PATH)
         return True
     except OSError as error:
-        logging.error('Could not update %s: %s' % (BASHRC_LOCAL_PATH, error))
-        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        logging.error('Could not update %s: %s' % (PROFILE_LOCAL_PATH, error))
+        failed = __mv_file_backup(PROFILE_LOCAL_PATH)
         return not failed
 
 
@@ -817,8 +817,8 @@ def same_registry_auth_content(content, smt):
 def unset_env_vars():
     """Remove the registry environment variables."""
     env_vars = ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
-    if not os.path.exists(BASHRC_LOCAL_PATH):
-        logging.info('%s file does not exist' % BASHRC_LOCAL_PATH)
+    if not os.path.exists(PROFILE_LOCAL_PATH):
+        logging.info('%s file does not exist' % PROFILE_LOCAL_PATH)
         # remove the enviroment variables from the env, if present
         return True
 
@@ -835,7 +835,7 @@ def unset_env_vars():
             # we could access the bashrc local file and
             # no env vars were found
             logging.info(
-                'Environment variables not present in %s' % BASHRC_LOCAL_PATH
+                'Environment variables not present in %s' % PROFILE_LOCAL_PATH
             )
             succeeded = True
         elif preserved_failed:
@@ -849,7 +849,7 @@ def unset_env_vars():
 # ----------------------------------------------------------------------------
 def clean_bashrc_local(env_vars):
     """
-    Clean the registry env vars, if any, from the BASHRC_LOCAL_PATH file
+    Clean the registry env vars, if any, from the PROFILE_LOCAL_PATH file
 
     :returns:
         - bashrc_local_new_lines: list - the new lines after cleaning
@@ -860,11 +860,11 @@ def clean_bashrc_local(env_vars):
     """
     bashrc_local_lines = []
     try:
-        with open(BASHRC_LOCAL_PATH, 'r') as bashrc_local:
+        with open(PROFILE_LOCAL_PATH, 'r') as bashrc_local:
             bashrc_local_lines = bashrc_local.readlines()
     except OSError as error:
-        logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
-        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        logging.info('Could not open %s: %s' % (PROFILE_LOCAL_PATH, error))
+        failed = __mv_file_backup(PROFILE_LOCAL_PATH)
         return [], False, failed, True
 
     bashrc_local_new_lines = []
