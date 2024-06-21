@@ -31,6 +31,7 @@ import subprocess
 import sys
 import time
 import toml
+import yaml
 
 from lxml import etree
 from pathlib import Path
@@ -50,6 +51,7 @@ REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 BASHRC_LOCAL_PATH = '/etc/bash.bashrc.local'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
+SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -656,10 +658,15 @@ def set_container_engines_env_vars():
 # ----------------------------------------------------------------------------
 def set_registries_conf(registry_fqdn):
     """Add the registry container engines search configuration."""
-    return (
+    container_engines_conf_set = (
         __set_registries_conf_podman(registry_fqdn) and
         __set_registries_conf_docker(registry_fqdn)
     )
+    suma_registry_conf_set = True
+    if is_suma_instance():
+        suma_registry_conf_set = __set_registry_fqdn_suma(registry_fqdn)
+
+    return container_engines_conf_set and suma_registry_conf_set
 
 
 # ----------------------------------------------------------------------------
@@ -2027,6 +2034,41 @@ def has_network_access_by_ip_address(server_ip):
     return True
 
 
+# ----------------------------------------------------------------------------
+def is_suma_instance():
+    """Return True if there is a match for SUMA and SLE-Micro products,
+    otherwise False."""
+    products = glob.glob('/etc/products.d/*.prod')
+    num_matches = 0
+    suma_prods = [
+        '/etc/products.d/suse-manager-server.prod',
+        '/etc/products.d/sle-micro.prod'
+    ]
+    for product in products:
+        if product.lower() in suma_prods:
+            num_matches += 1
+
+    return num_matches == len(suma_prods)
+
+
+# ----------------------------------------------------------------------------
+def get_suma_registry_content():
+    """Return the content of the SUMA_REGISTRY_CONF_PATH."""
+    suma_reg_config_data = {}
+    try:
+        with open(SUMA_REGISTRY_CONF_PATH, 'r') as suma_reg_config:
+            suma_reg_config_data = yaml.safe_load(suma_reg_config)
+        return suma_reg_config_data, False
+    except IOError as error:
+        logging.info(str(error))
+        action = 'open'
+    except yaml.YAMLError:
+        action = 'parse'
+
+    logging.info('Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH))
+    return {}, True
+
+
 # Private
 # ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):
@@ -2394,3 +2436,41 @@ def __set_registries_conf_docker(private_registry_fqdn):
         return write_registries_conf(
             docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
         )
+
+
+# ----------------------------------------------------------------------------
+def __set_registry_fqdn_suma(private_registry_fqdn):
+    """Set the registry FQDN for SUMa SUMA_REGISTRY_CONF_PATH file."""
+    suma_yaml_content = {}
+    os.makedirs(os.path.dirname(SUMA_REGISTRY_CONF_PATH), exist_ok=True)
+    suma_yaml_content, failed_to_read = get_suma_registry_content()
+    if failed_to_read:
+        return False
+
+    if suma_yaml_content.get('registry', {}) != private_registry_fqdn:
+        # registry value does not match the update server registry FQDN
+        # or there is no registry entry
+        # set the content
+        suma_yaml_content.update({'registry': private_registry_fqdn})
+        return __write_suma_conf(suma_yaml_content)
+
+    # the registry value inside the file has the update server registry FQDN
+    return True
+
+
+# ----------------------------------------------------------------------------
+def __write_suma_conf(updated_content):
+    """Update the SUMA SUMA_REGISTRY_CONF_PATH file with the new content."""
+    try:
+        with open(SUMA_REGISTRY_CONF_PATH, 'w') as suma_config:
+            yaml.dump(updated_content, suma_config, default_flow_style=False)
+        logging.info('%s updated' % SUMA_REGISTRY_CONF_PATH)
+        return True
+    except IOError as error:
+        logging.info(str(error))
+        action = 'open'
+    except yaml.YAMLError:
+        action = 'parse'
+
+    message = 'Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH)
+    logging.info(message)
