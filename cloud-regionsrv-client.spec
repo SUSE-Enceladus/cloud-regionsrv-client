@@ -62,8 +62,6 @@ BuildRequires:  python3-zypp-plugin
 BuildRequires:  systemd-rpm-macros
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
-BuildArch:      noarch
-
 %description
 Obtain cloud SMT server information from the region server configured in
 /etc/regionserverclnt.cfg
