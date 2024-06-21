@@ -547,31 +547,23 @@ def get_registry_credentials(set_new):
     # - None, meaning opening the file suceeded
     # - 0, meaning opening the file failed but preserving succeeded
     # - <returncode> of the op or -1, meaning preserving it failed
-    file_error = True
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
+        return config_json, status
     except OSError as error:
         logging.info(str(error))
         action = 'open'
     except json.decoder.JSONDecodeError:
         action = 'parse'
-    else:
-        file_error = False
 
-    if file_error:
-        error_msg = 'Unable to %s existing %s, preserving file as %s.bak' % (
-            action, REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-        )
-        if set_new:
-            error_msg += ', writing new credentials'
-        logging.info(error_msg)
-        mv_file_cmd = 'mv -Z {} {}.bak'.format(
-            REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-        ).split()
-        status = exec_subprocess(mv_file_cmd)
-        message = 'File not preserved.' if status else 'File preserved.'
-        logging.info(message)
+    error_msg = 'Unable to %s existing %s' % (
+        action, REGISTRY_CREDENTIALS_PATH
+    )
+    if set_new:
+        error_msg += ', writing new credentials'
+    logging.info(error_msg)
+    status = __create_file_backup(REGISTRY_CREDENTIALS_PATH)
 
     return config_json, status
 
@@ -636,7 +628,7 @@ def set_container_engines_env_vars():
                 bashrc_local_lines = bashrc_local.read()
         except OSError as error:
             logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
-            failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+            failed = __create_file_backup(BASHRC_LOCAL_PATH)
             if failed:
                 return False
 
@@ -678,17 +670,8 @@ def get_registry_conf_file(container_path, container):
     except json.decoder.JSONDecodeError:
         action = 'parse'
 
-    logging.info(
-        'Could not %s %s, preserving file as %s.bak' % (
-            action, container_path, container_path
-        )
-    )
-    mv_file_cmd = 'mv -Z {} {}.bak'.format(
-        container_path, container_path
-    ).split()
-    failed = exec_subprocess(mv_file_cmd)
-    message = 'File not preserved.' if failed else 'File preserved.'
-    logging.info(message)
+    logging.info('Could not %s %s' % (action, container_path))
+    failed = __create_file_backup(container_path)
     return {}, failed
 
 
@@ -703,7 +686,7 @@ def update_bashrc(content, mode):
         return True
     except OSError as error:
         logging.error('Could not update %s: %s' % (BASHRC_LOCAL_PATH, error))
-        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        failed = __create_file_backup(BASHRC_LOCAL_PATH)
         return not failed
 
 
@@ -780,17 +763,7 @@ def clean_registry_auth():
             )
     except AttributeError:
         logging.error('The entry for "auths" key is not a dictionary')
-        logging.info(
-            'Preserving file %s as %s.bak' % (
-                REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
-            )
-        )
-        mv_file_cmd = 'mv -Z {} {}.bak'.format(
-            REGISTRATION_DATA_DIR, REGISTRY_CREDENTIALS_PATH
-        )
-        status = exec_subprocess(mv_file_cmd)
-        message = 'File not preserved.' if status else 'File preserved.'
-        logging.info(message)
+        __create_file_backup(BASHRC_LOCAL_PATH)
 
 
 # ----------------------------------------------------------------------------
@@ -864,7 +837,7 @@ def clean_bashrc_local(env_vars):
             bashrc_local_lines = bashrc_local.readlines()
     except OSError as error:
         logging.info('Could not open %s: %s' % (BASHRC_LOCAL_PATH, error))
-        failed = __mv_file_backup(BASHRC_LOCAL_PATH)
+        failed = __create_file_backup(BASHRC_LOCAL_PATH)
         return [], False, failed, True
 
     bashrc_local_new_lines = []
@@ -2271,7 +2244,8 @@ def __generate_registry_auth_token(username=None, password=None):
 
 
 # ----------------------------------------------------------------------------
-def __mv_file_backup(filename):
+def __create_file_backup(filename):
+    """Create a backup of the file filename, return the status of the cmd."""
     message = ('Preserving file as %s.bak' % filename)
     logging.info(message)
     mv_file_cmd = 'mv -Z {} {}.bak'.format(filename, filename).split()

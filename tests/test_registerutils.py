@@ -3368,20 +3368,20 @@ def test_setup_registry_content(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_content_json_error_preserve_fail(
     mock_json_load, mock_logging, mock_os_makedirs,
-    mock_os_path_exists, mock_exec_subprocess
+    mock_os_path_exists, mock_create_file_backup
 ):
     mock_os_path_exists.return_value = [False, True]
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
-    mock_exec_subprocess.return_value = 1
+    mock_create_file_backup.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
-        mock_exec_subprocess.return_value = 1
+        mock_create_file_backup.return_value = 1
         assert utils.setup_registry(
             'registry-supercloud.susecloud.net',
             'login',
@@ -3391,32 +3391,25 @@ def test_setup_registry_content_json_error_preserve_fail(
         log_calls = [
             call(
                 'Unable to parse existing /etc/containers/config.json, '
-                'preserving file as /etc/containers/config.json.bak, '
                 'writing new credentials'
-            ),
-            call('File not preserved.')
+            )
         ]
         assert mock_logging.info.call_args_list == log_calls
-        mock_exec_subprocess.assert_called_once_with(
-            ['mv', '-Z',
-             '/etc/containers/config.json',
-             '/etc/containers/config.json.bak']
-        )
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 def test_setup_registry_content_open_file_error(
     mock_logging, mock_os_makedirs,
-    mock_os_path_exists, mock_exec_subprocess
+    mock_os_path_exists, mock_create_file_backup
 ):
     mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         mock_open.side_effect = OSError('oh no ! an error')
-        mock_exec_subprocess.return_value = 1
+        mock_create_file_backup.return_value = 1
         assert utils.setup_registry(
             'registry-supercloud.susecloud.net',
             'login',
@@ -3427,17 +3420,10 @@ def test_setup_registry_content_open_file_error(
             call('oh no ! an error'),
             call(
                 'Unable to open existing /etc/containers/config.json, '
-                'preserving file as /etc/containers/config.json.bak, '
                 'writing new credentials'
-            ),
-            call('File not preserved.')
+            )
         ]
         assert mock_logging.info.call_args_list == log_calls
-        mock_exec_subprocess.assert_called_once_with(
-            ['mv', '-Z',
-             '/etc/containers/config.json',
-             '/etc/containers/config.json.bak']
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -3507,7 +3493,7 @@ export DOCKER_CONFIG=/etc/containers
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.path.exists')
 def test_set_container_engines_env_vars_file_error(
@@ -3598,7 +3584,7 @@ export DOCKER_CONFIG=/etc/containers
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.__mv_file_backup')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.logging')
 def test_clean_bashrc_local_open_error(mock_logging, mock_mv_file_backup):
     mock_mv_file_backup.return_value = 0
@@ -3703,7 +3689,7 @@ def test_clean_registry_auth_no_registry_entry_in_file(
 
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.set_registries_conf')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.__generate_registry_auth_token')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
@@ -3713,7 +3699,7 @@ def test_clean_registry_auth_no_registry_entry_in_file(
 def test_clean_registry_auth_no_registry_entry_in_file_wrong_dict_content(
     mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
     mock_logging, mock_os_path_exists, mock_generate_registry_auth_token,
-    mock_exec_subprocess, mock_set_Registries_conf
+    mock_create_file_backup, mock_set_registries_conf
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3726,24 +3712,17 @@ def test_clean_registry_auth_no_registry_entry_in_file_wrong_dict_content(
     mock_get_smt_from_store.return_value = smt_server
     mock_generate_registry_auth_token.return_value = 'auth_token'
     mock_json_load.return_value = {'auths': 'bar'}
-    mock_exec_subprocess.return_value = 0
+    mock_create_file_backup.return_value = 0
     with patch('builtins.open', create=True) as mock_open:
         assert utils.clean_registry_auth() is None
         mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
-        assert mock_logging.info.call_args_list == [
-            call(
-                'Preserving file /etc/containers/config.json as '
-                '/etc/containers/config.json.bak'
-            ),
-            call('File preserved.')
-        ]
         mock_logging.error.assert_called_once_with(
             'The entry for "auths" key is not a dictionary'
         )
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
@@ -3753,7 +3732,7 @@ def test_clean_registry_auth_no_registry_entry_in_file_wrong_dict_content(
 def test_clean_registry_content_json_error(
     mock_json_load, mock_get_registered_smt, mock_get_smt_from_store,
     mock_logging, mock_os_path_exists, mock_get_credentials,
-    mock_exec_subprocess
+    mock_create_file_backup
 ):
     smt_data_ipv46 = dedent('''\
       <smtInfo fingerprint="99:88:77:66"
@@ -3766,16 +3745,12 @@ def test_clean_registry_content_json_error(
     mock_get_smt_from_store.return_value = smt_server
     mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
     mock_get_credentials.return_value = ('SCC_login', 'password')
-    mock_exec_subprocess.return_value = 1
+    mock_create_file_backup.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
         utils.clean_registry_auth()
         mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
         log_calls = [
-            call(
-                'Unable to parse existing /etc/containers/config.json, '
-                'preserving file as /etc/containers/config.json.bak'
-            ),
-            call('File not preserved.')
+            call('Unable to parse existing /etc/containers/config.json')
         ]
         assert mock_logging.info.call_args_list == log_calls
 
@@ -4171,15 +4146,15 @@ def test__set_registries_conf_podman_content_not_OK_wrong_order_file_error(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.toml.load')
 @patch('cloudregister.registerutils.os.path.exists')
 def test__set_registries_conf_podman_content_not_OK_read_error_not_preserved(
-    mock_os_path_exists, mock_toml_load, mock_logging, mock_exec_subprocess
+    mock_os_path_exists, mock_toml_load, mock_logging, mock_create_backup
 ):
     mock_os_path_exists.return_value = True
-    mock_exec_subprocess.return_value = 1
+    mock_create_backup.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
         mock_open.side_effect = OSError('oh no !')
         assert utils.__set_registries_conf_podman(
@@ -4190,10 +4165,7 @@ def test__set_registries_conf_podman_content_not_OK_read_error_not_preserved(
         ]
         assert mock_logging.info.call_args_list == [
             call('oh no !'),
-            call(
-                'Could not open /etc/containers/registries.conf, '
-                'preserving file as /etc/containers/registries.conf.bak'),
-            call('File not preserved.')
+            call('Could not open /etc/containers/registries.conf')
         ]
 
 
@@ -4624,7 +4596,7 @@ def test_clean_registries_conf_docker_file_clean_content_no_smt(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__create_file_backup')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.load')
 def test_get_registry_config_file_docker_not_parsed(
@@ -4638,17 +4610,8 @@ def test_get_registry_config_file_docker_not_parsed(
         )
         mock_json_load.assert_called_once()
         assert mock_logging.info.call_args_list == [
-            call(
-                'Could not parse /etc/docker/daemon.json, '
-                'preserving file as /etc/docker/daemon.json.bak'
-            ),
-            call('File preserved.')
+            call('Could not parse /etc/docker/daemon.json')
         ]
-        mock_exec_subprocess.assert_called_once_with(
-            ['mv', '-Z',
-             '/etc/docker/daemon.json',
-             '/etc/docker/daemon.json.bak']
-        )
 
 
 # ---------------------------------------------------------------------------
