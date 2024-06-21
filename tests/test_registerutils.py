@@ -3519,7 +3519,7 @@ def test_set_container_engines_env_vars_file_error(
         mock_open.side_effect = OSError('an error !')
         assert utils.set_container_engines_env_vars() is False
         assert mock_logging.info.call_args_list == [
-            call('Could not open /etc/bash.bashrc.local: an error !')
+            call('Could not open /etc/profile.local: an error !')
         ]
 
 
@@ -3531,9 +3531,9 @@ def test_update_bashrc_open_file_OK(
 
     with patch('builtins.open', create=True) as mock_open:
         assert utils.update_bashrc({'foo': 'bar'}, 'w')
-        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'w')
+        mock_open.assert_called_once_with('/etc/profile.local', 'w')
         mock_logging.info.assert_called_once_with(
-            '/etc/bash.bashrc.local updated'
+            '/etc/profile.local updated'
         )
 
 
@@ -3548,7 +3548,7 @@ def test_unset_env_vars_no_env_vars_in_file(
     mock_clean_bashrc_local.return_value = [], False, False, False
     assert utils.unset_env_vars() is True
     mock_logging.info.assert_called_once_with(
-        'Environment variables not present in /etc/bash.bashrc.local'
+        'Environment variables not present in /etc/profile.local'
     )
 
 
@@ -3612,9 +3612,9 @@ def test_clean_bashrc_local_open_error(mock_logging, mock_mv_file_backup):
         assert not modified
         assert not keep_failed
         assert mv
-        mock_mv_file_backup.assert_called_once_with('/etc/bash.bashrc.local')
+        mock_mv_file_backup.assert_called_once_with('/etc/profile.local')
         mock_logging.info.assert_called_once_with(
-            'Could not open /etc/bash.bashrc.local: oh no !'
+            'Could not open /etc/profile.local: oh no !'
         )
 
 
@@ -3912,9 +3912,9 @@ def test_update_bashrc_open_file_error(mock_logging):
     with patch('builtins.open', create=True) as mock_open:
         mock_open.side_effect = OSError('oh no !')
         utils.update_bashrc({'foo': 'bar'}, 'a')
-        mock_open.assert_called_once_with('/etc/bash.bashrc.local', 'a')
+        mock_open.assert_called_once_with('/etc/profile.local', 'a')
         mock_logging.error.assert_called_once_with(
-            'Could not update /etc/bash.bashrc.local: oh no !'
+            'Could not update /etc/profile.local: oh no !'
         )
 
 
