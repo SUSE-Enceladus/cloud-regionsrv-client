@@ -920,24 +920,22 @@ def clean_registries_conf_podman():
                     unqualified_search_reg.index(private_registry_fqdn)
                 )
                 modified = True
-            if pub_registry_fqdn in unqualified_search_reg:
-                unqualified_search_reg.pop(
-                    unqualified_search_reg.index(pub_registry_fqdn)
-                )
-                modified = True
         else:
             new_unq_search_reg = []
             for fqdn in unqualified_search_reg:
-                if (
-                    ('registry' in fqdn and 'susecloud.net' in fqdn) or
-                    pub_registry_fqdn in fqdn
-                ):
+                if 'registry' in fqdn and 'susecloud.net' in fqdn:
                     modified = True
                     continue
                 new_unq_search_reg.append(fqdn)
 
             if modified:
                 unqualified_search_reg = new_unq_search_reg
+
+        if pub_registry_fqdn in unqualified_search_reg:
+            unqualified_search_reg.pop(
+                unqualified_search_reg.index(pub_registry_fqdn)
+            )
+            modified = True
 
         if modified:
             registries_conf['unqualified-search-registries'] = \
