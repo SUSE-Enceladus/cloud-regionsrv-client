@@ -710,13 +710,15 @@ def update_bashrc(content, mode):
 # ----------------------------------------------------------------------------
 def clean_registry_setup():
     """Remove the data previously set to make the registry work."""
-    clean_registry_auth()
+    smt = get_smt_from_store(__get_registered_smt_file_path())
+    private_registry_fqdn = smt.get_registry_FQDN() if smt else ''
+    clean_registry_auth(private_registry_fqdn)
     unset_env_vars()
-    clean_registries_conf()
+    clean_registries_conf(private_registry_fqdn)
 
 
 # ----------------------------------------------------------------------------
-def clean_registry_auth():
+def clean_registry_auth(registry_fqdn):
     """Clean the auth token from the config json file."""
     if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
         logging.info('Credentials file does not exist. Nothing to do')
@@ -741,10 +743,8 @@ def clean_registry_auth():
     # we could open the credentials file
     # and it is not empty
     # unset the registry credentials
-    entry = None
-    smt = get_smt_from_store(__get_registered_smt_file_path())
     try:
-        if same_registry_auth_content(config_json, smt):
+        if same_registry_auth_content(config_json, registry_fqdn):
             # if the content of the registry auth file is only
             # our auth info, remove the file
             logging.info(
@@ -754,11 +754,10 @@ def clean_registry_auth():
             os.unlink(REGISTRY_CREDENTIALS_PATH)
             return True
 
-        if smt and smt.get_registry_FQDN():
+        if registry_fqdn:
             logging.info(
-                'Unsetting the auth entry for %s' % smt.get_registry_FQDN()
+                'Unsetting the auth entry for %s' % registry_fqdn
             )
-            entry = smt.get_registry_FQDN()
         else:
             logging.info('Unsetting the auth entry based on the token')
             auth_token = __generate_registry_auth_token()
@@ -766,9 +765,9 @@ def clean_registry_auth():
             entry = [entry for entry, auth in entries
                      if auth == auth_token and 'registry' in entry and
                      'susecloud.net' in entry]
-            entry = ''.join(entry)
+            registry_fqdn = ''.join(entry)
 
-        if config_json.get('auths', {}).pop(entry, {}):
+        if config_json.get('auths', {}).pop(registry_fqdn, {}):
             # file was not empty or
             # file could not be parsed and the remove cmd did not fail
             # there is content worth updating the credentials file
@@ -794,17 +793,15 @@ def clean_registry_auth():
 
 
 # ----------------------------------------------------------------------------
-def same_registry_auth_content(content, smt):
+def same_registry_auth_content(content, registry_fqdn):
     """Check if the registry auth content contains only SUSE registry info."""
     auth_token = __generate_registry_auth_token()
     one_key = len(content.keys()) == 1
-    if smt and smt.get_registry_FQDN():
-        expected_content = {'auths': {smt.get_registry_FQDN(): auth_token}}
+    if registry_fqdn:
+        expected_content = {'auths': {registry_fqdn: auth_token}}
         different_auth_token = False
         if one_key:
-            different_auth_token = content.get('auths', {}).get(
-                smt.get_registry_FQDN()
-            )
+            different_auth_token = content.get('auths', {}).get(registry_fqdn)
 
         # if that is True is safe to remove the file
         return content == expected_content or different_auth_token
@@ -881,14 +878,14 @@ def clean_bashrc_local(env_vars):
 
 
 # ----------------------------------------------------------------------------
-def clean_registries_conf():
+def clean_registries_conf(registry_fqdn):
     """Clean up the registry content from Podman and/or Docker config files."""
-    clean_registries_conf_podman()
-    clean_registries_conf_docker()
+    clean_registries_conf_podman(registry_fqdn)
+    clean_registries_conf_docker(registry_fqdn)
 
 
 # ----------------------------------------------------------------------------
-def clean_registries_conf_podman():
+def clean_registries_conf_podman(private_registry_fqdn):
     """Clean up the registry content from the REGISTRIES_CONF_PATH file."""
     if not os.path.exists(REGISTRIES_CONF_PATH):
         return True
@@ -911,10 +908,8 @@ def clean_registries_conf_podman():
         'unqualified-search-registries', []
     )
     pub_registry_fqdn = 'registry.suse.com'
-    smt = get_smt_from_store(__get_registered_smt_file_path())
     if unqualified_search_reg:
-        if smt and smt.get_registry_FQDN():
-            private_registry_fqdn = smt.get_registry_FQDN()
+        if private_registry_fqdn:
             if private_registry_fqdn in unqualified_search_reg:
                 unqualified_search_reg.pop(
                     unqualified_search_reg.index(private_registry_fqdn)
@@ -945,7 +940,7 @@ def clean_registries_conf_podman():
 
     registries = registries_conf.get('registry', [])
     if registries:
-        if smt and smt.get_registry_FQDN():
+        if private_registry_fqdn:
             private_registry = {
                 'location': private_registry_fqdn,
                 'insecure': False
@@ -989,7 +984,7 @@ def clean_registries_conf_podman():
 
 
 # ----------------------------------------------------------------------------
-def clean_registries_conf_docker():
+def clean_registries_conf_docker(private_registry_fqdn):
     """Clean up the registry content from the DOCKER_CONFIG_PATH file."""
     if not os.path.exists(DOCKER_CONFIG_PATH):
         return True
@@ -1003,17 +998,12 @@ def clean_registries_conf_docker():
     if not registries_conf:
         return True
 
-    smt = get_smt_from_store(__get_registered_smt_file_path())
-    private_fqdn = None
-    if smt and smt.get_registry_FQDN():
-        private_fqdn = smt.get_registry_FQDN()
-
     modified = False
     registry_mirrors = registries_conf.get('registry-mirrors', [])
-    if private_fqdn:
-        if private_fqdn in registry_mirrors:
+    if private_registry_fqdn:
+        if private_registry_fqdn in registry_mirrors:
             registry_mirrors.pop(
-                registry_mirrors.index(private_fqdn)
+                registry_mirrors.index(private_registry_fqdn)
             )
             modified = True
 
