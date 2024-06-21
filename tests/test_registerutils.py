@@ -974,6 +974,7 @@ def test_fetch_smt_data_api_answered(
     ]
 
 
+@patch('socket.create_connection')
 @patch('cloudregister.registerutils.ipaddress.ip_address')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
@@ -984,7 +985,8 @@ def test_fetch_smt_data_api_no_valid_ip(
     mock_time_sleep,
     mock_os_path_isfile,
     mock_request_get,
-    mock_ipaddress_ip_address
+    mock_ipaddress_ip_address,
+    mock_socket_create_connection
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
@@ -1005,6 +1007,7 @@ def test_fetch_smt_data_api_no_valid_ip(
     response2.text = smt_xml
     mock_request_get.side_effect = [response2, response2]
     mock_ipaddress_ip_address.side_effect = ValueError('foo')
+    mock_socket_create_connection.side_effect = OSError('Network unreachable')
     smt_data = utils.fetch_smt_data(cfg, None)
     assert etree.tostring(smt_data, encoding='utf-8') == smt_xml.encode()
 
