@@ -15,22 +15,44 @@ After installing the test package with "zypper in"
   + registration success
     - check log
   + zypper lr has repos
+  + podman search registry-<csp>.susecloud.net returns some value
+  + podman search <registry_name_that_has_access> returns value
+  + podman pull <value_returned_previous_commands> works
+  + docker pull <value_returned_previos_commands> works
 - registercloudguest --clean
   + no error no message
   + zypper lr has no repos
   + nothing in /etc/zypp/credentials.d
   + nothing in /etc/zypp/services.d/
   + no pkl files in /var/cache/cloudregister/
+  + no registry info in /etc/hosts
+  + no registry info in /etc/containers/config.json
+  + no registry info in /etc/containers/registries.conf
+  + no REGISTRY_AUTH_FILE variable in /etc/profile.local
+  + no DOCKER_CONFIG variable in /etc/profile.local
+  + no DOCKER info or no file /etc/docker/daemon.json
 - registercloudguest
   + no error
   + sucees message on stdout
   + $? is 0
   + zypper lr has repos
+  + podman search <registry_name_that_has_access> returns value
+  + podman pull <value_returned_previous_commands> works
+  + docker pull <value_returned_previos_commands> works
+  if SUMa instance:
+    + registry value is 'registry-<csp>.susecloud.net' in
+    /etc/uyuni/uyuni-tools.yaml file
 - registercloudguest --force-new
   + no error
   + success message on stdout
   + $? is 0
   + zypper lr has repos
+  + podman search <registry_name_that_has_access> returns value
+  + podman pull <value_returned_previous_commands> works
+  + docker pull <value_returned_previos_commands> works
+  if SUMa instance:
+    + registry value is 'registry-<csp>.susecloud.net' in
+    /etc/uyuni/uyuni-tools.yaml file
 - rm /etc/pki/trust/anchors/registration_server_*.pem
   + update-ca-certificates
   + registercloudguest --force-new
@@ -78,16 +100,32 @@ After installing the test package with "zypper in"
   + zypper lr has no repos
   + nothing in /etc/zypp/credentials.d
   + nothing in /etc/zypp/services.d/
+  + no registry info in /etc/hosts
+  + no registry info in /etc/containers/config.json
+  + no registry info in /etc/containers/registries.conf
+  + no REGISTRY_AUTH_FILE variable in /etc/profile.local
+  + no DOCKER_CONFIG variable in /etc/profile.local
+  + no DOCKER info or no file /etc/docker/daemon.json
 - registercloudguest -r XXX
   + no error
   + sucees message on stdout
   + $? is 0
   + repos include HA
+  + podman search <registry_name_that_has_access> returns value
+  + podman pull <value_returned_previous_commands> works
+  + docker pull <value_returned_previos_commands> works
+  if SUMa instance:
+    + registry value is 'registry-<csp>.susecloud.net' in
 - registercloudguest --force-new -r XXX
   + no error
   + sucees message on stdout
   + $? is 0
   + repos include HA
+  + podman search <registry_name_that_has_access> returns value
+  + podman pull <value_returned_previous_commands> works
+  + docker pull <value_returned_previos_commands> works
+  if SUMa instance:
+    + registry value is 'registry-<csp>.susecloud.net' in
 - SUSEConnect -p sle-module-public-cloud/$VERSION/x86_64
   + registration successful
   + Cloud based RMT server is the target
