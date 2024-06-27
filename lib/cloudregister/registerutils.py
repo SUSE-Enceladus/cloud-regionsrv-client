@@ -2058,6 +2058,17 @@ def get_suma_registry_content():
 
 # Private
 # ----------------------------------------------------------------------------
+def __get_filecontent_and_backup(file_path, parser=None):
+    """Get the file content in a parser appropriate way, of no parser is set
+    returns a string"""
+
+    has_file = os.path.exists(file_path)
+    if not has_file and parser:
+        return {}
+    elif not has_file:
+        return ''
+
+# ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):
     """Return the configured framework specific plugin module"""
     mod = None
