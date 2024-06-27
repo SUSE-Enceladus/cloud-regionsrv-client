@@ -1,6 +1,6 @@
 DESTDIR=
 PREFIX=
-dirs = etc man src usr
+dirs = etc man usr
 files = Makefile README LICENSE setup.py cloud-regionsrv-client.spec
 
 nv = $(shell rpm -q --specfile --qf '%{NAME}-%{VERSION}|' *.spec | cut -d'|' -f1)
@@ -16,13 +16,8 @@ tar:
 	find "$(nv)" -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 	find "$(nv)" -path "*/lib/cloudregister.egg-info/*" -delete
 	find "$(nv)" -type d -name "cloudregister.egg-info" -delete
-	find "$(nv)" -type f -name cloudguestregistryauth -delete
 	tar -cjf "$(nv).tar.bz2" "$(nv)"
 	rm -rf "$(nv)"
-
-exec:
-	mkdir -p usr/bin
-	gcc  $$(pkg-config --cflags python3) -Wno-unused-result -Wsign-compare -fmessage-length=0 -grecord-gcc-switches -O2 -Wall -D_FORTIFY_SOURCE=2 -fstack-protector-strong -funwind-tables -fasynchronous-unwind-tables -fstack-clash-protection -g -DNDEBUG -fmessage-length=0 -grecord-gcc-switches -g -DOPENSSL_LOAD_CONF -fwrapv -fno-semantic-interposition src/reauth.c $$(pkg-config --libs python3) -o usr/bin/cloudguestregistryauth
 
 install:
 	cp -r $(dirs) "$(DESTDIR)/"

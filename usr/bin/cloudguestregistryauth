@@ -1,0 +1,12 @@
+#!/usr/bin/python
+
+"""
+Totally trivial wrapper to support re-authentication for the registry
+feature.
+
+The script is used in a sudo rule to all the use by a non root user
+"""
+
+from cloudregister.registerutils import get_activations
+
+get_activations()
