@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/sudo /usr/bin/python3
 
 # Copyright (c) 2024, SUSE LLC, All rights reserved.
 #
@@ -20,6 +20,12 @@ feature.
 The script is used in a sudo rule to allow its use by a non root user
 """
 
+import sys
+
 from cloudregister.registerutils import get_activations
 
-get_activations()
+
+if not get_activations():
+    sys.exit('Could not refresh credentials')
+
+print('Credentials refreshed')
