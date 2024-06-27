@@ -42,6 +42,7 @@ Requires:       python3-requests
 Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
 Requires:       regionsrv-certs
+Requires:       sudo
 Requires:       zypper
 BuildRequires:  systemd
 Conflicts:      container-suseconnect
@@ -50,8 +51,6 @@ Conflicts:      container-suseconnect
 %else
 %{?systemd_ordering}
 %endif
-BuildRequires:  gcc
-BuildRequires:  make
 BuildRequires:  python-rpm-macros
 BuildRequires:  python3-M2Crypto
 BuildRequires:  python3-devel
@@ -59,6 +58,7 @@ BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
 BuildRequires:  python3-zypp-plugin
+BuildRequires:  sudo
 BuildRequires:  systemd-rpm-macros
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
@@ -118,6 +118,8 @@ Group:		Productivity/Networking/Web/Servers
 Requires:	cloud-regionsrv-client >= 9.0.0
 Requires:	cloud-regionsrv-client-plugin-azure
 
+BuildArch:      noarch
+
 %description addon-azure
 Enable/Disable Guest Registration for Microsoft Azure
 
@@ -129,20 +131,22 @@ Enable/Disable Guest Registration for Microsoft Azure
 
 %build
 python3 setup.py build
-make exec
 
 %install
 cp -r etc %{buildroot}
 cp -r usr %{buildroot}
-python3 setup.py install --prefix=%{_prefix}  --root=%{buildroot}
+python3 setup.py install --prefix=%{_prefix} --root=%{buildroot}
 # The location of the regionserver certs
 mkdir -p %{buildroot}/usr/lib/regionService/certs
 # The directory for the cache data
 mkdir -p %{buildroot}/var/cache/cloudregister
+# The directory for sudoers
+mkdir -p %{buildroot}/%{_usr}%{_sysconfdir}/sudoers.d
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.service %{buildroot}%{_unitdir}
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.timer %{buildroot}%{_unitdir}
+install -m 644 usr%{_sysconfdir}/sudoers.d/* %{buildroot}/%{_usr}%{_sysconfdir}/sudoers.d
 gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
@@ -187,6 +191,8 @@ fi
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
+%dir %{_usr}%{_sysconfdir}
+%dir %{_usr}%{_sysconfdir}/sudoers.d
 %{_mandir}/man*/*
 # Do not expect the user that needs containers to have root access
 # on the system
@@ -198,6 +204,7 @@ fi
 %{_sbindir}/registercloudguest
 %{_sbindir}/updatesmtcache
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
+%{_usr}%{_sysconfdir}/sudoers.d/*
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*
 %{python3_sitelib}/cloudregister/smt*
