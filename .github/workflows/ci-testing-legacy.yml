@@ -1,4 +1,4 @@
-name: CI-Code-Style
+name: CI-Code-Style-Legacy
 
 on:
   push:
