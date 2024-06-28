@@ -266,7 +266,7 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
-    if not utils.has_network_access_by_ipversion(args.user_smt_ip):
+    if not utils.has_network_access_by_ip_address(args.user_smt_ip):
         error_message = (
             'Connection error: Could not establish a connection to {ip}.'
             'Please, make sure the network configuration supports the '
