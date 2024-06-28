@@ -1,4 +1,4 @@
-#!/usr/bin/sudo /usr/bin/python3
+#!/usr/bin/python3
 
 # Copyright (c) 2024, SUSE LLC, All rights reserved.
 #
@@ -20,12 +20,21 @@ feature.
 The script is used in a sudo rule to allow its use by a non root user
 """
 
+import os
 import sys
 
-from cloudregister.registerutils import get_activations
+from cloudregister.registerutils import (
+    get_activations, exec_subprocess
+)
 
-
-if not get_activations():
-    sys.exit('Could not refresh credentials')
+error_message = 'Could not refresh credentials'
+if os.geteuid():
+    if exec_subprocess(['sudo', sys.argv[0]]):
+        # geteuid is not root and
+        # the command was called with sudo
+        # and failed
+        sys.exit(error_message)
+elif not get_activations():
+    sys.exit(error_message)
 
 print('Credentials refreshed')
