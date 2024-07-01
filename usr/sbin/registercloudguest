@@ -82,34 +82,34 @@ argparse.add_argument(
     default=False,
     help='Force a new registration, for exceptional cases only',
 )
-help_msg='The target update server cert fingerprint. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server cert fingerprint. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fp',
     dest='user_smt_fp',
     help=help_msg
 )
-help_msg='The target update server FQDN. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server FQDN. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fqdn',
     dest='user_smt_fqdn',
     help=help_msg
 )
-help_msg='The target update server IP. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server IP. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-ip',
     dest='user_smt_ip',
     help=help_msg
 )
-help_msg='Email address for product registration'
+help_msg = 'Email address for product registration'
 argparse.add_argument(
     '-e', '--email',
     dest='email',
     help=help_msg
 )
-help_msg='The registration code'
+help_msg = 'The registration code'
 argparse.add_argument(
     '-r', '--regcode',
     dest='reg_code',
@@ -153,7 +153,7 @@ def get_register_cmd():
             # transactional-update command
             if 'ro' in fsoptions.split(','):
                 cmd_name = 'transactional-update'
-                for path in ['/sbin/','/usr/sbin/']:
+                for path in ['/sbin/', '/usr/sbin/']:
                     exec_path = path + cmd_name
                     if os.path.exists(exec_path):
                         register_cmd = exec_path
@@ -275,7 +275,6 @@ def main(args):
             )
             sys.exit(error_message)
 
-
     if args.clean_up and args.force_new_registration:
         msg = '--clean and --force-new are incompatible, use one or the other'
         print(msg, file=sys.stderr)
@@ -324,12 +323,15 @@ def main(args):
 
     # Forced registration or user specified SMT, clear existing registration
     # data
-    if (args.force_new_registration and cached_smt_servers) or args.user_smt_ip:
+    if (
+        (args.force_new_registration and cached_smt_servers)
+        or args.user_smt_ip
+    ):
         if utils.is_zypper_running():
             msg = 'zypper is running: Registration with the update '
-            msg += 'infrastructure is only possible if zypper is not running.\n'
-            msg += 'Please re-run the force registration process after zypper '
-            msg += 'has completed'
+            msg += 'infrastructure is only possible if zypper is not running.'
+            msg += '\nPlease re-run the force registration process '
+            msg += 'after zypper has completed'
             print(msg)
             sys.exit(1)
         cleanup()
@@ -375,13 +377,13 @@ def main(args):
         # servers in a different region.
         # If the user also moved to a new framework registration will be broken
         # due to the instance data.
-        # This code is a safe guard in case a user enabled the service on a BYOS
-        # instance, which is not supposed to be the case or tries
+        # This code is a safe guard in case a user enabled the service on a
+        # BYOSinstance, which is not supposed to be the case or tries
         print('Region change detected:')
         print('\tSystem uses SCC credentials, please re-register the system'
-                     ' to the update infrastrusture in this region\n'
-                     '\tregistercloudguest --clean\n'
-                     '\tregistercloudguest -r YOUR_REG_CODE')
+              ' to the update infrastrusture in this region\n'
+              '\tregistercloudguest --clean\n'
+              '\tregistercloudguest -r YOUR_REG_CODE')
     elif region_change:
         logging.info('Region change detected, registering to new servers')
         cleanup()
@@ -403,7 +405,7 @@ def main(args):
                 ),
                 smt_server
             )
-            cnt +=1
+            cnt += 1
 
     # Check if the target RMT for the registration is alive or if we can
     # find a server that is alive in this region
@@ -452,8 +454,8 @@ def main(args):
                 utils.update_rmt_cert(new_target)
                 break
             else:
-                msg = 'Configured update server is unresponsive. Could not find '
-                msg += 'a replacement update server in this region. '
+                msg = 'Configured update server is unresponsive. Could not '
+                msg += 'find a replacement update server in this region. '
                 msg += 'Possible network configuration issue'
                 logging.error(msg)
                 sys.exit(1)
@@ -585,9 +587,8 @@ def main(args):
                 new_smt_ipv4 = smt_srv.get_ipv4()
                 new_smt_ipv6 = smt_srv.get_ipv6()
                 if (
-                        smt_srv.get_ipv4() != \
-                        registration_target.get_ipv4() and
-                        smt_srv.get_ipv4() not in failed_smts
+                    smt_srv.get_ipv4() != registration_target.get_ipv4()
+                    and smt_srv.get_ipv4() not in failed_smts
                 ):
                     error_msg = 'Registration with %s failed. Trying %s'
                     logging.error(
