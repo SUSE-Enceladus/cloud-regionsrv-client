@@ -4826,6 +4826,15 @@ def test_get_suma_registry_content_error_open_file(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
+def test_get_suma_registry_content__no_file(mock_os_path_exists):
+    mock_os_path_exists.return_value = False
+    result, failed = utils.get_suma_registry_content()
+    assert result == {}
+    assert failed is False
+
+
+# ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.__mv_file_backup')
 @patch('cloudregister.registerutils.logging')
 def test_write_suma_conf_error_open_file(mock_logging, mock_mv):
