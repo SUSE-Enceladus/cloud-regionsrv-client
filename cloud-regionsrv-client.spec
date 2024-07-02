@@ -143,12 +143,12 @@ mkdir -p %{buildroot}/usr/lib/regionService/certs
 # The directory for the cache data
 mkdir -p %{buildroot}/var/cache/cloudregister
 # The directory for sudoers
-mkdir -p %{buildroot}/%{_usr}%{_sysconfdir}/sudoers.d
+mkdir -p %{buildroot}%{_sysconfdir}/sudoers.d
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.service %{buildroot}%{_unitdir}
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.timer %{buildroot}%{_unitdir}
-install -m 644 usr%{_sysconfdir}/sudoers.d/* %{buildroot}/%{_usr}%{_sysconfdir}/sudoers.d
+install -m 644 etc/sudoers.d/* %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
 gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
@@ -193,8 +193,7 @@ fi
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
-%dir %{_usr}%{_sysconfdir}
-%dir %{_usr}%{_sysconfdir}/sudoers.d
+%dir %{_sysconfdir}/sudoers.d
 %{_mandir}/man*/*
 # Do not expect the user that needs containers to have root access
 # on the system
@@ -206,7 +205,7 @@ fi
 %{_sbindir}/registercloudguest
 %{_sbindir}/updatesmtcache
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
-%{_usr}%{_sysconfdir}/sudoers.d/*
+%{_sysconfdir}/sudoers.d/*
 %{python3_sitelib}/cloudregister/__*
 %{python3_sitelib}/cloudregister/reg*
 %{python3_sitelib}/cloudregister/smt*

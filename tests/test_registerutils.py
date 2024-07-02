@@ -4709,13 +4709,15 @@ def test_suma_registry_conf_suma_instance_error_get_suma_content(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.yaml.dump')
 @patch('cloudregister.registerutils.yaml.safe_load')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.makedirs')
 def test_suma_registry_conf_suma_instance_file_exists(
-    _, mock_logging, mock_yaml_safe_load, mock_yaml_dump
+    _, mock_logging, mock_yaml_safe_load, mock_yaml_dump, mock_os_path_exists
 ):
+    mock_os_path_exists.return_value = True
     mock_yaml_safe_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         mock_open.return_value = MagicMock(spec=io.IOBase)
@@ -4737,14 +4739,16 @@ def test_suma_registry_conf_suma_instance_file_exists(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.yaml.dump')
 @patch('cloudregister.registerutils.yaml.safe_load')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.makedirs')
 def test_suma_registry_conf_suma_instance_file_exists_different_fqdn(
-    _, mock_logging, mock_yaml_safe_load, mock_yaml_dump
+    _, mock_logging, mock_yaml_safe_load, mock_yaml_dump, mock_os_path_exists
 ):
     mock_yaml_safe_load.return_value = {'registry': 'not-our-fqdn'}
+    mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         # mock_open.return_value = MagicMock(spec=io.IOBase)
         file_handle = mock_open.return_value.__enter__.return_value
@@ -4764,11 +4768,13 @@ def test_suma_registry_conf_suma_instance_file_exists_different_fqdn(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.yaml.safe_load')
 @patch('cloudregister.registerutils.os.makedirs')
 def test_suma_registry_conf_suma_instance_file_exists_same_fqdn(
-    _, mock_yaml_safe_load
+    _, mock_yaml_safe_load, mock_os_path_exists
 ):
+    mock_os_path_exists.return_value = True
     mock_yaml_safe_load.return_value = {'registry': 'foo.com'}
     with patch('builtins.open', create=True) as mock_open:
         assert utils.__set_registry_fqdn_suma('foo.com')
@@ -4778,11 +4784,13 @@ def test_suma_registry_conf_suma_instance_file_exists_same_fqdn(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.yaml.safe_load')
 def test_get_suma_registry_content_error_yaml(
-    mock_yaml_safe_load, mock_logging
+    mock_yaml_safe_load, mock_logging, mock_os_path_exists
 ):
+    mock_os_path_exists.return_value = True
     mock_yaml_safe_load.side_effect = yaml.YAMLError('some loading error')
     with patch('builtins.open', create=True) as mock_open:
         result, failed = utils.get_suma_registry_content()
@@ -4797,8 +4805,12 @@ def test_get_suma_registry_content_error_yaml(
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.logging')
-def test_get_suma_registry_content_error_open_file(mock_logging):
+def test_get_suma_registry_content_error_open_file(
+    mock_logging, mock_os_path_exists
+):
+    mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         mock_open.side_effect = IOError('opening file error')
         result, failed = utils.get_suma_registry_content()
@@ -4811,6 +4823,15 @@ def test_get_suma_registry_content_error_open_file(mock_logging):
             call('opening file error'),
             call('Could not open /etc/uyuni/uyuni-tools.yaml')
         ]
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.os.path.exists')
+def test_get_suma_registry_content__no_file(mock_os_path_exists):
+    mock_os_path_exists.return_value = False
+    result, failed = utils.get_suma_registry_content()
+    assert result == {}
+    assert failed is False
 
 
 # ---------------------------------------------------------------------------

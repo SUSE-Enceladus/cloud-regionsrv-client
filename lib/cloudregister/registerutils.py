@@ -2039,6 +2039,9 @@ def is_suma_instance():
 def get_suma_registry_content():
     """Return the content of the SUMA_REGISTRY_CONF_PATH."""
     suma_reg_config_data = {}
+    if not os.path.exists(SUMA_REGISTRY_CONF_PATH):
+        return suma_reg_config_data, False
+
     try:
         with open(SUMA_REGISTRY_CONF_PATH, 'r') as suma_reg_config:
             suma_reg_config_data = yaml.safe_load(suma_reg_config)
