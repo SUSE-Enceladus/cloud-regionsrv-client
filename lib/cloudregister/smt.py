@@ -107,7 +107,7 @@ class SMT:
     # --------------------------------------------------------------------
     def get_registry_FQDN(self):
         """Return the fully qualified domain registry name"""
-        return self._registry_fqdn
+        return self._registry_fqdn if hasattr(self, '_registry_fqdn') else ''
 
     # --------------------------------------------------------------------
     def get_name(self):
