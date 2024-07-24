@@ -4,11 +4,16 @@ on: [push]
 
 jobs:
   unit_tests:
-    name: Linter checks
-    runs-on: ubuntu-20.04
+    name: Unit tests for cloud regionsrv client
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.6]
+        python-version: ["3.11"]
+        os: [ubuntu-latest]
+        include:
+          # Use ubuntu 20.04 for python 3.6 (dropped from later versions)
+          - python-version: 3.6
+            os: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v3
@@ -20,9 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
-      - name: Run code checks
-        run: |
-          tox -e check
-          tox -e "unit_py${PY_VER/./_}" -- -n auto
+      - name: Run linter and tests
+        run: tox -e "check,unit_py${PY_VER/./_}"
         env:
           PY_VER: ${{ matrix.python-version }}
