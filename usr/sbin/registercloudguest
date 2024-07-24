@@ -1,0 +1,41 @@
+#!/bin/bash
+# Copyright (c) 2024, SUSE LLC, All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library.
+set -e
+
+# store pid of parent shell
+parent=$PPID
+
+python3 /usr/sbin/registercloudguest.py "$@"
+
+# the parent shell runs with an outdated environment
+# because registercloudguest.py potentially creates
+# an /etc/profile.local env file which is not effective
+# in the parent shell. Thus make sure we open a new
+# shell environment to source and import this data
+if [ -t 0 ] && [ -t 1 ] && [ -t 2 ];then
+    echo "Spawning new login shell..."
+    if [[ "$SUDO_COMMAND" == *"registercloudguest"* ]] && [ -n "$SUDO_USER" ]
+    then
+        # if registercloudguest was called via sudo run
+        # the shell as the user who called sudo
+        sudo -u "$SUDO_USER" bash --login
+    else
+        bash --login
+    fi
+
+    # at the end of the session make sure the user
+    # does not get dropped into a shell that runs
+    # with an improper environment
+    kill -HUP $parent
+fi

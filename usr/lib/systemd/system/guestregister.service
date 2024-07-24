@@ -1,7 +1,7 @@
 [Unit]
 Description=Obtain Cloud update server info and register with the server
 After=ca-certificates.service network-online.target
-Before=cloud-final.service google-startup-scripts.service waagent.service
+Before=getty.target cloud-final.service google-startup-scripts.service waagent.service
 Wants=network-online.target
 
 [Service]

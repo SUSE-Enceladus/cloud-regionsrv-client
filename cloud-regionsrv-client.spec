@@ -137,6 +137,7 @@ Enable/Disable Guest Registration for Microsoft Azure
 python3 setup.py build
 
 %install
+chmod 644 usr/sbin/registercloudguest.py
 cp -r etc %{buildroot}
 cp -r usr %{buildroot}
 python3 setup.py install --prefix=%{_prefix} --root=%{buildroot}
@@ -205,6 +206,7 @@ fi
 %{_sbindir}/createregioninfo
 %{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest
+%{_sbindir}/registercloudguest.py
 %{_sbindir}/updatesmtcache
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
 %{_sysconfdir}/sudoers.d/*
