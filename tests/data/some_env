@@ -1,0 +1,2 @@
+some=data
+REGISTRY_AUTH_FILE=/etc/containers/config.json
