@@ -41,6 +41,29 @@ from cloudregister.smt import SMT # noqa
 CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
 
 
+def test_get_profile_env_var():
+    assert utils.get_profile_env_var(
+        'some', '{0}/some_env'.format(data_path)
+    ) == 'data'
+
+
+def test_is_registry_registered():
+    utils.HOSTSFILE_PATH = '{0}/hosts'.format(data_path)
+    utils.PROFILE_LOCAL_PATH = '{0}/some_env'.format(data_path)
+    # some.box is in the hosts file and REGISTRY_AUTH_FILE is correct
+    assert utils.is_registry_registered('some.box') is True
+
+    # some is not in the hosts file
+    assert utils.is_registry_registered('some') is False
+
+    utils.PROFILE_LOCAL_PATH = '{0}/some_invalid_env'.format(data_path)
+    # some.box is in the hosts file but REGISTRY_AUTH_FILE is bogus
+    assert utils.is_registry_registered('some.box') is False
+
+    utils.HOSTSFILE_PATH = '/etc/hosts'
+    utils.PROFILE_LOCAL_PATH = '/etc/profile.local'
+
+
 @patch('os.path.exists')
 def test_get_available_smt_servers_no_cache(path_exists):
     path_exists.return_value = False

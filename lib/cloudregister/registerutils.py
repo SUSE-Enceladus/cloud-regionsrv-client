@@ -1104,6 +1104,36 @@ def get_credentials_file(update_server, service_name=None):
 
 
 # ----------------------------------------------------------------------------
+def get_hosts():
+    """
+    Read /etc/hosts file into the following structure
+
+    {
+        hostname: {
+            'address': some,
+            'ipv6': true|false,
+            'ipv4': true|false
+        }
+    }
+    """
+    with open(HOSTSFILE_PATH, 'r') as hosts_fd:
+        hostlines = hosts_fd.readlines()
+    hostlines = [line.strip() for line in hostlines
+                 if not line.startswith('#') and line.strip() != '']
+    hosts = {}
+    for line in hostlines:
+        hostnames = line.split('#')[0].split()[1:]
+        hostaddress = line.split('#')[0].split()[0]
+        for hostname in hostnames:
+            hosts[hostname] = {
+                'address': hostaddress,
+                'ipv6': True if '::' in hostaddress else False,
+                'ipv4': False if '::' in hostaddress else True
+            }
+    return hosts
+
+
+# ----------------------------------------------------------------------------
 def get_current_smt():
     """Return the data for the current SMT server.
        The current SMT server is the server against which this client
@@ -1619,6 +1649,36 @@ def import_smt_cert(smt):
             )
 
     return 1
+
+
+# ----------------------------------------------------------------------------
+def get_profile_env_var(varname, profile_file):
+    shell_command = [
+        'bash', '-c', 'source {0}; echo ${1}'.format(
+            profile_file, varname
+        )
+    ]
+    variable_content, error = exec_subprocess(shell_command, True)
+    if not error:
+        return variable_content.decode().strip()
+
+
+# ----------------------------------------------------------------------------
+def is_registry_registered(registry_server_name):
+    """
+    Check if the instance is registered for accessing the
+    container registry server on the update server
+    """
+    # A good registry setup exists if we can find the entry in the
+    # hosts file and a proper environment definition
+    hosts = get_hosts()
+    registry_auth_file = get_profile_env_var(
+        'REGISTRY_AUTH_FILE', PROFILE_LOCAL_PATH
+    )
+    if registry_server_name in hosts.keys() \
+       and registry_auth_file == REGISTRY_CREDENTIALS_PATH:
+        return True
+    return False
 
 
 # ----------------------------------------------------------------------------

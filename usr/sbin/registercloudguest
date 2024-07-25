@@ -46,6 +46,8 @@ from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
+LOG_FILE = '/var/log/cloudregister'
+
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
@@ -162,6 +164,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
             extension.get('extensions'), products, registered, failed
         )
 
+# ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
     utils.clean_registry_setup()
@@ -169,6 +172,21 @@ def cleanup():
     utils.clean_smt_cache()
     utils.clear_new_registration_flag()
     utils.clean_framework_identifier()
+
+# ----------------------------------------------------------------------------
+def setup_registry(registration_target, user, password):
+    """
+    Run the registration process for the container registry
+    """
+    registry_fqdn = registration_target.get_registry_FQDN()
+    if not utils.is_registry_registered(registry_fqdn)
+       and not utils.setup_registry(registry_fqdn, user, password):
+        cleanup()
+        print(
+            'Registration failed(registry), see {0} for details'.format(
+            ), file=sys.stderr
+        )
+        sys.exit(1)
 
 
 # ----------------------------------------------------------------------------
@@ -644,17 +662,18 @@ if os.path.exists(instance_data_filepath):
 if registration_returncode:
     cleanup()
     print(
-        'Registration failed, see /var/log/cloudregister for details',
-        file=sys.stderr
+        'Registration failed(repository), see {0} for details'.format(
+            LOG_FILE
+        ), file=sys.stderr
     )
     sys.exit(registration_returncode)
 
-if not utils.setup_registry(
-    registration_target.get_registry_FQDN(), user, password
-):
-    cleanup()
-    sys.exit('Registration failed, see /var/log/cloudregister for details')
+# Run the container registry registration process
+setup_registry(registration_target, user, password)
 
+# Jobs done:
+# 1. Repository registration
+# 2. Container registry registration
 print('Registration succeeded')
 
 if failed_extensions:
