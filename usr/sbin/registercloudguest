@@ -449,7 +449,7 @@ if registration_smt:
                 new_target
             )
             utils.update_rmt_cert(new_target)
-            break
+            sys.exit(0)
         else:
             msg = 'Configured update server is unresponsive. Could not find '
             msg += 'a replacement update server in this region. '
