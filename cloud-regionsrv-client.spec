@@ -36,6 +36,7 @@ Requires:       dmidecode
 Requires:       pciutils
 Requires:       procps
 Requires:       python3
+Requires:       python3-PyYAML
 Requires:       python3-M2Crypto
 Requires:       python3-lxml
 Requires:       python3-requests
@@ -53,6 +54,7 @@ Conflicts:      container-suseconnect
 %{?systemd_ordering}
 %endif
 BuildRequires:  python-rpm-macros
+BuildRequires:  python3-PyYAML
 BuildRequires:  python3-M2Crypto
 BuildRequires:  python3-devel
 BuildRequires:  python3-lxml
