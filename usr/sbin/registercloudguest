@@ -174,17 +174,24 @@ def cleanup():
     utils.clean_framework_identifier()
 
 # ----------------------------------------------------------------------------
-def setup_registry(registration_target, user, password):
+def setup_registry(registration_target, user, password, clean='all'):
     """
     Run the registration process for the container registry
+
+    clean == all -> cleans repository and registry setup
+    clean == registry -> clean only registry artifacts
     """
     registry_fqdn = registration_target.get_registry_FQDN()
-    if not utils.is_registry_registered(registry_fqdn)
-       and not utils.setup_registry(registry_fqdn, user, password):
-        cleanup()
+    if utils.is_registry_registered(registry_fqdn):
+        return True # already setup nothing to do
+    if not utils.setup_registry(registry_fqdn, user, password):
+        if clean == 'all':
+            cleanup()
+        elif clean == 'registry':
+            utils.clean_registry_setup()
         print(
             'Registration failed(registry), see {0} for details'.format(
-            ), file=sys.stderr
+            LOG_FILE), file=sys.stderr
         )
         sys.exit(1)
 
@@ -446,6 +453,18 @@ if registration_smt:
                 utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
         logging.info(msg)
+        if not utils.is_registry_registered(
+                registration_smt.get_registry_FQDN()
+        ):
+            user, password = utils.get_credentials(
+                utils.get_credentials_file(registration_smt)
+            )
+            msg = 'Adding registry setup to instance, all existing shell '
+            msg += 'sessions must be restarted to use the registry.'
+            logging.info(msg)
+            setup_registry(
+                registration_smt, user, password, clean='registry'
+            )
         sys.exit(0)
     else:
         # The current target server is not resposive, lets check if we can
@@ -467,6 +486,14 @@ if registration_smt:
                 new_target
             )
             utils.update_rmt_cert(new_target)
+            if not utils.is_registry_registered(new_target.get_registry_FQDN()):
+                user, password = utils.get_credentials(
+                    utils.get_credentials_file(new_target)
+                )
+                msg = 'Adding registry setup to instance, all existing shell '
+                msg += 'sessions must be restarted to use the registry.'
+                logging.info(msg)
+                setup_registry(new_target, user, password, clean='registry')
             sys.exit(0)
         else:
             msg = 'Configured update server is unresponsive. Could not find '
