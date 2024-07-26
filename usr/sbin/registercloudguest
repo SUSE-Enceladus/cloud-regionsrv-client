@@ -54,6 +54,7 @@ LOG_FILE = '/var/log/cloudregister'
 urllib3.disable_warnings()
 registration_returncode = 0
 
+
 # ----------------------------------------------------------------------------
 def get_register_cmd():
     """Determine which command we need to use to register the system"""
@@ -78,7 +79,7 @@ def get_register_cmd():
             # transactional-update command
             if 'ro' in fsoptions.split(','):
                 cmd_name = 'transactional-update'
-                for path in ['/sbin/','/usr/sbin/']:
+                for path in ['/sbin/', '/usr/sbin/']:
                     exec_path = path + cmd_name
                     if os.path.exists(exec_path):
                         register_cmd = exec_path
@@ -92,7 +93,8 @@ def get_register_cmd():
                     sys.exit(1)
 
     return register_cmd
-    
+
+
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[], failed=[]):
     """Register modules obeying dependencies"""
@@ -164,6 +166,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
             extension.get('extensions'), products, registered, failed
         )
 
+
 # ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
@@ -172,6 +175,7 @@ def cleanup():
     utils.clean_smt_cache()
     utils.clear_new_registration_flag()
     utils.clean_framework_identifier()
+
 
 # ----------------------------------------------------------------------------
 def setup_registry(registration_target, user, password, clean='all'):
@@ -183,7 +187,7 @@ def setup_registry(registration_target, user, password, clean='all'):
     """
     registry_fqdn = registration_target.get_registry_FQDN()
     if utils.is_registry_registered(registry_fqdn):
-        return True # already setup nothing to do
+        return True  # already setup nothing to do
     if not utils.setup_registry(registry_fqdn, user, password):
         if clean == 'all':
             cleanup()
@@ -191,7 +195,8 @@ def setup_registry(registration_target, user, password, clean='all'):
             utils.clean_registry_setup()
         print(
             'Registration failed(registry), see {0} for details'.format(
-            LOG_FILE), file=sys.stderr
+                LOG_FILE
+            ), file=sys.stderr
         )
         sys.exit(1)
 
@@ -226,34 +231,34 @@ argparse.add_argument(
     default=False,
     help='Force a new registration, for exceptional cases only',
 )
-help_msg='The target update server cert fingerprint. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server cert fingerprint. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fp',
     dest='user_smt_fp',
     help=help_msg
 )
-help_msg='The target update server FQDN. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server FQDN. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fqdn',
     dest='user_smt_fqdn',
     help=help_msg
 )
-help_msg='The target update server IP. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server IP. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-ip',
     dest='user_smt_ip',
     help=help_msg
 )
-help_msg='Email address for product registration'
+help_msg = 'Email address for product registration'
 argparse.add_argument(
     '-e', '--email',
     dest='email',
     help=help_msg
 )
-help_msg='The registration code'
+help_msg = 'The registration code'
 argparse.add_argument(
     '-r', '--regcode',
     dest='reg_code',
@@ -402,10 +407,12 @@ if region_change and utils.uses_rmt_as_scc_proxy():
     # This code is a safe guard in case a user enabled the service on a BYOS
     # instance, which is not supposed to be the case or tries
     print('Region change detected:')
-    print('\tSystem uses SCC credentials, please re-register the system'
-                 ' to the update infrastrusture in this region\n'
-                 '\tregistercloudguest --clean\n'
-                 '\tregistercloudguest -r YOUR_REG_CODE')
+    print(
+        '\tSystem uses SCC credentials, please re-register the system'
+        ' to the update infrastrusture in this region\n'
+        '\tregistercloudguest --clean\n'
+        '\tregistercloudguest -r YOUR_REG_CODE'
+    )
 elif region_change:
     logging.info('Region change detected, registering to new servers')
     cleanup()
@@ -427,7 +434,7 @@ if not region_smt_servers:
             ),
             smt_server
         )
-        cnt +=1
+        cnt += 1
 
 # Check if the target RMT for the registration is alive or if we can
 # find a server that is alive in this region
@@ -627,8 +634,7 @@ while not base_registered:
             new_smt_ipv4 = smt_srv.get_ipv4()
             new_smt_ipv6 = smt_srv.get_ipv6()
             if (
-                    smt_srv.get_ipv4() != \
-                    registration_target.get_ipv4() and
+                    smt_srv.get_ipv4() != registration_target.get_ipv4() and
                     smt_srv.get_ipv4() not in failed_smts
             ):
                 error_msg = 'Registration with %s failed. Trying %s'
