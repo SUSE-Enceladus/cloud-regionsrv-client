@@ -178,16 +178,23 @@ def cleanup():
 
 
 # ----------------------------------------------------------------------------
-def setup_registry(registration_target, user, password, clean='all'):
+def setup_registry(registration_target, clean='registry'):
     """
     Run the registration process for the container registry
 
     clean == all -> cleans repository and registry setup
     clean == registry -> clean only registry artifacts
     """
+    user, password = utils.get_credentials(
+        utils.get_credentials_file(registration_target)
+    )
     registry_fqdn = registration_target.get_registry_FQDN()
     if utils.is_registry_registered(registry_fqdn):
         return True  # already setup nothing to do
+    logging.info(
+        'Adding registry setup to instance, all existing shell '
+        'sessions must be restarted to use the registry.'
+    )
     if not utils.setup_registry(registry_fqdn, user, password):
         if clean == 'all':
             cleanup()
@@ -199,6 +206,25 @@ def setup_registry(registration_target, user, password, clean='all'):
             ), file=sys.stderr
         )
         sys.exit(1)
+
+
+# ----------------------------------------------------------------------------
+def get_responding_update_server(region_smt_servers):
+    """
+    Figure out which update server is responsive
+    If no update server responds, exit with an error message
+    that lists the tested servers
+    """
+    tested_smt_servers = []
+    for smt_srv in region_smt_servers:
+        tested_smt_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
+        if smt_srv.is_responsive():
+            utils.set_as_current_smt(smt_srv)
+            return smt_srv
+    logging.error(
+        'No response from: {}'.format(tested_smt_servers)
+    )
+    sys.exit(1)
 
 
 # ----------------------------------------------------------------------------
@@ -438,6 +464,7 @@ if not region_smt_servers:
 
 # Check if the target RMT for the registration is alive or if we can
 # find a server that is alive in this region
+registration_target_found = False
 if registration_smt:
     registration_smt_cache_file_name = (
         os.path.join(
@@ -460,19 +487,7 @@ if registration_smt:
                 utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
         logging.info(msg)
-        if not utils.is_registry_registered(
-                registration_smt.get_registry_FQDN()
-        ):
-            user, password = utils.get_credentials(
-                utils.get_credentials_file(registration_smt)
-            )
-            msg = 'Adding registry setup to instance, all existing shell '
-            msg += 'sessions must be restarted to use the registry.'
-            logging.info(msg)
-            setup_registry(
-                registration_smt, user, password, clean='registry'
-            )
-        sys.exit(0)
+        registration_target_found = True
     else:
         # The current target server is not resposive, lets check if we can
         # find another server
@@ -493,21 +508,20 @@ if registration_smt:
                 new_target
             )
             utils.update_rmt_cert(new_target)
-            if not utils.is_registry_registered(new_target.get_registry_FQDN()):
-                user, password = utils.get_credentials(
-                    utils.get_credentials_file(new_target)
-                )
-                msg = 'Adding registry setup to instance, all existing shell '
-                msg += 'sessions must be restarted to use the registry.'
-                logging.info(msg)
-                setup_registry(new_target, user, password, clean='registry')
-            sys.exit(0)
+            registration_smt = new_target
+            registration_target_found = True
         else:
             msg = 'Configured update server is unresponsive. Could not find '
             msg += 'a replacement update server in this region. '
             msg += 'Possible network configuration issue'
             logging.error(msg)
             sys.exit(1)
+
+if registration_target_found:
+    # The system is properly registered, check/setup the container
+    # registry for this target prior exit
+    setup_registry(registration_smt)
+    sys.exit(0)
 
 # We should not get here for a registered system that is a proxy. However,
 # it doesn't hurt to check and get out before breaking things
@@ -516,21 +530,12 @@ if utils.uses_rmt_as_scc_proxy():
                  'registration code, nothing to do')
     sys.exit(0)
 
-# Figure out which server is responsive and use it as registration target
-registration_target = None
-tested_smt_servers = []
-for smt_srv in region_smt_servers:
-    tested_smt_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
-    alive = smt_srv.is_responsive()
-    if alive:
-        registration_target = smt_srv
-        utils.set_as_current_smt(smt_srv)
-        # Use the first server that responds
-        break
+# The system is not yet registered, Figure out which server
+# is responsive and use it as registration target
+registration_target = get_responding_update_server(region_smt_servers)
 
-if not registration_target:
-    logging.error('No response from: %s' % str(tested_smt_servers))
-    sys.exit(1)
+# Setup container registry
+setup_registry(registration_target)
 
 # Create location to store data if it does not exist
 if not os.path.exists(utils.get_state_dir()):
@@ -701,12 +706,6 @@ if registration_returncode:
     )
     sys.exit(registration_returncode)
 
-# Run the container registry registration process
-setup_registry(registration_target, user, password)
-
-# Jobs done:
-# 1. Repository registration
-# 2. Container registry registration
 print('Registration succeeded')
 
 if failed_extensions:
