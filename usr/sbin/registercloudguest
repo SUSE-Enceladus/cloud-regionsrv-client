@@ -42,6 +42,7 @@ import uuid
 
 import cloudregister.registerutils as utils
 
+from collections import namedtuple
 from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
@@ -96,10 +97,79 @@ def get_register_cmd():
 
 
 # ----------------------------------------------------------------------------
+def run_SUSEConnect(
+    registration_target, regcode='', email='',
+    instance_data_filepath='', product=''
+):
+    """
+    Wrapper for SUSEConnect
+
+    Call SUSEConnect or the respective transactional update call
+    with the given parameters:
+
+    registration_target:
+        SMT registration object
+    regcode:
+        registration code
+    email:
+        registration e-mail
+    instance_data_filepath:
+        CSP related metadata file
+    product:
+        SUSE product triplet
+    """
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    register_cmd = get_register_cmd()
+    if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
+        logging.error('No registration executable found')
+        print(err_msg, file=sys.stderr)
+        sys.exit(1)
+
+    cmd = [register_cmd]
+    target_url = registration_target.get_FQDN()
+
+    # distinguish command between standard and read-only system(transactional)
+    if 'transactional' in register_cmd:
+        cmd += ['register', '--url', 'https://{0}'.format(target_url)]
+    else:
+        cmd += ['--url', 'https://{0}'.format(target_url)]
+
+    # SUSE product triplet
+    if product:
+        cmd += ['--product', product]
+
+    # set path to a metadata file, cloud specific
+    if instance_data_filepath:
+        cmd += ['--instance-data', instance_data_filepath]
+
+    # set e-mail
+    if email:
+        cmd += ['--email', email]
+
+    # set registration code for given product
+    if regcode:
+        cmd += ['--regcode', regcode]
+
+    logging.info('Registration: {0}'.format(' '.join(cmd)))
+    call = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    output, error = call.communicate()
+    return suseconnect_type(
+        returncode=call.returncode,
+        output=output.decode(),
+        error=error.decode()
+    )
+
+
+# ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[], failed=[]):
     """Register modules obeying dependencies"""
     global registration_returncode
-    register_cmd = get_register_cmd()
     for extension in extensions:
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
@@ -108,43 +178,24 @@ def register_modules(extensions, products, registered=[], failed=[]):
                 extension.get('extensions'), products, registered, failed
             )
             continue
+
         arch = extension.get('arch')
         identifier = extension.get('identifier')
         version = extension.get('version')
         triplet = '/'.join((identifier, version, arch))
         if triplet in products and triplet not in registered:
             registered.append(triplet)
-            if 'transactional' in register_cmd:
-                cmd = [
-                    register_cmd,
-                    'register',
-                    '--url',
-                    'https://%s' % registration_target.get_FQDN(),
-                    '--product',
-                    triplet
-                ]
-            else:
-                cmd = [
-                    register_cmd,
-                    '--url',
-                    'https://%s' % registration_target.get_FQDN(),
-                    '--product',
-                    triplet
-                ]
-            if os.path.exists(instance_data_filepath):
-                cmd.append('--instance-data')
-                cmd.append(instance_data_filepath)
 
-            logging.info('Registration: %s' % ' '.join(cmd))
-            p = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+            suseconnect = run_SUSEConnect(
+                registration_target=registration_target,
+                product=triplet,
+                instance_data_filepath=instance_data_filepath
+                if os.path.exists(instance_data_filepath) else ''
             )
-            res = p.communicate()
-            if p.returncode:
-                registration_returncode = p.returncode
-                error_message = res[0].decode()
+
+            if suseconnect.returncode:
+                registration_returncode = suseconnect.returncode
+                error_message = suseconnect.error
                 if (
                     registration_returncode == 67 and
                     'registration code' in error_message.lower()
@@ -584,38 +635,17 @@ failed_smts = []
 
 while not base_registered:
     utils.add_hosts_entry(registration_target)
-    sub_cmd = ''
-    if 'transactional' in register_cmd:
-        cmd = [
-            register_cmd,
-            'register',
-            '--url',
-            'https://%s' % registration_target.get_FQDN()
-        ]
-    else:
-        cmd = [
-            register_cmd,
-            '--url',
-            'https://%s' % registration_target.get_FQDN()
-        ]
-    if os.path.exists(instance_data_filepath):
-        cmd.append('--instance-data')
-        cmd.append(instance_data_filepath)
-    if args.email:
-        cmd.append('--email')
-        cmd.append(args.email)
-    if args.reg_code:
-        cmd.append('--regcode')
-        cmd.append(args.reg_code)
-    p = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    res = p.communicate()
-    if p.returncode:
-        registration_returncode = p.returncode
+    suseconnect = run_SUSEConnect(
+        registration_target=registration_target,
+        email=args.email,
+        regcode=args.reg_code,
+        instance_data_filepath=instance_data_filepath
+        if os.path.exists(instance_data_filepath) else ''
+    )
+    if suseconnect.returncode:
+        registration_returncode = suseconnect.returncode
         # Even on error SUSEConnect writes messages to stdout, go figure
-        error_message = res[0].decode()
+        error_message = suseconnect.error
         failed_smts.append(registration_target.get_ipv4())
         if (
             len(failed_smts) == len(region_smt_servers) or
