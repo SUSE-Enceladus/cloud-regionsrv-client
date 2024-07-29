@@ -1,0 +1,10 @@
+--- lib/cloudregister/smt.py.orig
++++ lib/cloudregister/smt.py
+@@ -109,6 +109,7 @@ class SMT:
+     # --------------------------------------------------------------------
+     def get_ipv6(self):
+         """Return the IP address"""
++        return None
+         # Before handling ipv6 the IP address was stored in the _ip
+         # member. When the SMT object is restored from an old pickeled
+         # file the _ipv6 member does not exist. Handle this transition
