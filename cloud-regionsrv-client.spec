@@ -27,6 +27,8 @@ URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
 # PATCH-FIX-SLES12 bsc#1203382 fix-for-sles12-disable-ipv6.patch
 Patch0:         fix-for-sles12-disable-ipv6.patch
+# PATCH-FIX-SLES12 fix-for-sles12-disable-registry.patch
+Patch1:         fix-for-sles12-disable-registry.patch
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
@@ -131,6 +133,7 @@ Enable/Disable Guest Registration for Microsoft Azure
 %setup -q
 %if 0%{?suse_version} == 1315
 %patch0
+%patch1
 %endif
 
 %build

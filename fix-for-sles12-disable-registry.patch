@@ -1,0 +1,68 @@
+--- lib/cloudregister/registerutils.py
++++ lib/cloudregister/registerutils.py
+@@ -30,7 +30,8 @@ import stat
+ import subprocess
+ import sys
+ import time
+-import toml
++# Disabled on SLE12
++# import toml
+ import yaml
+ 
+ from lxml import etree
+@@ -72,11 +73,12 @@ def add_hosts_entry(smt_server):
+         smt_server.get_FQDN(),
+         smt_server.get_name()
+     )
+-    if smt_server.get_registry_FQDN():
+-        entry += '%s\t%s\n' % (
+-            smt_ip,
+-            smt_server.get_registry_FQDN()
+-        )
++    # Disabled on SLE12
++    # if smt_server.get_registry_FQDN():
++    #     entry += '%s\t%s\n' % (
++    #         smt_ip,
++    #         smt_server.get_registry_FQDN()
++    #     )
+ 
+     with open('/etc/hosts', 'a') as hosts_file:
+         hosts_file.write(smt_hosts_entry_comment)
+@@ -667,6 +669,8 @@ def set_registries_conf(registry_fqdn):
+ 
+ # ----------------------------------------------------------------------------
+ def get_registry_conf_file(container_path, container):
++    # Disabled on SLE12
++    return None
+     registries_conf = {}
+     try:
+         with open(container_path, 'r') as registries_conf_file:
+@@ -712,6 +716,8 @@ def update_bashrc(content, mode):
+ 
+ # ----------------------------------------------------------------------------
+ def clean_registry_setup():
++    # Disabled on SLE12
++    return None
+     """Remove the data previously set to make the registry work."""
+     smt = get_smt_from_store(__get_registered_smt_file_path())
+     private_registry_fqdn = smt.get_registry_FQDN() if smt else ''
+@@ -1046,6 +1052,8 @@ def clean_registries_conf_docker(private_registry_fqdn):
+ # ----------------------------------------------------------------------------
+ def write_registries_conf(registries_conf, container_path, container_name):
+     """Write registries_conf content to container_path."""
++    # Disabled on SLE12
++    return None
+     try:
+         if container_name == 'podman':
+             with open(container_path, 'w') as registries_conf_file:
+--- usr/sbin/registercloudguest
++++ usr/sbin/registercloudguest
+@@ -243,6 +243,8 @@ def setup_registry(registration_target, clean='registry'):
+     clean == all -> cleans repository and registry setup
+     clean == registry -> clean only registry artifacts
+     """
++    # Disabled on SLE12
++    return None
+     user, password = utils.get_credentials(
+         utils.get_credentials_file(registration_target)
+     )
