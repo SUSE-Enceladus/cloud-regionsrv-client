@@ -42,15 +42,19 @@ import uuid
 
 import cloudregister.registerutils as utils
 
+from collections import namedtuple
 from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
+
+LOG_FILE = '/var/log/cloudregister'
 
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
 urllib3.disable_warnings()
 registration_returncode = 0
+
 
 # ----------------------------------------------------------------------------
 def get_register_cmd():
@@ -76,7 +80,7 @@ def get_register_cmd():
             # transactional-update command
             if 'ro' in fsoptions.split(','):
                 cmd_name = 'transactional-update'
-                for path in ['/sbin/','/usr/sbin/']:
+                for path in ['/sbin/', '/usr/sbin/']:
                     exec_path = path + cmd_name
                     if os.path.exists(exec_path):
                         register_cmd = exec_path
@@ -90,12 +94,87 @@ def get_register_cmd():
                     sys.exit(1)
 
     return register_cmd
-    
+
+
+# ----------------------------------------------------------------------------
+def run_SUSEConnect(
+    registration_target, regcode='', email='',
+    instance_data_filepath='', product=''
+):
+    """
+    Wrapper for SUSEConnect
+
+    Call SUSEConnect or the respective transactional update call
+    with the given parameters:
+
+    registration_target:
+        SMT registration object
+    regcode:
+        registration code
+    email:
+        registration e-mail
+    instance_data_filepath:
+        CSP related metadata file
+    product:
+        SUSE product triplet
+    """
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    register_cmd = get_register_cmd()
+    if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
+        logging.error('No registration executable found')
+        print(err_msg, file=sys.stderr)
+        sys.exit(1)
+
+    cmd = [register_cmd]
+    target_url = registration_target.get_FQDN()
+
+    # distinguish command between standard and read-only system(transactional)
+    if 'transactional' in register_cmd:
+        cmd += ['register', '--url', 'https://{0}'.format(target_url)]
+    else:
+        cmd += ['--url', 'https://{0}'.format(target_url)]
+
+    # SUSE product triplet
+    if product:
+        cmd += ['--product', product]
+
+    # set path to a metadata file, cloud specific
+    if instance_data_filepath:
+        cmd += ['--instance-data', instance_data_filepath]
+
+    # set e-mail
+    if email:
+        cmd += ['--email', email]
+
+    # set registration code for given product
+    if regcode:
+        cmd += ['--regcode', regcode]
+
+    log_information = ' '.join(cmd)
+    if regcode:
+        # registration codes should not end up in the log
+        log_information.replace(regcode, 'XXXX')
+
+    logging.info('Registration: {0}'.format(log_information))
+    call = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    output, error = call.communicate()
+    return suseconnect_type(
+        returncode=call.returncode,
+        output=output.decode(),
+        error=error.decode()
+    )
+
+
 # ----------------------------------------------------------------------------
 def register_modules(extensions, products, registered=[], failed=[]):
     """Register modules obeying dependencies"""
     global registration_returncode
-    register_cmd = get_register_cmd()
     for extension in extensions:
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
@@ -104,43 +183,24 @@ def register_modules(extensions, products, registered=[], failed=[]):
                 extension.get('extensions'), products, registered, failed
             )
             continue
+
         arch = extension.get('arch')
         identifier = extension.get('identifier')
         version = extension.get('version')
         triplet = '/'.join((identifier, version, arch))
         if triplet in products and triplet not in registered:
             registered.append(triplet)
-            if 'transactional' in register_cmd:
-                cmd = [
-                    register_cmd,
-                    'register',
-                    '--url',
-                    'https://%s' % registration_target.get_FQDN(),
-                    '--product',
-                    triplet
-                ]
-            else:
-                cmd = [
-                    register_cmd,
-                    '--url',
-                    'https://%s' % registration_target.get_FQDN(),
-                    '--product',
-                    triplet
-                ]
-            if os.path.exists(instance_data_filepath):
-                cmd.append('--instance-data')
-                cmd.append(instance_data_filepath)
 
-            logging.info('Registration: %s' % ' '.join(cmd))
-            p = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+            suseconnect = run_SUSEConnect(
+                registration_target=registration_target,
+                product=triplet,
+                instance_data_filepath=instance_data_filepath
+                if os.path.exists(instance_data_filepath) else ''
             )
-            res = p.communicate()
-            if p.returncode:
-                registration_returncode = p.returncode
-                error_message = res[0].decode()
+
+            if suseconnect.returncode:
+                registration_returncode = suseconnect.returncode
+                error_message = suseconnect.error
                 if (
                     registration_returncode == 67 and
                     'registration code' in error_message.lower()
@@ -162,6 +222,8 @@ def register_modules(extensions, products, registered=[], failed=[]):
             extension.get('extensions'), products, registered, failed
         )
 
+
+# ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
     utils.clean_registry_setup()
@@ -169,6 +231,60 @@ def cleanup():
     utils.clean_smt_cache()
     utils.clear_new_registration_flag()
     utils.clean_framework_identifier()
+
+
+# ----------------------------------------------------------------------------
+def setup_registry(registration_target, clean='registry'):
+    """
+    Run the registration process for the container registry
+
+    clean == all -> cleans repository and registry setup
+    clean == registry -> clean only registry artifacts
+    """
+    user, password = utils.get_credentials(
+        utils.get_credentials_file(registration_target)
+    )
+    registry_fqdn = registration_target.get_registry_FQDN()
+    if utils.is_registry_registered(registry_fqdn):
+        logging.info(
+            'Instance is setup to access container registry, nothing to do'
+        )
+        return True
+    logging.info(
+        'Adding registry setup to instance, all existing shell '
+        'sessions must be restarted to use the registry.'
+    )
+    if not utils.setup_registry(registry_fqdn, user, password):
+        if clean == 'all':
+            cleanup()
+        elif clean == 'registry':
+            utils.clean_registry_setup()
+        print(
+            'Registration failed(registry), see {0} for details'.format(
+                LOG_FILE
+            ), file=sys.stderr
+        )
+        sys.exit(1)
+    print('Instance registry setup done, sessions must be restarted !')
+
+
+# ----------------------------------------------------------------------------
+def get_responding_update_server(region_smt_servers):
+    """
+    Figure out which update server is responsive
+    If no update server responds, exit with an error message
+    that lists the tested servers
+    """
+    tested_smt_servers = []
+    for smt_srv in region_smt_servers:
+        tested_smt_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
+        if smt_srv.is_responsive():
+            utils.set_as_current_smt(smt_srv)
+            return smt_srv
+    logging.error(
+        'No response from: {}'.format(tested_smt_servers)
+    )
+    sys.exit(1)
 
 
 # ----------------------------------------------------------------------------
@@ -201,34 +317,34 @@ argparse.add_argument(
     default=False,
     help='Force a new registration, for exceptional cases only',
 )
-help_msg='The target update server cert fingerprint. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server cert fingerprint. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fp',
     dest='user_smt_fp',
     help=help_msg
 )
-help_msg='The target update server FQDN. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server FQDN. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-fqdn',
     dest='user_smt_fqdn',
     help=help_msg
 )
-help_msg='The target update server IP. '
-help_msg+='Use in exceptional cases only'
+help_msg = 'The target update server IP. '
+help_msg += 'Use in exceptional cases only'
 argparse.add_argument(
     '--smt-ip',
     dest='user_smt_ip',
     help=help_msg
 )
-help_msg='Email address for product registration'
+help_msg = 'Email address for product registration'
 argparse.add_argument(
     '-e', '--email',
     dest='email',
     help=help_msg
 )
-help_msg='The registration code'
+help_msg = 'The registration code'
 argparse.add_argument(
     '-r', '--regcode',
     dest='reg_code',
@@ -377,10 +493,12 @@ if region_change and utils.uses_rmt_as_scc_proxy():
     # This code is a safe guard in case a user enabled the service on a BYOS
     # instance, which is not supposed to be the case or tries
     print('Region change detected:')
-    print('\tSystem uses SCC credentials, please re-register the system'
-                 ' to the update infrastrusture in this region\n'
-                 '\tregistercloudguest --clean\n'
-                 '\tregistercloudguest -r YOUR_REG_CODE')
+    print(
+        '\tSystem uses SCC credentials, please re-register the system'
+        ' to the update infrastrusture in this region\n'
+        '\tregistercloudguest --clean\n'
+        '\tregistercloudguest -r YOUR_REG_CODE'
+    )
 elif region_change:
     logging.info('Region change detected, registering to new servers')
     cleanup()
@@ -402,10 +520,11 @@ if not region_smt_servers:
             ),
             smt_server
         )
-        cnt +=1
+        cnt += 1
 
 # Check if the target RMT for the registration is alive or if we can
 # find a server that is alive in this region
+registration_target_found = False
 if registration_smt:
     registration_smt_cache_file_name = (
         os.path.join(
@@ -428,7 +547,7 @@ if registration_smt:
                 utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
         logging.info(msg)
-        sys.exit(0)
+        registration_target_found = True
     else:
         # The current target server is not resposive, lets check if we can
         # find another server
@@ -449,6 +568,8 @@ if registration_smt:
                 new_target
             )
             utils.update_rmt_cert(new_target)
+            registration_smt = new_target
+            registration_target_found = True
             break
         else:
             msg = 'Configured update server is unresponsive. Could not find '
@@ -457,6 +578,12 @@ if registration_smt:
             logging.error(msg)
             sys.exit(1)
 
+if registration_target_found:
+    # The system is properly registered, check/setup the container
+    # registry for this target prior exit
+    setup_registry(registration_smt)
+    sys.exit(0)
+
 # We should not get here for a registered system that is a proxy. However,
 # it doesn't hurt to check and get out before breaking things
 if utils.uses_rmt_as_scc_proxy():
@@ -464,21 +591,12 @@ if utils.uses_rmt_as_scc_proxy():
                  'registration code, nothing to do')
     sys.exit(0)
 
-# Figure out which server is responsive and use it as registration target
-registration_target = None
-tested_smt_servers = []
-for smt_srv in region_smt_servers:
-    tested_smt_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
-    alive = smt_srv.is_responsive()
-    if alive:
-        registration_target = smt_srv
-        utils.set_as_current_smt(smt_srv)
-        # Use the first server that responds
-        break
+# The system is not yet registered, Figure out which server
+# is responsive and use it as registration target
+registration_target = get_responding_update_server(region_smt_servers)
 
-if not registration_target:
-    logging.error('No response from: %s' % str(tested_smt_servers))
-    sys.exit(1)
+# Setup container registry
+setup_registry(registration_target)
 
 # Create location to store data if it does not exist
 if not os.path.exists(utils.get_state_dir()):
@@ -522,38 +640,17 @@ failed_smts = []
 
 while not base_registered:
     utils.add_hosts_entry(registration_target)
-    sub_cmd = ''
-    if 'transactional' in register_cmd:
-        cmd = [
-            register_cmd,
-            'register',
-            '--url',
-            'https://%s' % registration_target.get_FQDN()
-        ]
-    else:
-        cmd = [
-            register_cmd,
-            '--url',
-            'https://%s' % registration_target.get_FQDN()
-        ]
-    if os.path.exists(instance_data_filepath):
-        cmd.append('--instance-data')
-        cmd.append(instance_data_filepath)
-    if args.email:
-        cmd.append('--email')
-        cmd.append(args.email)
-    if args.reg_code:
-        cmd.append('--regcode')
-        cmd.append(args.reg_code)
-    p = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    res = p.communicate()
-    if p.returncode:
-        registration_returncode = p.returncode
+    suseconnect = run_SUSEConnect(
+        registration_target=registration_target,
+        email=args.email,
+        regcode=args.reg_code,
+        instance_data_filepath=instance_data_filepath
+        if os.path.exists(instance_data_filepath) else ''
+    )
+    if suseconnect.returncode:
+        registration_returncode = suseconnect.returncode
         # Even on error SUSEConnect writes messages to stdout, go figure
-        error_message = res[0].decode()
+        error_message = suseconnect.error
         failed_smts.append(registration_target.get_ipv4())
         if (
             len(failed_smts) == len(region_smt_servers) or
@@ -582,8 +679,7 @@ while not base_registered:
             new_smt_ipv4 = smt_srv.get_ipv4()
             new_smt_ipv6 = smt_srv.get_ipv6()
             if (
-                    smt_srv.get_ipv4() != \
-                    registration_target.get_ipv4() and
+                    smt_srv.get_ipv4() != registration_target.get_ipv4() and
                     smt_srv.get_ipv4() not in failed_smts
             ):
                 error_msg = 'Registration with %s failed. Trying %s'
@@ -644,16 +740,11 @@ if os.path.exists(instance_data_filepath):
 if registration_returncode:
     cleanup()
     print(
-        'Registration failed, see /var/log/cloudregister for details',
-        file=sys.stderr
+        'Registration failed(repository), see {0} for details'.format(
+            LOG_FILE
+        ), file=sys.stderr
     )
     sys.exit(registration_returncode)
-
-if not utils.setup_registry(
-    registration_target.get_registry_FQDN(), user, password
-):
-    cleanup()
-    sys.exit('Registration failed, see /var/log/cloudregister for details')
 
 print('Registration succeeded')
 
