@@ -48,6 +48,7 @@ from lxml import etree
 from requests.auth import HTTPBasicAuth
 
 LOG_FILE = '/var/log/cloudregister'
+ZYPP_SERVICES = '/etc/zypp/services.d'
 
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
@@ -155,7 +156,7 @@ def run_SUSEConnect(
     log_information = ' '.join(cmd)
     if regcode:
         # registration codes should not end up in the log
-        log_information.replace(regcode, 'XXXX')
+        log_information = log_information.replace(regcode, 'XXXX')
 
     logging.info('Registration: {0}'.format(log_information))
     call = subprocess.Popen(
@@ -200,7 +201,8 @@ def register_modules(extensions, products, registered=[], failed=[]):
 
             if suseconnect.returncode:
                 registration_returncode = suseconnect.returncode
-                error_message = suseconnect.error
+                # Even on error SUSEConnect writes messages to stdout, go figure
+                error_message = suseconnect.output
                 if (
                     registration_returncode == 67 and
                     'registration code' in error_message.lower()
@@ -285,6 +287,83 @@ def get_responding_update_server(region_smt_servers):
         'No response from: {}'.format(tested_smt_servers)
     )
     sys.exit(1)
+
+
+# ----------------------------------------------------------------------------
+def get_product_tree(product_file='/etc/products.d/baseproduct'):
+    """
+    Read product element from baseproduct and return an etree
+    """
+    if os.path.isfile(product_file):
+        with open(product_file, 'r') as product:
+            raw_xml = product.read()
+            product_entry_point = raw_xml.index('<product')
+            return etree.fromstring(raw_xml[product_entry_point:])
+
+
+# ----------------------------------------------------------------------------
+def get_product_triplet(product_tree):
+    """
+    Extract identifier, version and arch information from
+    the given product tree
+    """
+    product_type = namedtuple(
+        'product_type', ['name', 'version', 'arch']
+    )
+    return product_type(
+        name=product_tree.find('name').text.lower(),
+        version=product_tree.find('version').text,
+        arch=product_tree.find('arch').text
+    )
+
+
+# ----------------------------------------------------------------------------
+def setup_ltss_registration(registration_target, regcode):
+    """
+    Run SUSEConnect to register LTSS for this instance
+    """
+    logging.info('Running LTSS registration...')
+    product = get_product_tree()
+    if product is None:
+        message = 'Cannot find baseproduct registration for LTSS'
+        logging.error(message)
+        print(message, file=sys.stderr)
+        sys.exit(1)
+
+    ltss_registered = False
+    if os.path.isdir(ZYPP_SERVICES):
+        for entry in os.listdir(ZYPP_SERVICES):
+            if 'LTSS' in entry:
+                ltss_registered = True
+                break
+    if ltss_registered:
+        logging.info('LTSS already registered')
+    else:
+        base_product = get_product_triplet(product)
+
+        # The name of the product to register is the LTSS variant for the
+        # registered base product. In theory other combinations are possible
+        # but we don't allow this for the moment
+        ltss_product_triplet = '{0}-LTSS/{1}/{2}'.format(
+            base_product.name, base_product.version, base_product.arch
+        )
+
+        suseconnect = run_SUSEConnect(
+            registration_target=registration_target,
+            product=ltss_product_triplet,
+            regcode=regcode
+        )
+        if suseconnect.returncode != 0:
+            # Something went wrong...
+            # Even on error SUSEConnect writes messages to stdout, go figure
+            message = suseconnect.output
+            logging.error('LTSS registration failed')
+            logging.error('\t{0}'.format(message))
+            print(message, file=sys.stderr)
+            sys.exit(1)
+        logging.info(
+            'LTSS registration succeeded'
+        )
 
 
 # ----------------------------------------------------------------------------
@@ -579,9 +658,15 @@ if registration_smt:
             sys.exit(1)
 
 if registration_target_found:
-    # The system is properly registered, check/setup the container
-    # registry for this target prior exit
+    # The system is properly registered, run through the checklist now:
+    # 1. check/setup the container registry for this target
     setup_registry(registration_smt)
+
+    # 2. check/setup if we got a regcode which is handled as LTSS
+    if args.reg_code:
+        setup_ltss_registration(registration_smt, args.reg_code)
+
+    # All done, time to leave...
     sys.exit(0)
 
 # We should not get here for a registered system that is a proxy. However,
@@ -650,7 +735,7 @@ while not base_registered:
     if suseconnect.returncode:
         registration_returncode = suseconnect.returncode
         # Even on error SUSEConnect writes messages to stdout, go figure
-        error_message = suseconnect.error
+        error_message = suseconnect.output
         failed_smts.append(registration_target.get_ipv4())
         if (
             len(failed_smts) == len(region_smt_servers) or
@@ -700,15 +785,13 @@ while not base_registered:
         if args.email or args.reg_code:
             utils.set_rmt_as_scc_proxy_flag()
 
-base_prod_xml = open('/etc/products.d/baseproduct').read()
-prod_def_start = base_prod_xml.index('<product')
-product_tree = etree.fromstring(base_prod_xml[prod_def_start:])
-prod_identifier = product_tree.find('name').text.lower()
-version = product_tree.find('version').text
-arch = product_tree.find('arch').text
+base_product = get_product_triplet(
+    get_product_tree()
+)
 headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
 query_args = 'identifier=%s&version=%s&arch=%s' % (
-    prod_identifier, version, arch)
+    base_product.name, base_product.version, base_product.arch
+)
 user, password = utils.get_credentials(
     utils.get_credentials_file(registration_target)
 )
