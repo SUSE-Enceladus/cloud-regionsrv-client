@@ -152,7 +152,12 @@ def run_SUSEConnect(
     if regcode:
         cmd += ['--regcode', regcode]
 
-    logging.info('Registration: {0}'.format(' '.join(cmd)))
+    log_information = ' '.join(cmd)
+    if regcode:
+        # registration codes should not end up in the log
+        log_information.replace(regcode, 'XXXX')
+
+    logging.info('Registration: {0}'.format(log_information))
     call = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
