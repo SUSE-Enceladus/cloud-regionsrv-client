@@ -27,6 +27,8 @@ URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
 Source0:        %{name}-%{version}.tar.bz2
 # PATCH-FIX-SLES12 bsc#1203382 fix-for-sles12-disable-ipv6.patch
 Patch0:         fix-for-sles12-disable-ipv6.patch
+# PATCH-FIX-SLES12 fix-for-sles12-disable-registry.patch
+Patch1:         fix-for-sles12-disable-registry.patch
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
@@ -42,7 +44,9 @@ Requires:       python3-lxml
 Requires:       python3-requests
 Requires:       python3-urllib3
 Requires:       python3-zypp-plugin
+%if 0%{?suse_version} > 1315
 Requires:       python3-toml
+%endif
 Requires:       regionsrv-certs
 Requires:       sudo
 Requires:       zypper
@@ -61,7 +65,9 @@ BuildRequires:  python3-lxml
 BuildRequires:  python3-requests
 BuildRequires:  python3-setuptools
 BuildRequires:  python3-zypp-plugin
+%if 0%{?suse_version} > 1315
 BuildRequires:  python3-toml
+%endif
 BuildRequires:  sudo
 BuildRequires:  systemd-rpm-macros
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
@@ -130,7 +136,10 @@ Enable/Disable Guest Registration for Microsoft Azure
 %prep
 %setup -q
 %if 0%{?suse_version} == 1315
-%patch0
+%patch -P 0
+%patch -P 1
+test -e usr/sbin/registercloudguest.orig && rm usr/sbin/registercloudguest.orig
+test -e lib/cloudregister/registerutils.py.orig && rm lib/cloudregister/registerutils.py.orig
 %endif
 
 %build
