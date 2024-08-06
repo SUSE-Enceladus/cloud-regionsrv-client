@@ -680,9 +680,6 @@ if utils.uses_rmt_as_scc_proxy():
 # is responsive and use it as registration target
 registration_target = get_responding_update_server(region_smt_servers)
 
-# Setup container registry
-setup_registry(registration_target)
-
 # Create location to store data if it does not exist
 if not os.path.exists(utils.get_state_dir()):
     os.system('mkdir -p %s' % utils.get_state_dir())
@@ -828,6 +825,9 @@ if registration_returncode:
         ), file=sys.stderr
     )
     sys.exit(registration_returncode)
+
+# Setup container registry
+setup_registry(registration_target)
 
 print('Registration succeeded')
 
