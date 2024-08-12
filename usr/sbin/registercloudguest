@@ -318,7 +318,7 @@ def get_product_triplet(product_tree):
 
 # ----------------------------------------------------------------------------
 def setup_ltss_registration(
-    registration_target, regcode, instance_data_filepath
+    registration_target, regcode, instance_data_filepath, product_name=''
 ):
     """
     Run SUSEConnect to register LTSS for this instance
@@ -345,12 +345,16 @@ def setup_ltss_registration(
     else:
         base_product = get_product_triplet(product)
 
-        # The name of the product to register is the LTSS variant for the
-        # registered base product. In theory other combinations are possible
-        # but we don't allow this for the moment
-        ltss_product_triplet = '{0}-LTSS/{1}/{2}'.format(
-            base_product.name, base_product.version, base_product.arch
-        )
+        if not product_name:
+            # The name of the product to register, if not specified differently
+            # is the LTSS variant for the registered base product.
+            ltss_product_triplet = '{0}-LTSS/{1}/{2}'.format(
+                base_product.name, base_product.version, base_product.arch
+            )
+        else:
+            # The product name was specified per cmdline option.
+            # We leave it in the hand of the server side to validate it
+            ltss_product_triplet = product_name
 
         suseconnect = run_SUSEConnect(
             registration_target=registration_target,
@@ -437,6 +441,12 @@ argparse.add_argument(
     dest='reg_code',
     help=help_msg
 )
+help_msg = 'Product name of the form NAME/VERSION/ARCH'
+argparse.add_argument(
+    '-p', '--product',
+    dest='reg_product',
+    help=help_msg
+)
 argparse.add_argument(
     '-v', '--version',
     action='version',
@@ -452,6 +462,14 @@ argparse.add_argument(
 
 
 args = argparse.parse_args()
+
+if args.reg_product and not args.reg_code:
+    error_message = (
+        'Product name provided without registration code. '
+        'A product name requires to specify a matching registration code !'
+    )
+    print(error_message, file=sys.stderr)
+    sys.exit(1)
 
 if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
     if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
@@ -691,7 +709,8 @@ if registration_target_found:
         setup_ltss_registration(
             registration_smt,
             args.reg_code,
-            instance_data_filepath
+            instance_data_filepath,
+            args.reg_product
         )
 
     # All done, time to leave...
@@ -742,6 +761,12 @@ failed_smts = []
 
 while not base_registered:
     utils.add_hosts_entry(registration_target)
+    if not base_registered and args.reg_product:
+        warning_message = (
+            'Custom product name specified for base product registration! '
+            'Ignoring {0} product name for base product registration'
+        ).format(args.reg_product)
+        logging.warning(warning_message)
     suseconnect = run_SUSEConnect(
         registration_target=registration_target,
         email=args.email,
