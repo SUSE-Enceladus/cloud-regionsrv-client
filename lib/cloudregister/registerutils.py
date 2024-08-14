@@ -1104,7 +1104,7 @@ def get_credentials_file(update_server, service_name=None):
 
 
 # ----------------------------------------------------------------------------
-def get_hosts():
+def get_hosts(with_loopback=False):
     """
     Read /etc/hosts file into the following structure
 
@@ -1124,6 +1124,12 @@ def get_hosts():
     for line in hostlines:
         hostnames = line.split('#')[0].split()[1:]
         hostaddress = line.split('#')[0].split()[0]
+        loopback = False
+        if hostaddress == '::1' or hostaddress == '127.0.0.1':
+            loopback = True
+        if not with_loopback and loopback:
+            # no loopback addresses wanted
+            continue
         for hostname in hostnames:
             hosts[hostname] = {
                 'address': hostaddress,
@@ -1554,15 +1560,25 @@ def has_region_changed(cfg):
 
 # ----------------------------------------------------------------------------
 def has_rmt_in_hosts(server):
-    """Check if an entry for the given update server is in the hosts file"""
-    with open('/etc/hosts') as hosts_file:
-        hosts_content = hosts_file.read()
-    srv_ipv4 = server.get_ipv4()
-    srv_ipv6 = server.get_ipv6()
-
-    if srv_ipv4 in hosts_content or srv_ipv6 in hosts_content:
+    """
+    Check if an entry for the given update server is in the hosts file
+    """
+    hosts = get_hosts()
+    rmt_server_name = server.get_FQDN()
+    if rmt_server_name in hosts.keys():
         return True
+    return False
 
+
+# ----------------------------------------------------------------------------
+def has_registry_in_hosts(server):
+    """
+    Check if an entry for the given registry server is in the hosts file
+    """
+    hosts = get_hosts()
+    registry_server_name = server.get_registry_FQDN()
+    if registry_server_name in hosts.keys():
+        return True
     return False
 
 

@@ -625,6 +625,10 @@ if registration_smt:
             if not utils.has_rmt_in_hosts(registration_smt):
                 utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
+        # The registry target may be missing, write if necessary
+        if not utils.has_registry_in_hosts(registration_smt):
+            utils.clean_hosts_file(registration_smt.get_domain_name())
+            utils.add_hosts_entry(registration_smt)
         logging.info(msg)
         registration_target_found = True
     else:

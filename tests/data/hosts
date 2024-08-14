@@ -23,3 +23,9 @@ ff02::3         ipv6-allhosts
 
 # other hosts
 192.0.2.1   some.box
+
+1.1.1.1   smt-foo.susecloud.net  smt-foo
+1.1.1.1   registry-foo.susecloud.net
+
+11:22:33:44::00   smt-foo.susecloud.net  smt-foo
+11:22:33:44::00   registry-foo.susecloud.net
