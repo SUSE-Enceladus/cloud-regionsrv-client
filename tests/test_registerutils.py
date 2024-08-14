@@ -265,89 +265,34 @@ def test_is_registration_supported_RHEL_Family():
     assert utils.is_registration_supported(cfg) is False
 
 
-def test_has_rmt_in_hosts_has_ipv4():
-    hosts_content = """
-    # simulates hosts file containing the ipv4 we are looking for in the test
+def test_has_rmt_in_hosts():
+    utils.HOSTSFILE_PATH = '{0}/hosts'.format(data_path)
+    server = Mock()
 
-    1.1.1.1   smt-foo.susecloud.net  smt-foo
-    1.1.1.1   registry-foo.susecloud.net
-    """
-    server = MockServer()
-    with patch('builtins.open', mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server)
+    # The following entry is expected to be found
+    server.get_FQDN = Mock(return_value='smt-foo.susecloud.net')
+    assert utils.has_rmt_in_hosts(server) is True
 
-    assert has_entry is True
+    # The following entry is expected to be not found
+    server.get_FQDN = Mock(return_value='bogus')
+    assert utils.has_rmt_in_hosts(server) is False
 
-
-def test_has_rmt_in_hosts_has_ipv4_6():
-    hosts_content = """
-    # simulates hosts file containing the ipv4 and iv6 we are looking for
-    # in the test
-
-    1.1.1.1   smt-foo.susecloud.net  smt-foo
-    1.1.1.1   registry-foo.susecloud.net
-    11:22:33:44::00   smt-foo.susecloud.net  smt-foo
-    11:22:33:44::00   registry-foo.susecloud.net
-    """
-    server = MockServer()
-    with patch('builtins.open', mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server)
-
-    assert has_entry is True
+    utils.HOSTSFILE_PATH = '/etc/hosts'
 
 
-def test_has_rmt_in_hosts_ipv4_not_found():
-    hosts_content = """
-    # simulates hosts file containing a different ipv4
+def test_has_registry_in_hosts():
+    utils.HOSTSFILE_PATH = '{0}/hosts'.format(data_path)
+    server = Mock()
 
-    2.1.1.1   smt-foo.susecloud.net  smt-foo
-    """
-    server = MockServer()
-    with patch('builtins.open', mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server)
+    # The following entry is expected to be found
+    server.get_registry_FQDN = Mock(return_value='registry-foo.susecloud.net')
+    assert utils.has_registry_in_hosts(server) is True
 
-    assert has_entry is False
+    # The following entry is expected to be not found
+    server.get_registry_FQDN = Mock(return_value='bogus')
+    assert utils.has_registry_in_hosts(server) is False
 
-
-def test_has_rmt_in_hosts_has_ipv6():
-    hosts_content = """
-    # simulates hosts file containing the ipv6 we are looking for in the test
-
-    11:22:33:44::00   smt-foo.susecloud.net  smt-foo
-    """
-    server = MockServer()
-    with patch('builtins.open', mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server)
-
-    assert has_entry is True
-
-
-def test_has_rmt_in_hosts_has_ipv6_4():
-    hosts_content = """
-    # simulates hosts file containing the ipv4 and iv6 we are looking for
-    # in the test
-
-    11:22:33:44::00   smt-foo.susecloud.net  smt-foo
-    1.1.1.1   smt-foo.susecloud.net  smt-foo
-    """
-    server = MockServer()
-    with patch('builtins.open', mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server)
-
-    assert has_entry is True
-
-
-def test_has_rmt_in_hosts_ipv6_not_found():
-    hosts_content = """
-    # simulates hosts file containing the ipv6 we are looking for in the test
-
-    22:22:33:44::00   smt-foo.susecloud.net  smt-foo
-    """
-    server = MockServer()
-    with patch('builtins.open', mock_open(read_data=hosts_content)):
-        has_entry = utils.has_rmt_in_hosts(server)
-
-    assert has_entry is False
+    utils.HOSTSFILE_PATH = '/etc/hosts'
 
 
 def test_clean_host_file_no_empty_bottom_lines():
