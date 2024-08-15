@@ -28,6 +28,36 @@ After installing the test package with "zypper in"
   + sucees message on stdout
   + $? is 0
   + zypper lr has repos
+  On SLE 15
+  + cat /etc/docker/daemon.json
+    - Should have registry for the update infrastructure and registry.suse.com
+  + cat /etc/containers/registries.conf
+    - Should have registry for the update infrastructure and registry.suse.com
+  + grep REGISTRY_AUTH_FILE /etc/profile.local
+  + grep DOCKER_CONFIG /etc/profile.local
+  + source /etc/profile.local
+  + systemctl start docker.service
+  + systemctl status docker.service
+    - Service should be running
+  + docker pull bci/bci-base
+    - Should pull the container from registry.suse.com
+  + systemctl stop docker.service
+  + zypper in podman
+  + podman pull bci/bci-base
+- registercloudguest --clean
+  + zypper lr has no repos
+  On SLE 15
+  + cat /etc/docker/daemon.json
+    - File does not exist or
+    - No reference to registry on update infrastructure and registry.suse.com
+  + cat /etc/containers/registries.conf
+    - File does not exist or
+    - No reference to registry on update infrastructure and registry.suse.com
+  + grep REGISTRY_AUTH_FILE /etc/profile.local
+    - Turns up empty
+  + grep DOCKER_CONFIG /etc/profile.local
+    - Turns up empty
+- registercloudguest
 - registercloudguest --force-new
   + no error
   + success message on stdout

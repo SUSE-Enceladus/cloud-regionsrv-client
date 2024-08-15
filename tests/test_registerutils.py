@@ -4368,7 +4368,9 @@ def test_clean_registries_conf_docker_file_clean_content_smt_OK(
     mock_os_path_exists.return_value = True
     mock_json_load.return_value = {
         'registry-mirrors': [
-            'foo.com', 'registry.suse.com', 'registry-foo.susecloud.net'
+            'foo.com',
+            'https://registry.suse.com',
+            'https://registry-foo.susecloud.net'
         ]
     }
     with patch('builtins.open', create=True) as mock_open:
@@ -4380,8 +4382,8 @@ def test_clean_registries_conf_docker_file_clean_content_smt_OK(
         ]
         assert mock_logging.info.call_args_list == [
             call(
-                'Registry content for /etc/docker/daemon.json has '
-                'been removed, updating that file'
+                'Registry content for "/etc/docker/daemon.json" has '
+                'been modified'
             ),
             call('File /etc/docker/daemon.json updated')
         ]
@@ -4401,8 +4403,9 @@ def test_clean_registries_conf_docker_file_clean_content_smt_OK_empty(
 ):
     mock_os_path_exists.return_value = True
     registry_fqdn = 'registry-foo.susecloud.net'
+    registry_url = 'https://' + registry_fqdn
     mock_json_load.return_value = {
-        'registry-mirrors': ['registry.suse.com', registry_fqdn]
+        'registry-mirrors': ['https://registry.suse.com', registry_url]
     }
     with patch('builtins.open', create=True) as mock_open:
         assert utils.clean_registries_conf_docker(registry_fqdn) is None
@@ -4444,8 +4447,8 @@ def test_clean_registries_conf_docker_file_clean_content_no_smt(
         ]
         assert mock_logging.info.call_args_list == [
             call(
-                'Registry content for /etc/docker/daemon.json has '
-                'been removed, updating that file'
+                'Registry content for "/etc/docker/daemon.json" has '
+                'been modified'
             ),
             call('File /etc/docker/daemon.json updated')
         ]
@@ -4506,7 +4509,7 @@ def test_set_registries_conf_docker_no_matches(
         mock_json_dump.assert_called_once_with(
             {
                 'registry-mirrors': [
-                    'registry-foo.susecloud.net',
+                    'https://registry-foo.susecloud.net',
                     'https://registry.suse.com',
                     'foo'
                 ],
@@ -4535,7 +4538,7 @@ def test_set_registries_conf_docker_unordered_matches(
             'registry-mirrors': [
                 'foo',
                 'https://registry.suse.com',
-                'registry-foo.susecloud.net'
+                'https://registry-foo.susecloud.net'
             ],
             'bar': ['bar'],
         }, False
@@ -4543,7 +4546,7 @@ def test_set_registries_conf_docker_unordered_matches(
         mock_json_dump.assert_called_once_with(
             {
                 'registry-mirrors': [
-                    'registry-foo.susecloud.net',
+                    'https://registry-foo.susecloud.net',
                     'https://registry.suse.com',
                     'foo'
                 ],
@@ -4574,7 +4577,7 @@ def test_set_registries_conf_docker_not_key_mirror(
             {
                 'foo': ['foo'],
                 'registry-mirrors': [
-                    'registry-foo.susecloud.net',
+                    'https://registry-foo.susecloud.net',
                     'https://registry.suse.com'
                 ]
             },
