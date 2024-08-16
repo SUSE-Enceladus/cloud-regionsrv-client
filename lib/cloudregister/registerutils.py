@@ -752,7 +752,7 @@ def clean_registry_auth(registry_fqdn):
             # our auth info, remove the file
             logging.info(
                 'Registry authentication config only contains managed content.'
-                'Removing the file %s' % REGISTRY_CREDENTIALS_PATH
+                ' Removing the file %s' % REGISTRY_CREDENTIALS_PATH
             )
             os.unlink(REGISTRY_CREDENTIALS_PATH)
             return True
@@ -994,6 +994,9 @@ def clean_registries_conf_docker(private_registry_fqdn):
         DOCKER_CONFIG_PATH, 'docker'
     )
     if failed:
+        logging.info(
+            'Unable to read "%s", cleanup not possible' % DOCKER_CONFIG_PATH
+        )
         return False
 
     if not registries_conf:
@@ -1002,15 +1005,16 @@ def clean_registries_conf_docker(private_registry_fqdn):
     modified = False
     registry_mirrors = registries_conf.get('registry-mirrors', [])
     if private_registry_fqdn:
-        if private_registry_fqdn in registry_mirrors:
+        private_registry_url = 'https://' + private_registry_fqdn
+        if private_registry_url in registry_mirrors:
             registry_mirrors.pop(
-                registry_mirrors.index(private_registry_fqdn)
+                registry_mirrors.index(private_registry_url)
             )
             modified = True
 
-        if 'registry.suse.com' in registry_mirrors:
+        if 'https://registry.suse.com' in registry_mirrors:
             registry_mirrors.pop(
-                registry_mirrors.index('registry.suse.com')
+                registry_mirrors.index('https://registry.suse.com')
             )
             modified = True
     else:
@@ -1029,7 +1033,7 @@ def clean_registries_conf_docker(private_registry_fqdn):
 
     if modified and registries_conf.get('registry-mirrors'):
         logging.info(
-            'Registry content for %s has been removed, updating that file' %
+            'Registry content for "%s" has been modified' %
             DOCKER_CONFIG_PATH
         )
         return write_registries_conf(
@@ -2462,7 +2466,8 @@ def __set_registries_conf_podman(private_registry_fqdn):
 # ----------------------------------------------------------------------------
 def __set_registries_conf_docker(private_registry_fqdn):
     # search is disabled for Docker server side for private registry
-    public_registry_fqdn = 'https://registry.suse.com'
+    public_registry_url = 'https://registry.suse.com'
+    private_registry_url = 'https://' + private_registry_fqdn
     docker_cfg_json = {}
     registry_mirrors = []
     os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
@@ -2479,10 +2484,10 @@ def __set_registries_conf_docker(private_registry_fqdn):
         priv_index = -1
         pub_index = -1
 
-        if private_registry_fqdn in registry_mirrors:
-            priv_index = registry_mirrors.index(private_registry_fqdn)
-        if public_registry_fqdn in registry_mirrors:
-            pub_index = registry_mirrors.index(public_registry_fqdn)
+        if private_registry_url in registry_mirrors:
+            priv_index = registry_mirrors.index(private_registry_url)
+        if public_registry_url in registry_mirrors:
+            pub_index = registry_mirrors.index(public_registry_url)
 
         if not priv_index == 0 or not pub_index == 1:
             if priv_index > 0:
@@ -2493,8 +2498,8 @@ def __set_registries_conf_docker(private_registry_fqdn):
 
     if modified or not registry_mirrors:
         [
-            registry_mirrors.insert(0, fqdn) for fqdn in
-            [public_registry_fqdn, private_registry_fqdn]
+            registry_mirrors.insert(0, url) for url in
+            [public_registry_url, private_registry_url]
         ]
         docker_cfg_json['registry-mirrors'] = registry_mirrors
         return write_registries_conf(
