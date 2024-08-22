@@ -71,6 +71,7 @@ BuildRequires:  python3-toml
 BuildRequires:  sudo
 BuildRequires:  systemd-rpm-macros
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+BuildArch:      noarch
 
 %description
 Obtain cloud SMT server information from the region server configured in
