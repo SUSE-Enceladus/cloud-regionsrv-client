@@ -1980,14 +1980,25 @@ def test_get_zypper_command(mock_zypper_pid):
 
 
 @patch('cloudregister.registerutils.subprocess.Popen')
-def test_get_zypper_pid(mock_popen):
+def test_get_zypper_pid_one_pid(mock_popen):
     mock_process = Mock()
     mock_process.communicate = Mock(
-        return_value=[str.encode('pid'), str.encode('stderr')]
+        return_value=[str.encode('12345 '), str.encode('stderr')]
     )
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
-    assert utils.get_zypper_pid() == 'pid'
+    assert utils.get_zypper_pid() == '12345'
+
+
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_zypper_pid_with_child_pid(mock_popen):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('12345\n    6789\n'), str.encode('stderr')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    assert utils.get_zypper_pid() == '12345'
 
 
 @patch('cloudregister.registerutils.has_ipv6_access')

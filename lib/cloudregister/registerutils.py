@@ -1452,7 +1452,7 @@ def get_zypper_pid():
         zyppPIDCmd = ['ps', '-C', executable_name, '-o', 'pid=']
         zyppPID = subprocess.Popen(zyppPIDCmd, stdout=subprocess.PIPE)
         pidData = zyppPID.communicate()
-        pid = pidData[0].strip().decode()
+        pid = pidData[0].decode().split('\n')[0].strip()
         if pid:
             break
 
