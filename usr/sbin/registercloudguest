@@ -337,7 +337,9 @@ def setup_ltss_registration(registration_target, regcode):
                 ltss_registered = True
                 break
     if ltss_registered:
-        logging.info('LTSS already registered')
+        message = 'LTSS registration succeeded'
+        logging.info(message)
+        print(message)
     else:
         base_product = get_product_triplet(product)
 
@@ -359,11 +361,14 @@ def setup_ltss_registration(registration_target, regcode):
             message = suseconnect.output
             logging.error('LTSS registration failed')
             logging.error('\t{0}'.format(message))
-            print(message, file=sys.stderr)
+            print(
+                'LTSS registration failed see /var/log/cloudregister '
+                'for details', file=sys.stderr
+            )
             sys.exit(1)
-        logging.info(
-            'LTSS registration succeeded'
-        )
+        message = 'LTSS registration succeeded'
+        logging.info(message)
+        print(message)
 
 
 # ----------------------------------------------------------------------------
