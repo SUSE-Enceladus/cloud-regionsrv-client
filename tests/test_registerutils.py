@@ -3247,6 +3247,20 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 
 
 # ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.socket.create_connection')
+def test_has_network_access_by_ip_address_no_connection(
+        mock_socket_create_connection, mock_logging
+        ):
+    mock_socket_create_connection.side_effect = OSError
+    has_access = utils.has_network_access_by_ip_address('FFF::0', 'IPv6')
+    assert not has_access
+    assert mock_logging.info.called_once_with(
+        'Skipping IPv6 protocol version, no network configuration'
+    )
+
+
+# ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.set_registries_conf')
 @patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')

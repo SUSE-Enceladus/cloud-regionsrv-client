@@ -459,8 +459,11 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
+    ip_addr_version = 'IPv4'
     try:
-        ipaddress.ip_address(args.user_smt_ip)
+        ip_addr = ipaddress.ip_address(args.user_smt_ip)
+        if isinstance(ip_addr, ipaddress.IPv6Address):
+            ip_addr_version = 'IPv6'
     except ValueError as err:
         msg = "--smt-ip value '{ip_addr}' is not correct: {err}".format(
             ip_addr=args.user_smt_ip,
@@ -469,13 +472,16 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         print(msg, file=sys.stderr)
         sys.exit(1)
 
-    if not utils.has_network_access_by_ip_address(args.user_smt_ip):
+    if not utils.has_network_access_by_ip_address(
+            args.user_smt_ip, ip_addr_version
+    ):
         error_message = (
             'Connection error: Could not establish a connection to {ip}.'
             'Please, make sure the network configuration supports the '
             'provided {ip} address version.'.format(ip=args.user_smt_ip)
         )
-        sys.exit(error_message)
+        print(error_message, file=sys.stderr)
+        sys.exit(1)
 
 
 if args.clean_up and args.force_new_registration:

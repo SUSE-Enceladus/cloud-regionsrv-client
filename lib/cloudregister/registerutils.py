@@ -1485,6 +1485,21 @@ def get_zypper_target_root():
 
 
 # ----------------------------------------------------------------------------
+def has_network_access_by_ip_address(server_ip, ip_ver='IPv4'):
+    """Check if we can connect to the given server"""
+    try:
+        connection = socket.create_connection((server_ip, 443), timeout=2)
+    except OSError:
+        logging.info(
+            'Skipping %s protocol version, no network configuration' % ip_ver
+            )
+        return False
+
+    connection.close()
+    return True
+
+
+# ----------------------------------------------------------------------------
 def has_rmt_ipv6_access(smt):
     """IPv6 access is possible if we have an SMT server that has an IPv6
        address and it can be accessed over IPv6"""
@@ -2077,26 +2092,13 @@ def write_framework_identifier(cfg):
 # ----------------------------------------------------------------------------
 def has_ipv4_access():
     """Check if we have IPv4 network configuration"""
-    return has_network_access_by_ip_address('8.8.8.8')
+    return has_network_access_by_ip_address('8.8.8.8', 'IPv4')
 
 
 # ----------------------------------------------------------------------------
 def has_ipv6_access():
     """Check if we have IPv6 network configuration"""
-    return has_network_access_by_ip_address('2001:4860:4860::8888')
-
-
-# ----------------------------------------------------------------------------
-def has_network_access_by_ip_address(server_ip):
-    """Check if we can connect to the given server"""
-    try:
-        connection = socket.create_connection((server_ip, 443), timeout=2)
-    except OSError as e:
-        logging.info('Network access error: "%s"', e)
-        return False
-
-    connection.close()
-    return True
+    return has_network_access_by_ip_address('2001:4860:4860::8888', 'IPv6')
 
 
 # ----------------------------------------------------------------------------
