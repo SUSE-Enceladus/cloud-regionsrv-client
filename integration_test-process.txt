@@ -125,6 +125,26 @@ After installing the test package with "zypper in"
   + Cloud based RMT server is the target
 - registercloudguest --clean
 
+Migration testing
+SLE 15
+- Start a PAYG instance 2 SPs back from the current one
+- Check the instance is properly registered
+- zypper up
+  + Expected to succeed
+- With the new cloud-regionsrv-client code in place run "zypper migration"
+  + Migrate to the highest available SP
+  + Expected to succeed
+- Start a BYOS instance 2 SPs back from the current one
+- registercloudguest -r XXX
+  + no error
+  + sucees message on stdout
+- Add the Public Cloud Module if it is not setup
+- zypper up
+  + Expected to succeed
+- With the new cloud-regionsrv-client code in place run "zypper migration"
+  + Migrate to the highest available SP
+  + Expected to succeed
+
 Extended testing
 - Clean out /var/log/cloudregister
 - Create an image from a registered instance (PAYG)
