@@ -318,7 +318,9 @@ def get_product_triplet(product_tree):
 
 
 # ----------------------------------------------------------------------------
-def setup_ltss_registration(registration_target, regcode):
+def setup_ltss_registration(
+    registration_target, regcode, instance_data_filepath
+):
     """
     Run SUSEConnect to register LTSS for this instance
     """
@@ -351,7 +353,8 @@ def setup_ltss_registration(registration_target, regcode):
         suseconnect = run_SUSEConnect(
             registration_target=registration_target,
             product=ltss_product_triplet,
-            regcode=regcode
+            regcode=regcode,
+            instance_data_filepath=instance_data_filepath
         )
         if suseconnect.returncode != 0:
             # Something went wrong...
@@ -661,6 +664,14 @@ if registration_smt:
             logging.error(msg)
             sys.exit(1)
 
+# Check if we need to send along any instance data
+instance_data_filepath = os.path.join(utils.get_state_dir(), str(uuid.uuid4()))
+instance_data = utils.get_instance_data(cfg)
+if instance_data:
+    inst_data_out = open(instance_data_filepath, 'w')
+    inst_data_out.write(instance_data)
+    inst_data_out.close()
+
 if registration_target_found:
     # The system is properly registered, run through the checklist now:
     # 1. check/setup the container registry for this target
@@ -668,7 +679,11 @@ if registration_target_found:
 
     # 2. check/setup if we got a regcode which is handled as LTSS
     if args.reg_code:
-        setup_ltss_registration(registration_smt, args.reg_code)
+        setup_ltss_registration(
+            registration_smt,
+            args.reg_code,
+            instance_data_filepath
+        )
 
     # All done, time to leave...
     sys.exit(0)
@@ -690,14 +705,6 @@ if not os.path.exists(utils.get_state_dir()):
 
 # Write the data of the current target server
 utils.set_as_current_smt(registration_target)
-
-# Check if we need to send along any instance data
-instance_data_filepath = os.path.join(utils.get_state_dir(), str(uuid.uuid4()))
-instance_data = utils.get_instance_data(cfg)
-if instance_data:
-    inst_data_out = open(instance_data_filepath, 'w')
-    inst_data_out.write(instance_data)
-    inst_data_out.close()
 
 # Check if registration is supported
 if not utils.is_registration_supported(cfg):
