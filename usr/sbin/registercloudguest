@@ -311,7 +311,7 @@ def get_product_triplet(product_tree):
         'product_type', ['name', 'version', 'arch']
     )
     return product_type(
-        name=product_tree.find('name').text.lower(),
+        name=product_tree.find('name').text,
         version=product_tree.find('version').text,
         arch=product_tree.find('arch').text
     )
