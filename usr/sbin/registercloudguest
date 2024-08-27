@@ -196,7 +196,6 @@ def register_modules(extensions, products, registered=[], failed=[]):
                 registration_target=registration_target,
                 product=triplet,
                 instance_data_filepath=instance_data_filepath
-                if os.path.exists(instance_data_filepath) else ''
             )
 
             if suseconnect.returncode:
@@ -676,9 +675,12 @@ if registration_smt:
             sys.exit(1)
 
 # Check if we need to send along any instance data
-instance_data_filepath = os.path.join(utils.get_state_dir(), str(uuid.uuid4()))
+instance_data_filepath = ''
 instance_data = utils.get_instance_data(cfg)
 if instance_data:
+    instance_data_filepath = os.path.join(
+        utils.get_state_dir(), str(uuid.uuid4())
+    )
     inst_data_out = open(instance_data_filepath, 'w')
     inst_data_out.write(instance_data)
     inst_data_out.close()
@@ -749,7 +751,6 @@ while not base_registered:
         email=args.email,
         regcode=args.reg_code,
         instance_data_filepath=instance_data_filepath
-        if os.path.exists(instance_data_filepath) else ''
     )
     if suseconnect.returncode:
         registration_returncode = suseconnect.returncode
