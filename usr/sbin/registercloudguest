@@ -324,6 +324,7 @@ def setup_ltss_registration(
     Run SUSEConnect to register LTSS for this instance
     """
     logging.info('Running LTSS registration...')
+    print('Running LTSS registration...this takes a little longer')
     product = get_product_tree()
     if product is None:
         message = 'Cannot find baseproduct registration for LTSS'
