@@ -823,7 +823,7 @@ def test_fetch_smt_data_not_200_exception(
     assert mock_logging.error.call_args_list == [
         call('===================='),
         call('Metadata server returned 422'),
-        call('Unable to obtain SMT server information, exiting')
+        call('Unable to obtain update server information, exiting')
     ]
 
 
@@ -969,20 +969,15 @@ def test_fetch_smt_data_api_no_valid_ip(
     mock_os_path_isfile.return_value = True
     response = Response()
     response.status_code = 200
-    response.text = (
-        '{"fingerprint":"foo","SMTserverIP":"bar","SMTserverName":"foobar"}'
-    )
-    response2 = Response()
-    response2.status_code = 200
     smt_xml = dedent(
         '''<regionSMTdata><smtInfo fingerprint="99:88:77:66" '''
         '''SMTserverIP="1.2.3.4" SMTserverIPv6="fc11::2" '''
         '''SMTserverName="foo.susecloud.net"/></regionSMTdata>'''
     )
-    response2.text = smt_xml
-    mock_request_get.side_effect = [response2, response2]
-    mock_ipaddress_ip_address.side_effect = ValueError('foo')
-    mock_socket_create_connection.side_effect = OSError('Network unreachable')
+    response.text = smt_xml
+    mock_request_get.side_effect = [response, response]
+    mock_ipaddress_ip_address.side_effect = [ValueError, ValueError]
+    mock_socket_create_connection.side_effect = OSError
     smt_data = utils.fetch_smt_data(cfg, None)
     assert etree.tostring(smt_data, encoding='utf-8') == smt_xml.encode()
 
@@ -3244,6 +3239,20 @@ def test_has_ipv6_access(mock_has_network_access):
 @patch('cloudregister.registerutils.socket.create_connection')
 def test_has_network_access_by_ip_address(mock_socket_create_connection):
     assert utils.has_network_access_by_ip_address('1.1.1.1')
+
+
+# ---------------------------------------------------------------------------
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.socket.create_connection')
+def test_has_network_access_by_ip_address_no_connection(
+        mock_socket_create_connection, mock_logging
+        ):
+    mock_socket_create_connection.side_effect = OSError
+    has_access = utils.has_network_access_by_ip_address('FFF::0')
+    assert not has_access
+    assert mock_logging.info.called_once_with(
+        'Skipping IPv6 protocol version, no network configuration'
+    )
 
 
 # ---------------------------------------------------------------------------

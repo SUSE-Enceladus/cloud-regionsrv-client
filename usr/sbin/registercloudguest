@@ -474,7 +474,8 @@ if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
             'Please, make sure the network configuration supports the '
             'provided {ip} address version.'.format(ip=args.user_smt_ip)
         )
-        sys.exit(error_message)
+        print(error_message, file=sys.stderr)
+        sys.exit(1)
 
 
 if args.clean_up and args.force_new_registration:
