@@ -16,7 +16,7 @@
 #
 
 
-%define base_version 10.3.2
+%define base_version 10.3.3
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
