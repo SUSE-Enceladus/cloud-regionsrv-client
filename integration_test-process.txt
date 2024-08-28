@@ -17,15 +17,27 @@ After installing the test package with "zypper in"
   + zypper lr has repos
   + SUSEConnect -s shows the registration status
   + SUSEConnect -l shows a list of modules/extensions available or installed
+  On SLE 15
+  + grep REGISTRY_AUTH_FILE /etc/profile.local has value
+  + grep DOCKER_CONFIG /etc/profile.local has value
+  + grep susecloud /etc/docker/daemon.json has value
+  + grep susecloud /etc/containers/registries.conf has value
 - registercloudguest --clean
   + no error no message
   + zypper lr has no repos
-  + nothing in /etc/zypp/credentials.d
-  + nothing in /etc/zypp/services.d/
-  + no pkl files in /var/cache/cloudregister/
+  + ls /etc/zypp/credentials.d returns empty
+  + ls /etc/zypp/services.d/ returns empty
+  + ls /var/cache/cloudregister/*.pkl returns empty or dir does not exist
+  + grep susecloud /etc/hosts returns empty
+  + grep REGISTRY_AUTH_FILE /etc/profile.local returns empty
+  + grep DOCKER_CONFIG /etc/profile.local returns empty
+  + cat /etc/docker/daemon.json
+    - does not exists or has no reference to susecloud
+  + cat /etc/containers/registries.conf
+    - does not exists or has no reference to susecloud
 - registercloudguest
   + no error
-  + sucees message on stdout
+  + success message on stdout
   + $? is 0
   + zypper lr has repos
   On SLE 15
@@ -63,6 +75,13 @@ After installing the test package with "zypper in"
   + success message on stdout
   + $? is 0
   + zypper lr has repos
+  On SLE 15
+  + cat /etc/docker/daemon.json
+    - Should have registry for the update infrastructure and registry.suse.com
+  + cat /etc/containers/registries.conf
+    - Should have registry for the update infrastructure and registry.suse.com
+  + grep REGISTRY_AUTH_FILE /etc/profile.local
+  + grep DOCKER_CONFIG /etc/profile.local
 - rm /etc/pki/trust/anchors/registration_server_*.pem
   + update-ca-certificates
   + registercloudguest --force-new
@@ -70,7 +89,7 @@ After installing the test package with "zypper in"
   + $? is 0
   + zypper lr has repos
 - Update server failover
-  + ip=`grep susecloud.net /etc/hosts | cut -f1`
+  + ip=`grep -m 1 susecloud.net /etc/hosts | cut -f1`
   + iptables -A OUTPUT -d $ip -j DROP
   + zypper ref
   + grep -i equivalent /var/log/cloudregister
@@ -125,23 +144,73 @@ After installing the test package with "zypper in"
   + Cloud based RMT server is the target
 - registercloudguest --clean
 
-Migration testing
+Migration testing and LTSS testing
 SLE 15
 - Start a PAYG instance 2 SPs back from the current one
 - Check the instance is properly registered
 - zypper up
   + Expected to succeed
-- With the new cloud-regionsrv-client code in place run "zypper migration"
+  With the new cloud-regionsrv-client code in place
+- registercloudguest --clean
+- registercloudguest -r LTSS_REG_CODE
+  + Expected to fail because the underlying system base product is not
+    registered
+- registercloudguest
+  + no error
+  + sucees message on stdout
+  + $? is 0
+- registercloudguest -r LTSS_REG_CODE
+  + zypper lr | grep LTSS has LTSS repositories
+  + zypper ref
+  + zypper up
+    + Expected to have new updates due to the addition of the LTSS repos
+  + source /etc/profile.local
+  + systemctl start docker.service
+  + systemctl status docker.service
+    - Service should be running
+  + docker pull suse/ltss/sle$VERSION/bci-base
+    - Should pull the container from registry-$FRAMEWORK.susecloud.net
+  + systemctl stop docker.service
+  + zypper in podman
+  + podman pull suse/ltss/sle$VERSION/bci-base
+- zypper migration
+  + Should fail because LTSS repos are active, and possibly other modules
+  + Use the command presented to remove the product/modules
+- zypper migration
   + Migrate to the highest available SP
   + Expected to succeed
 - Start a BYOS instance 2 SPs back from the current one
+  With the new cloud-regionsrv-client code in place
 - registercloudguest -r XXX
   + no error
   + sucees message on stdout
 - Add the Public Cloud Module if it is not setup
 - zypper up
   + Expected to succeed
-- With the new cloud-regionsrv-client code in place run "zypper migration"
+- registercloudguest -r LTSS_REG_CODE
+  + zypper lr | grep LTSS has LTSS repositories
+  + zypper ref
+  + zypper up
+    + Expected to have new updates due to the addition o fthe LTSS repos
+  + source /etc/profile.local
+  + systemctl start docker.service
+  + systemctl status docker.service
+    - Service should be running
+  + docker pull suse/ltss/sle$VERSION/bci-base
+    - Should pull the container from registry-$FRAMEWORK.susecloud.net
+  + systemctl stop docker.service
+  + zypper in podman
+  + podman pull suse/ltss/sle$VERSION/bci-base
+- zypper migration
+  + Should fail because LTSS repos are active, and possibly other modules
+  + Use the command presented to remove the product/modules
+- zypper migration
+  + Migrate to the highest available SP
+  + Expected to succeed
+- zypper migration
+  + Should fail because LTSS repos are active, and possibly other modules
+  + Use the command presented to remove the product/modules
+- zypper migration
   + Migrate to the highest available SP
   + Expected to succeed
 
