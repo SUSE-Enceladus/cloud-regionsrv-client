@@ -33,6 +33,7 @@ import time
 import toml
 import yaml
 
+from collections import namedtuple
 from lxml import etree
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
@@ -52,6 +53,7 @@ PROFILE_LOCAL_PATH = '/etc/profile.local'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
+BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -171,6 +173,90 @@ def clear_rmt_as_scc_proxy_flag():
         os.unlink(os.path.join(get_state_dir(), RMT_AS_SCC_PROXY_MARKER))
     except FileNotFoundError:
         pass
+
+
+# ----------------------------------------------------------------------------
+def clean_payg_extensions():
+    """Remove non free extensions files from /etc/products.d/."""
+    extensions = get_extensions()
+    products_paths = glob.glob('/etc/products.d/*.prod')
+
+    for extension in extensions:
+        if not extension.get('free'):
+            extension_path = os.path.join(
+                os.sep, 'etc', 'products.d', '{}.prod'.format(
+                    extension.get('identifier')
+                )
+            )
+            if extension_path in products_paths:
+                os.unlink(extension_path)
+
+
+# ----------------------------------------------------------------------------
+def get_product_tree(product_file=BASE_PRODUCT_PATH):
+    """
+    Read product element from baseproduct and return an etree
+    """
+    if os.path.isfile(product_file):
+        with open(product_file, 'r') as product:
+            raw_xml = product.read()
+            product_entry_point = raw_xml.index('<product')
+            return etree.fromstring(raw_xml[product_entry_point:])
+
+
+# ----------------------------------------------------------------------------
+def get_product_triplet(product_tree):
+    """
+    Extract identifier, version and arch information from
+    the given product tree
+    """
+    product_type = namedtuple(
+        'product_type', ['name', 'version', 'arch']
+    )
+    return product_type(
+        name=product_tree.find('name').text,
+        version=product_tree.find('version').text,
+        arch=product_tree.find('arch').text
+    )
+
+
+# ----------------------------------------------------------------------------
+def get_extensions():
+    """Get the extensions of the base product on RMT."""
+    prod_data = get_product_data()
+    return prod_data.get('extensions', [])
+
+
+# ----------------------------------------------------------------------------
+def get_product_data(registration_target=None):
+    if not registration_target:
+        registration_target = get_current_smt()
+    if not registration_target:
+        logging.info('No update server set')
+        return {}
+
+    base_product = get_product_triplet(get_product_tree())
+    headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
+    query_args = 'identifier=%s&version=%s&arch=%s' % (
+        base_product.name, base_product.version, base_product.arch
+    )
+    user, password = get_credentials(get_credentials_file(registration_target))
+    auth_creds = HTTPBasicAuth(user, password)
+    url_system_products = 'https://%s/connect/systems/products?%s' % (
+        registration_target.get_FQDN(), query_args
+    )
+    res = requests.get(url_system_products, auth=auth_creds, headers=headers)
+    if res.status_code != requests.codes.ok:
+        err_msg = 'Unable to obtain product information from server "%s"\n'
+        err_msg += '\t%s\n\t%s, exiting.'
+        ips = '%s,%s' % (
+            registration_target.get_ipv4(), registration_target.get_ipv6()
+        )
+        err_msg = err_msg % (ips, res.reason, res.content.decode("UTF-8"))
+        logging.error(err_msg)
+        raise Exception(err_msg)
+
+    return res.json()
 
 
 # ----------------------------------------------------------------------------

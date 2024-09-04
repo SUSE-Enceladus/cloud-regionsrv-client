@@ -227,6 +227,12 @@ def register_modules(extensions, products, registered=[], failed=[]):
 # ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
+    try:
+        utils.clean_payg_extensions()
+    except Exception as err:
+        print(
+            'Could check the system product data: %s' % err
+        )
     utils.clean_registry_setup()
     utils.remove_registration_data()
     utils.clean_smt_cache()
@@ -289,34 +295,6 @@ def get_responding_update_server(region_smt_servers):
 
 
 # ----------------------------------------------------------------------------
-def get_product_tree(product_file='/etc/products.d/baseproduct'):
-    """
-    Read product element from baseproduct and return an etree
-    """
-    if os.path.isfile(product_file):
-        with open(product_file, 'r') as product:
-            raw_xml = product.read()
-            product_entry_point = raw_xml.index('<product')
-            return etree.fromstring(raw_xml[product_entry_point:])
-
-
-# ----------------------------------------------------------------------------
-def get_product_triplet(product_tree):
-    """
-    Extract identifier, version and arch information from
-    the given product tree
-    """
-    product_type = namedtuple(
-        'product_type', ['name', 'version', 'arch']
-    )
-    return product_type(
-        name=product_tree.find('name').text,
-        version=product_tree.find('version').text,
-        arch=product_tree.find('arch').text
-    )
-
-
-# ----------------------------------------------------------------------------
 def setup_ltss_registration(
     registration_target, regcode, instance_data_filepath
 ):
@@ -325,7 +303,7 @@ def setup_ltss_registration(
     """
     logging.info('Running LTSS registration...')
     print('Running LTSS registration...this takes a little longer')
-    product = get_product_tree()
+    product = utils.get_product_tree()
     if product is None:
         message = 'Cannot find baseproduct registration for LTSS'
         logging.error(message)
@@ -343,7 +321,7 @@ def setup_ltss_registration(
         logging.info(message)
         print(message)
     else:
-        base_product = get_product_triplet(product)
+        base_product = utils.get_product_triplet(product)
 
         # The name of the product to register is the LTSS variant for the
         # registered base product. In theory other combinations are possible
@@ -801,8 +779,8 @@ while not base_registered:
         if args.email or args.reg_code:
             utils.set_rmt_as_scc_proxy_flag()
 
-base_product = get_product_triplet(
-    get_product_tree()
+base_product = utils.get_product_triplet(
+    utils.get_product_tree()
 )
 headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
 query_args = 'identifier=%s&version=%s&arch=%s' % (

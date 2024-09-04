@@ -756,6 +756,178 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
     )
 
 
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.glob.glob')
+def test_clean_payg_extensions(
+    mock_glob,
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_os_unlink
+):
+    mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
+    response = Response()
+    response.status_code = requests.codes.ok
+    json_mock = Mock()
+    json_mock.return_value = {
+        'id': 2001,
+        'name': 'SUSE Linux Enterprise Server',
+        'identifier': 'SLES',
+        'former_identifier': 'SLES',
+        'version': '15.4',
+        'release_type': None,
+        'release_stage': 'released',
+        'arch': 'x86_64',
+        'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
+        'product_class': '30',
+        'extensions': [
+            {
+                'id': 23,
+                'name': 'SUSE Linux Enterprise Server LTSS',
+                'identifier': 'SLES-LTSS',
+                'former_identifier': 'SLES-LTSS',
+                'version': '15.4',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name':
+                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True
+            }
+        ]
+    }
+    response.json = json_mock
+    mock_requests_get.return_value = response
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    utils.clean_payg_extensions()
+    assert mock_os_unlink.mock_calls == [
+        call('/etc/products.d/SLES-LTSS.prod')
+    ]
+
+
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.glob.glob')
+def test_clean_payg_extensions_request_failed(
+    mock_glob,
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_os_unlink
+):
+    mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
+    response = Response()
+    response.status_code = 403
+    response.content = str(json.dumps('no accessio'))
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    with raises(Exception):
+        utils.clean_payg_extensions()
+        assert mock_os_unlink.mock_calls == []
+
+
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.glob.glob')
+def test_clean_payg_extensions_no_credentials(
+    mock_glob,
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_os_unlink
+):
+    mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
+    mock_get_current_smt.return_value = None
+    utils.clean_payg_extensions()
+    assert mock_os_unlink.mock_calls == []
+
+
+@patch('cloudregister.registerutils.os.path.isfile')
+def test_get_product_tree(mock_path_isfile):
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    expected_tree = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    mock_path_isfile.return_value = True
+    with patch('builtins.open', mock_open(read_data=base_product)):
+        result = utils.get_product_tree()
+        assert etree.tostring(result) == etree.tostring(expected_tree)
+
+
 @patch('cloudregister.registerutils.get_credentials')
 def test_credentials_files_are_equal(mock_get_credentials):
     mock_get_credentials.side_effect = [('SCC_foo', 'bar'), ('SCC_foo', 'bar')]
