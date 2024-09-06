@@ -182,7 +182,10 @@ def clean_payg_extensions():
     products_paths = glob.glob('/etc/products.d/*.prod')
 
     for extension in extensions:
-        if not extension.get('free'):
+        # The following not free condition checks on
+        # the access capability of the extension
+        # This is a server side capability
+        if not extension.get('free', True):
             extension_path = os.path.join(
                 os.sep, 'etc', 'products.d', '{}.prod'.format(
                     extension.get('identifier')
@@ -190,6 +193,9 @@ def clean_payg_extensions():
             )
             if extension_path in products_paths:
                 os.unlink(extension_path)
+                logging.info(
+                    'Non free extension file %s removed' % extension_path
+                )
 
 
 # ----------------------------------------------------------------------------

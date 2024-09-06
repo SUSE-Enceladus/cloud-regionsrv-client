@@ -756,6 +756,7 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
     )
 
 
+@patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.get_product_tree')
@@ -768,7 +769,8 @@ def test_clean_payg_extensions(
     mock_get_current_smt,
     mock_get_product_tree,
     mock_get_creds,
-    mock_os_unlink
+    mock_os_unlink,
+    mock_logging
 ):
     mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
     response = Response()
@@ -837,8 +839,12 @@ def test_clean_payg_extensions(
     assert mock_os_unlink.mock_calls == [
         call('/etc/products.d/SLES-LTSS.prod')
     ]
+    assert mock_logging.info.call_args_list == [
+        call('Non free extension file /etc/products.d/SLES-LTSS.prod removed')
+    ]
 
 
+@patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.get_product_tree')
@@ -851,12 +857,15 @@ def test_clean_payg_extensions_request_failed(
     mock_get_current_smt,
     mock_get_product_tree,
     mock_get_creds,
-    mock_os_unlink
+    mock_os_unlink,
+    mock_logging
 ):
     mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
     response = Response()
-    response.status_code = 403
-    response.content = str(json.dumps('no accessio'))
+    response.status_code = requests.codes.forbidden
+    response.reason = 'Because nope'
+    response.content = str(json.dumps('no accessio')).encode()
+    mock_requests_get.return_value = response
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="00:11:22:33"
          SMTserverIP="192.168.1.1"
@@ -883,7 +892,11 @@ def test_clean_payg_extensions_request_failed(
     )
     with raises(Exception):
         utils.clean_payg_extensions()
-        assert mock_os_unlink.mock_calls == []
+    assert mock_os_unlink.mock_calls == []
+    mock_logging.error.assert_called_once_with(
+        'Unable to obtain product information from server "192.168.1.1,fc00::1"'
+        '\n\tBecause nope\n\t"no accessio", exiting.'
+    )
 
 
 @patch('cloudregister.registerutils.os.unlink')

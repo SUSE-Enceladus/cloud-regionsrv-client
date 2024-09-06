@@ -230,9 +230,8 @@ def cleanup():
     try:
         utils.clean_payg_extensions()
     except Exception as err:
-        print(
-            'Could check the system product data: %s' % err
-        )
+        print('Could not check the system product data: {}'.format(err))
+
     utils.clean_registry_setup()
     utils.remove_registration_data()
     utils.clean_smt_cache()
