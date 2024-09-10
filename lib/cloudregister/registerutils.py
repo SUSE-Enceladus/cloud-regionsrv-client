@@ -228,7 +228,7 @@ def get_product_triplet(product_tree):
 
 # ----------------------------------------------------------------------------
 def get_extensions():
-    """Get the extensions of the base product on RMT."""
+    """Get the extensions of the base product on the update server."""
     prod_data = get_product_data()
     return prod_data.get('extensions', [])
 
