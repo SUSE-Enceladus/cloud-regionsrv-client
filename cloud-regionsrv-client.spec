@@ -15,6 +15,12 @@
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
 
+%if 0%{?suse_version} >= 1600
+%define pythons %{primary_python}
+%else
+%define pythons python3
+%endif
+%global _sitelibdir %{%{pythons}_sitelib}
 
 %define base_version 10.3.4
 Name:           cloud-regionsrv-client
@@ -29,6 +35,8 @@ Source0:        %{name}-%{version}.tar.bz2
 Patch0:         fix-for-sles12-disable-ipv6.patch
 # PATCH-FIX-SLES12 fix-for-sles12-disable-registry.patch
 Patch1:         fix-for-sles12-disable-registry.patch
+# PATCH-FIX-SLES12 fix-for-sles12-no-trans_update.patch
+Patch2:         fix-for-sles12-no-trans_update.patch
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
@@ -37,15 +45,15 @@ Requires:       dmidecode
 %endif
 Requires:       pciutils
 Requires:       procps
-Requires:       python3
-Requires:       python3-PyYAML
-Requires:       python3-M2Crypto
-Requires:       python3-lxml
-Requires:       python3-requests
-Requires:       python3-urllib3
-Requires:       python3-zypp-plugin
+Requires:       %{pythons}
+Requires:       %{pythons}-PyYAML
+Requires:       %{pythons}-M2Crypto
+Requires:       %{pythons}-lxml
+Requires:       %{pythons}-requests
+Requires:       %{pythons}-urllib3
+Requires:       %{pythons}-zypp-plugin
 %if 0%{?suse_version} > 1315
-Requires:       python3-toml
+Requires:       %{pythons}-toml
 %endif
 Requires:       regionsrv-certs
 Requires:       sudo
@@ -58,15 +66,19 @@ Conflicts:      container-suseconnect
 %{?systemd_ordering}
 %endif
 BuildRequires:  python-rpm-macros
-BuildRequires:  python3-PyYAML
-BuildRequires:  python3-M2Crypto
-BuildRequires:  python3-devel
-BuildRequires:  python3-lxml
-BuildRequires:  python3-requests
-BuildRequires:  python3-setuptools
-BuildRequires:  python3-zypp-plugin
+BuildRequires:  %{pythons}-PyYAML
+BuildRequires:  %{pythons}-M2Crypto
+BuildRequires:  %{pythons}-devel
+BuildRequires:  %{pythons}-lxml
+BuildRequires:  %{pythons}-requests
+BuildRequires:  %{pythons}-setuptools
+BuildRequires:  %{pythons}-zypp-plugin
+%if 0%{?suse_version} >= 1600
+BuildRequires:  %{pythons}-pip
+BuildRequires:  %{pythons}-wheel
+%endif
 %if 0%{?suse_version} > 1315
-BuildRequires:  python3-toml
+BuildRequires:  %{pythons}-toml
 %endif
 BuildRequires:  sudo
 BuildRequires:  systemd-rpm-macros
@@ -139,17 +151,26 @@ Enable/Disable Guest Registration for Microsoft Azure
 %if 0%{?suse_version} == 1315
 %patch -P 0
 %patch -P 1
+%patch -P 2
 test -e usr/sbin/registercloudguest.orig && rm usr/sbin/registercloudguest.orig
 test -e lib/cloudregister/registerutils.py.orig && rm lib/cloudregister/registerutils.py.orig
 %endif
 
 %build
-python3 setup.py build
+%if 0%{?suse_version} >= 1600
+%pyproject_wheel
+%else
+%{pythons} setup.py build
+%endif
 
 %install
 cp -r etc %{buildroot}
 cp -r usr %{buildroot}
-python3 setup.py install --prefix=%{_prefix} --root=%{buildroot}
+%if 0%{?suse_version} >= 1600
+%pyproject_install
+%else
+%{pythons} setup.py install --prefix=%{_prefix} --root=%{buildroot}
+%endif
 # The location of the regionserver certs
 mkdir -p %{buildroot}/usr/lib/regionService/certs
 # The directory for the cache data
@@ -218,15 +239,19 @@ fi
 %{_sbindir}/updatesmtcache
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
 %{_sysconfdir}/sudoers.d/*
-%{python3_sitelib}/cloudregister/__*
-%{python3_sitelib}/cloudregister/reg*
-%{python3_sitelib}/cloudregister/smt*
-%{python3_sitelib}/cloudregister/VERSION
 %{_unitdir}/guestregister.service
 %{_unitdir}/containerbuild-regionsrv.service
-%dir %{python3_sitelib}/cloudregister-%{base_version}-py%{py3_ver}.egg-info
-%dir %{python3_sitelib}/cloudregister/
-%{python3_sitelib}/cloudregister-%{base_version}-py%{py3_ver}.egg-info/*
+%exclude %{_sitelibdir}/cloudregister/google*
+%exclude %{_sitelibdir}/cloudregister/amazon*
+%exclude %{_sitelibdir}/cloudregister/msft*
+%{_sitelibdir}/cloudregister/
+%if 0%{?suse_version} >= 1600
+%{_sitelibdir}/cloudregister-*.dist-info/
+%else
+%dir %{_sitelibdir}/cloudregister-%{base_version}-py%{py3_ver}.egg-info
+%dir %{_sitelibdir}/cloudregister/
+%{_sitelibdir}/cloudregister-%{base_version}-py%{py3_ver}.egg-info/*
+%endif
 
 %files generic-config
 %defattr(-,root,root,-)
@@ -237,15 +262,15 @@ fi
 
 %files plugin-gce
 %defattr(-,root,root,-)
-%{python3_sitelib}/cloudregister/google*
+%{_sitelibdir}/cloudregister/google*
 
 %files plugin-ec2
 %defattr(-,root,root,-)
-%{python3_sitelib}/cloudregister/amazon*
+%{_sitelibdir}/cloudregister/amazon*
 
 %files plugin-azure
 %defattr(-,root,root,-)
-%{python3_sitelib}/cloudregister/msft*
+%{_sitelibdir}/cloudregister/msft*
 
 %files addon-azure
 %defattr(-,root,root,-)
