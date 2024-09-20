@@ -1,35 +1,28 @@
 import inspect
-import importlib
 import json
 import os
-from pickle import FALSE
 import requests
-# import sys
+
 from collections import namedtuple
+from importlib.machinery import SourceFileLoader
 from lxml import etree
 from textwrap import dedent
 from urllib.parse import ParseResult
 
-# from argparse import Namespace
-# from lxml import etree
 from pytest import raises
-# from textwrap import dedent
 from types import SimpleNamespace
 # from unittest import mock
-from unittest.mock import patch, call, Mock, mock_open #, MagicMock
+from unittest.mock import patch, call, Mock, mock_open
 
 test_path = os.path.abspath(
    os.path.dirname(inspect.getfile(inspect.currentframe())))
 code_path = os.path.abspath('%s/../lib' % test_path)
 data_path = test_path + os.sep + 'data/'
 
-# sys.path.insert(0, code_path)
 from cloudregister.smt import SMT # noqa
 import cloudregister.registerutils as utils # noqa
 
 # Hack to get the script without the .py imported for testing
-from importlib.machinery import SourceFileLoader
-
 register_cloud_guest = SourceFileLoader(
     'register_cloud_guest',
     './usr/sbin/registercloudguest'
@@ -56,7 +49,6 @@ def test_register_cloud_guest_no_connection_ip(mock_has_network):
     )
     with raises(SystemExit):
         assert register_cloud_guest.main(fake_args) is None
-
 
 
 def test_register_cloud_guest_non_ip_value():
@@ -337,7 +329,7 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
     mock_get_available_smt_servers.return_value = []
     mock_has_network_access.return_value = True
     mock_has_region_changed.return_value = True
-    mock_uses_rmt_as_scc_proxy.return_value = True # False
+    mock_uses_rmt_as_scc_proxy.return_value = True
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
     mock_os_path_exists.return_value = True
@@ -417,7 +409,7 @@ def test_register_cloud_guest_region_not_changed_proxy_ok(
     mock_get_available_smt_servers.return_value = []
     mock_has_network_access.return_value = True
     mock_has_region_changed.return_value = True
-    mock_uses_rmt_as_scc_proxy.return_value = True # False
+    mock_uses_rmt_as_scc_proxy.return_value = True
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
     mock_os_path_exists.return_value = True
@@ -501,7 +493,7 @@ def test_register_cloud_guest_region_not_responsive_proxy_ok(
     mock_get_available_smt_servers.return_value = []
     mock_has_network_access.return_value = True
     mock_has_region_changed.return_value = True
-    mock_uses_rmt_as_scc_proxy.return_value = True # False
+    mock_uses_rmt_as_scc_proxy.return_value = True
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.side_effect = [False, True]
     mock_smt_is_equivalent.return_value = True
@@ -762,7 +754,7 @@ def test_register_cloud_guest_force_registration_not_supported(
     mock_is_registration_supported.return_value = False
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
-        assert sys_exit.value.code == 0
+    assert sys_exit.value.code == 0
 
 
 @patch('cloudregister.registerutils.get_installed_products')
@@ -853,7 +845,6 @@ def test_register_cloud_guest_force_reg_no_products_installed(
         call('No products installed on system')
     ]
     assert sys_exit.value.code == 1
-
 
 
 @patch('cloudregister.registerutils.import_smt_cert')
@@ -1371,180 +1362,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_import_smt_cert, mock_run_SUSEConnect,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
-    mock_get_creds_file,  # mock_popen,
-    mock_os_unlink
-):
-    smt_data_ipv46 = dedent('''\
-        <smtInfo fingerprint="AA:BB:CC:DD"
-         SMTserverIP="1.2.3.5"
-         SMTserverIPv6="fc00::1"
-         SMTserverName="foo-ec2.susecloud.net"
-         SMTregistryName="registry-ec2.susecloud.net"
-         region="antarctica-1"/>''')
-
-    smt_server = SMT(etree.fromstring(smt_data_ipv46))
-    mock_get_current_smt.return_value = smt_server
-    fake_args = SimpleNamespace(
-        clean_up=False,
-        force_new_registration=True,
-        user_smt_ip='1.2.3.5',
-        user_smt_fqdn='foo-ec2.susecloud.net',
-        user_smt_fp='AA:BB:CC:DD',
-        email=None,
-        reg_code='super_reg_code',
-        delay_time=1,
-        config_file='config_file',
-    )
-    mock_os_path_isdir.return_value = False
-    mock_is_zypper_running.return_value = False
-    mock_get_available_smt_servers.return_value = []
-    mock_has_network_access.return_value = True
-    mock_has_region_changed.return_value = True
-    mock_uses_rmt_as_scc_proxy.return_value = False
-    mock_get_instance_data.return_value = None
-    mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True, True, True]
-    mock_update_rmt_cert.return_value = True
-    mock_has_rmt_in_hosts.return_value = False
-    mock_has_registry_in_hosts.return_value = False
-    mock_os_access.return_value = True
-    mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
-    mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
-    mock_run_SUSEConnect.side_effect = [
-        suseconnect_type(
-            returncode=0,
-            output='all OK',
-            error='stderr'
-        ),
-        suseconnect_type(
-            returncode=6,
-            output='registration code',
-            error='stderr'
-        )
-    ]
-    response = Response()
-    response.status_code = requests.codes.ok
-    json_mock = Mock()
-    json_mock.return_value = {
-        'id': 2001,
-        'name': 'SUSE Linux Enterprise Server',
-        'identifier': 'SLES',
-        'former_identifier': 'SLES',
-        'version': '15.4',
-        'release_type': None,
-        'release_stage': 'released',
-        'arch': 'x86_64',
-        'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
-        'product_class': '30',
-        'extensions': [
-            {
-                'id': 23,
-                'name': 'SUSE Linux Enterprise Server LTSS',
-                'identifier': 'SLES-LTSS',
-                'former_identifier': 'SLES-LTSS',
-                'version': '15.4',
-                'release_type': None,
-                'release_stage': 'released',
-                'arch': 'x86_64',
-                'friendly_name':
-                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
-                'product_class': 'SLES15-SP4-LTSS-X86',
-                'free': False,
-                'repositories': [],
-                'product_type': 'extension',
-                'extensions': [],
-                'recommended': False,
-                'available': True
-            }
-        ]
-    }
-    response.json = json_mock
-    mock_requests_get.return_value = response
-    mock_get_creds.return_value = 'SCC_foo', 'bar'
-    base_product = dedent('''\
-        <?xml version="1.0" encoding="UTF-8"?>
-        <product schemeversion="0">
-          <vendor>SUSE</vendor>
-          <name>SLES</name>
-          <version>15.4</version>
-          <baseversion>15</baseversion>
-          <patchlevel>4</patchlevel>
-          <release>0</release>
-          <endoflife></endoflife>
-          <arch>x86_64</arch></product>''')
-    mock_get_product_tree.return_value = etree.fromstring(
-        base_product[base_product.index('<product'):]
-    )
-    mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
-    with raises(SystemExit) as sys_exit:
-        register_cloud_guest.main(fake_args)
-    assert sys_exit.value.code == 6
-
-
-
-@patch('register_cloud_guest.registration_returncode', 0)
-@patch('register_cloud_guest.os.unlink')
-@patch('cloudregister.registerutils.get_credentials_file')
-@patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
-@patch('cloudregister.registerutils.requests.get')
-@patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
-@patch('cloudregister.registerutils.import_smt_cert')
-@patch('cloudregister.registerutils.get_installed_products')
-@patch('register_cloud_guest.logging')
-@patch('cloudregister.registerutils.set_as_current_smt')
-@patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
-@patch('cloudregister.registerutils.update_rmt_cert')
-@patch('cloudregister.registerutils.has_registry_in_hosts')
-@patch('cloudregister.registerutils.add_hosts_entry')
-@patch('cloudregister.registerutils.clean_hosts_file')
-@patch('cloudregister.registerutils.has_rmt_in_hosts')
-@patch('cloudregister.registerutils.os.path.exists')
-@patch.object(SMT, 'is_responsive')
-@patch('register_cloud_guest.setup_ltss_registration')
-@patch('register_cloud_guest.setup_registry')
-@patch('cloudregister.registerutils.get_instance_data')
-@patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
-@patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
-@patch('cloudregister.registerutils.store_smt_data')
-@patch('cloudregister.registerutils.get_current_smt')
-@patch('cloudregister.registerutils.set_new_registration_flag')
-@patch('cloudregister.registerutils.has_network_access_by_ip_address')
-@patch('cloudregister.registerutils.is_zypper_running')
-@patch('cloudregister.registerutils.write_framework_identifier')
-@patch('cloudregister.registerutils.get_available_smt_servers')
-@patch('register_cloud_guest.os.makedirs')
-@patch('register_cloud_guest.os.path.isdir')
-@patch('register_cloud_guest.time.sleep')
-@patch('cloudregister.registerutils.get_state_dir')
-@patch('cloudregister.registerutils.get_config')
-@patch('register_cloud_guest.cleanup')
-def test_register_cloud_guest_force_baseprod_extensions_raise(
-    mock_cleanup, mock_get_config,
-    mock_get_state_dir, mock_time_sleep,
-    mock_os_path_isdir, mock_os_makedirs,
-    mock_get_available_smt_servers, mock_write_framework_id,
-    mock_is_zypper_running, mock_has_network_access,
-    mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
-    mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-    mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-    mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-    mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-    mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-    mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect,
-    mock_set_rmt_as_scc_proxy_flag,
-    mock_requests_get, mock_get_product_tree, mock_get_creds,
-    mock_get_creds_file,  # mock_popen,
-    mock_os_unlink
+    mock_get_creds_file, mock_os_unlink
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1830,7 +1648,6 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
         base_product[base_product.index('<product'):]
     )
     mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
-    # with raises(SystemExit) as sys_exit:
     mock_has_nvidia_support.return_value = True
     mock_find_repos.return_value = ['repo_a', 'repo_b']
     mock_get_repo_url.return_value = (
@@ -2133,7 +1950,6 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
          SMTserverName="foo-ec2.susecloud.net"
          SMTregistryName="registry-ec2.susecloud.net"
          region="antarctica-1"/>''')
-
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = smt_server
     fake_args = SimpleNamespace(
@@ -2449,7 +2265,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
         query='highlight=params', fragment='url-parsing'
     )
     with raises(SystemExit) as sys_exit:
-        with patch('builtins.open', mock_open()) as m:
+        with patch('builtins.open', mock_open()):
             register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 0
     assert mock_logging.info.call_args_list == [
