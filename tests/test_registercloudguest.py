@@ -263,6 +263,7 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_changed(
     ]
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -301,7 +302,7 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-    mock_update_rmt_cert
+    mock_update_rmt_cert, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -507,6 +508,7 @@ def test_register_cloud_guest_region_not_responsive_proxy_ok(
         assert sys_exit.value.code == 0
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -545,7 +547,7 @@ def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-    mock_update_rmt_cert
+    mock_update_rmt_cert, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -585,6 +587,7 @@ def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
         assert sys_exit.value.code == 0
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
@@ -628,7 +631,7 @@ def test_register_cloud_guest_force_reg_no_executable_found(
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-    mock_set_as_current_smt, mock_logging
+    mock_set_as_current_smt, mock_logging, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -672,6 +675,7 @@ def test_register_cloud_guest_force_reg_no_executable_found(
         assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.is_registration_supported')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
@@ -715,7 +719,7 @@ def test_register_cloud_guest_force_registration_not_supported(
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-    mock_set_as_current_smt, mock_is_registration_supported
+    mock_set_as_current_smt, mock_is_registration_supported, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -746,7 +750,8 @@ def test_register_cloud_guest_force_registration_not_supported(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, False]
+    mock_set_proxy.return_value = False
+    mock_os_path_exists.side_effect = [True, False]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -757,6 +762,7 @@ def test_register_cloud_guest_force_registration_not_supported(
     assert sys_exit.value.code == 0
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
@@ -801,7 +807,8 @@ def test_register_cloud_guest_force_reg_no_products_installed(
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-    mock_set_as_current_smt, mock_logging, mock_get_installed_products
+    mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+    mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -832,7 +839,8 @@ def test_register_cloud_guest_force_reg_no_products_installed(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True]
+    mock_set_proxy.return_value = False
+    mock_os_path_exists.side_effect = [True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -847,6 +855,7 @@ def test_register_cloud_guest_force_reg_no_products_installed(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -893,7 +902,7 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert
+    mock_import_smt_cert, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -924,7 +933,8 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True]
+    mock_set_proxy.return_value = False
+    mock_os_path_exists.side_effect = [True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -940,6 +950,7 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
     ]
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
@@ -987,7 +998,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect
+    mock_import_smt_cert, mock_run_SUSEConnect, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1018,7 +1029,8 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True]
+    mock_set_proxy.return_value = False
+    mock_os_path_exists.side_effect = [True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -1043,6 +1055,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch.object(SMT, 'is_equivalent')
 @patch('cloudregister.registerutils.is_registration_supported')
 @patch('register_cloud_guest.get_responding_update_server')
@@ -1097,7 +1110,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
     mock_import_smt_cert, mock_run_SUSEConnect, mock_remove_reg_data,
     mock_fetch_smt_data, mock_get_responding_update_server,
-    mock_is_reg_supported, mock_is_equivalent
+    mock_is_reg_supported, mock_is_equivalent, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1143,7 +1156,8 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = False
     mock_is_equivalent.return_value = False
-    mock_os_path_exists.side_effect = [True, False, True]
+    mock_set_proxy.return_value = False
+    mock_os_path_exists.side_effect = [True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -1174,6 +1188,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('register_cloud_guest.get_product_tree')
@@ -1228,7 +1243,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
     mock_import_smt_cert, mock_run_SUSEConnect, mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
-    mock_get_creds_file
+    mock_get_creds_file, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1259,7 +1274,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True]
+    mock_os_path_exists.side_effect = [True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -1295,6 +1310,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
+    mock_set_proxy.return_value = False
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     mock_logging.error.assert_called_once_with(
@@ -1305,6 +1321,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.registration_returncode', 0)
 @patch('register_cloud_guest.os.unlink')
 @patch('cloudregister.registerutils.get_credentials_file')
@@ -1362,7 +1379,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_import_smt_cert, mock_run_SUSEConnect,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
-    mock_get_creds_file, mock_os_unlink
+    mock_get_creds_file, mock_os_unlink, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1393,7 +1410,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True, True, True]
+    mock_os_path_exists.side_effect = [True, True, True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -1469,12 +1486,14 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
+    mock_set_proxy.return_value = False
     mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 6
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.urllib.parse.urlparse')
 @patch('cloudregister.registerutils.enable_repository')
 @patch('cloudregister.registerutils.exec_subprocess')
@@ -1540,7 +1559,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse
+    mock_urlparse, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1571,7 +1590,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True, True, True]
+    mock_os_path_exists.side_effect = [True, True, True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -1660,6 +1679,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
         path='/some/repo', params='',
         query='highlight=params', fragment='url-parsing'
     )
+    mock_set_proxy.return_value = False
     assert register_cloud_guest.main(fake_args) is None
     assert mock_logging.info.call_args_list == [
         call('Forced new registration'),
@@ -1675,6 +1695,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     ]
 
 
+@patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.urllib.parse.urlparse')
 @patch('cloudregister.registerutils.enable_repository')
 @patch('cloudregister.registerutils.exec_subprocess')
@@ -1740,7 +1761,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse
+    mock_urlparse, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1749,7 +1770,6 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
          SMTserverName="foo-ec2.susecloud.net"
          SMTregistryName="registry-ec2.susecloud.net"
          region="antarctica-1"/>''')
-
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = smt_server
     fake_args = SimpleNamespace(
@@ -1771,7 +1791,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True, True, True]
+    mock_os_path_exists.side_effect = [True, True, True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -1860,6 +1880,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
         path='/some/repo', params='',
         query='highlight=params', fragment='url-parsing'
     )
+    mock_set_proxy.return_value = False
     assert register_cloud_guest.main(fake_args) is None
     assert mock_logging.info.call_args_list == [
         call('Forced new registration'),
@@ -1875,6 +1896,8 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     ]
 
 
+@patch('register_cloud_guest.os.system')
+@patch('cloudregister.registerutils.set_proxy')
 @patch('builtins.print')
 @patch('register_cloud_guest.urllib.parse.urlparse')
 @patch('cloudregister.registerutils.enable_repository')
@@ -1941,7 +1964,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse, mock_print
+    mock_urlparse, mock_print, mock_set_proxy, mock_os_system
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1971,7 +1994,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
     mock_uses_rmt_as_scc_proxy.return_value = False
     mock_get_instance_data.return_value = None
     mock_smt_is_responsive.return_value = True
-    mock_os_path_exists.side_effect = [True, False, True, True, True]
+    mock_os_path_exists.side_effect = [False, True, True, True]
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
@@ -2060,6 +2083,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
         path='/some/repo', params='',
         query='highlight=params', fragment='url-parsing'
     )
+    mock_set_proxy.return_value = False
     assert register_cloud_guest.main(fake_args) is None
     assert mock_print.call_args_list == [
         call('Registration succeeded'),
