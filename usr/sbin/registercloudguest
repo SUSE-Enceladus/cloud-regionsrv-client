@@ -193,7 +193,6 @@ def register_modules(
         identifier = extension.get('identifier')
         version = extension.get('version')
         triplet = '/'.join((identifier, version, arch))
-        print(triplet in products and triplet not in registered)
         if triplet in products and triplet not in registered:
             registered.append(triplet)
             suseconnect = run_SUSEConnect(
