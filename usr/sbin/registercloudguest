@@ -836,8 +836,13 @@ def main(args):
     prod_data = res.json()
     extensions = prod_data.get('extensions')
     failed_extensions = []
-    register_modules(extensions, products, failed=failed_extensions)
-
+    register_modules(
+        extensions,
+        products,
+        registration_target,
+        instance_data_filepath,
+        failed=failed_extensions
+    )
     if os.path.exists(instance_data_filepath):
         os.unlink(instance_data_filepath)
 
