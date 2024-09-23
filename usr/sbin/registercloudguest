@@ -482,7 +482,6 @@ def main(args):
             print(error_message, file=sys.stderr)
             sys.exit(1)
 
-
     if args.clean_up and args.force_new_registration:
         msg = '--clean and --force-new are incompatible, use one or the other'
         print(msg, file=sys.stderr)
@@ -668,9 +667,9 @@ def main(args):
                 registration_target_found = True
                 break
             else:
-                msg = 'Configured update server is unresponsive. Could not find '
-                msg += 'a replacement update server in this region. '
-                msg += 'Possible network configuration issue'
+                msg = 'Configured update server is unresponsive. '
+                msg += 'Could not find a replacement update server '
+                msg += 'in this region. Possible network configuration issue'
                 logging.error(msg)
                 sys.exit(1)
 
@@ -795,7 +794,9 @@ def main(args):
                         )
                     )
                     utils.remove_registration_data()
-                    utils.clean_hosts_file(registration_target.get_domain_name())
+                    utils.clean_hosts_file(
+                        registration_target.get_domain_name()
+                    )
                     registration_target = smt_srv
                     break
         else:
@@ -864,7 +865,8 @@ def main(args):
         for failed_extension in failed_extensions:
             print(activate_prod_cmd.format(failed_extension))
 
-    # Enable Nvidia repo if repo(s) are configured and destination can be reached
+    # Enable Nvidia repo if repo(s) are configured
+    # and destination can be reached
     if utils.has_nvidia_support():
         nvidia_repo_names = utils.find_repos('nvidia')
         for repo_name in nvidia_repo_names:
