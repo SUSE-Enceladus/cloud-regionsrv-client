@@ -833,7 +833,7 @@ def main(args):
         logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
         sys.exit(1)
 
-    prod_data = json.loads(res.text)
+    prod_data = res.json()
     extensions = prod_data.get('extensions')
     failed_extensions = []
     register_modules(extensions, products, failed=failed_extensions)
