@@ -124,7 +124,8 @@ def run_SUSEConnect(
     )
     register_cmd = get_register_cmd()
     if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
-        logging.error('No registration executable found')
+        err_msg = 'No registration executable found'
+        logging.error(err_msg)
         print(err_msg, file=sys.stderr)
         sys.exit(1)
 
