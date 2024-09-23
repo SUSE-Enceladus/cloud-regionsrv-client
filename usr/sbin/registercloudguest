@@ -134,9 +134,9 @@ def run_SUSEConnect(
 
     # distinguish command between standard and read-only system(transactional)
     if 'transactional' in register_cmd:
-        cmd += ['register', '--url', 'https://{0}'.format(target_url)]
-    else:
-        cmd += ['--url', 'https://{0}'.format(target_url)]
+        cmd += ['register']
+
+    cmd += ['--url', 'https://{0}'.format(target_url)]
 
     # SUSE product triplet
     if product:
