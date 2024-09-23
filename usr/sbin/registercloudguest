@@ -649,7 +649,7 @@ def main(args):
             for new_target in region_smt_servers:
                 if (
                         not new_target.is_responsive() or
-                        not registration_smt.is_equivalent()
+                        not registration_smt.is_equivalent(new_target)
                 ):
                     continue
                 smt_ip = new_target.get_ipv4()
