@@ -878,8 +878,11 @@ def main(args):
             url = urllib.parse.urlparse(utils.get_repo_url(repo_name))
             cmd = ['ping', '-c', '2', url.hostname]
             if utils.exec_subprocess(cmd):
-                msg = 'Cannot reach host: "%s", will not enable repo "%s"'
-                logging.info(msg % (url.hostname, repo_name))
+                msg = (
+                    'Cannot reach host: "{hostname}", '
+                    'will not enable repo "{repo_name}"'
+                ).format(hostname=url.hostname, repo_name=repo_name)
+                logging.info(msg)
             else:
                 utils.enable_repository(repo_name)
 
