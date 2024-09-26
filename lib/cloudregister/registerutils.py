@@ -176,7 +176,7 @@ def clear_rmt_as_scc_proxy_flag():
 
 
 # ----------------------------------------------------------------------------
-def clean_payg_extensions():
+def clean_non_free_extensions():
     """Remove non free extensions files from /etc/products.d/."""
     extensions = get_extensions()
     products_paths = glob.glob('/etc/products.d/*.prod')

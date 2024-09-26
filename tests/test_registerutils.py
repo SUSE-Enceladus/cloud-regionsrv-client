@@ -763,7 +763,7 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.glob.glob')
-def test_clean_payg_extensions(
+def test_clean_non_free_extensions(
     mock_glob,
     mock_requests_get,
     mock_get_current_smt,
@@ -835,7 +835,7 @@ def test_clean_payg_extensions(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
-    utils.clean_payg_extensions()
+    utils.clean_non_free_extensions()
     assert mock_os_unlink.mock_calls == [
         call('/etc/products.d/SLES-LTSS.prod')
     ]
@@ -851,7 +851,7 @@ def test_clean_payg_extensions(
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.glob.glob')
-def test_clean_payg_extensions_request_failed(
+def test_clean_non_free_extensions_request_failed(
     mock_glob,
     mock_requests_get,
     mock_get_current_smt,
@@ -891,7 +891,7 @@ def test_clean_payg_extensions_request_failed(
         base_product[base_product.index('<product'):]
     )
     with raises(Exception):
-        utils.clean_payg_extensions()
+        utils.clean_non_free_extensions()
     assert mock_os_unlink.mock_calls == []
     mock_logging.error.assert_called_once_with(
         'Unable to obtain product information from server "192.168.1.1,fc00::1"'
@@ -905,7 +905,7 @@ def test_clean_payg_extensions_request_failed(
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.glob.glob')
-def test_clean_payg_extensions_no_credentials(
+def test_clean_non_free_extensions_no_credentials(
     mock_glob,
     mock_requests_get,
     mock_get_current_smt,
@@ -915,7 +915,7 @@ def test_clean_payg_extensions_no_credentials(
 ):
     mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
     mock_get_current_smt.return_value = None
-    utils.clean_payg_extensions()
+    utils.clean_non_free_extensions()
     assert mock_os_unlink.mock_calls == []
 
 

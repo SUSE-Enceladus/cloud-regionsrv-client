@@ -228,7 +228,7 @@ def register_modules(extensions, products, registered=[], failed=[]):
 def cleanup():
     """Remove any registration artifacts"""
     try:
-        utils.clean_payg_extensions()
+        utils.clean_non_free_extensions()
     except Exception as err:
         print('Could not check the system product data: {}'.format(err))
 
