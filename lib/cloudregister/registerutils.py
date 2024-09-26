@@ -179,23 +179,30 @@ def clear_rmt_as_scc_proxy_flag():
 def clean_non_free_extensions():
     """Remove non free extensions files from /etc/products.d/."""
     extensions = get_extensions()
-    products_paths = glob.glob('/etc/products.d/*.prod')
+    installed_products = get_installed_products()
 
     for extension in extensions:
         # The following not free condition checks on
         # the access capability of the extension
         # This is a server side capability
         if not extension.get('free', True):
-            extension_path = os.path.join(
-                os.sep, 'etc', 'products.d', '{}.prod'.format(
-                    extension.get('identifier')
-                )
+            triplet = get_product_triplet(extension)
+            triplet = '{name}/{version}/{arch}'.format(
+                name=triplet.name,
+                version=triplet.version,
+                arch=triplet.arch
             )
-            if extension_path in products_paths:
-                os.unlink(extension_path)
-                logging.info(
-                    'Non free extension file %s removed' % extension_path
+            if triplet in installed_products:
+                return_code = exec_subprocess(
+                    ['SUSEConnect', '-d', '-p', triplet]
                 )
+                msg = 'Non free extension {} '.format(triplet)
+                if return_code:
+                    msg += 'failed to be removed'
+                else:
+                    msg += 'removed'
+
+                logging.info(msg)
 
 
 # ----------------------------------------------------------------------------
@@ -219,6 +226,13 @@ def get_product_triplet(product_tree):
     product_type = namedtuple(
         'product_type', ['name', 'version', 'arch']
     )
+    if type(product_tree) is dict:
+        return product_type(
+                name=product_tree.get('identifier'),
+                version=product_tree.get('version'),
+                arch=product_tree.get('arch')
+        )
+
     return product_type(
         name=product_tree.find('name').text,
         version=product_tree.find('version').text,

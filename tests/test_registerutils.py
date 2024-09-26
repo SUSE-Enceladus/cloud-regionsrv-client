@@ -756,23 +756,23 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
     )
 
 
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.get_installed_products')
 @patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.requests.get')
-@patch('cloudregister.registerutils.glob.glob')
 def test_clean_non_free_extensions(
-    mock_glob,
     mock_requests_get,
     mock_get_current_smt,
     mock_get_product_tree,
     mock_get_creds,
-    mock_os_unlink,
-    mock_logging
+    mock_logging,
+    mock_get_installed_products,
+    mock_exec_subprocess
 ):
-    mock_glob.return_value = ['/etc/products.d/SLES-LTSS.prod']
+    mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
     response = Response()
     response.status_code = requests.codes.ok
     json_mock = Mock()
@@ -835,12 +835,106 @@ def test_clean_non_free_extensions(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
+    mock_exec_subprocess.return_value = 0
     utils.clean_non_free_extensions()
-    assert mock_os_unlink.mock_calls == [
-        call('/etc/products.d/SLES-LTSS.prod')
+    assert mock_exec_subprocess.call_args_list == [
+        call(['SUSEConnect', '-d', '-p', 'SLES-LTSS/15.4/x86_64'])
     ]
     assert mock_logging.info.call_args_list == [
-        call('Non free extension file /etc/products.d/SLES-LTSS.prod removed')
+        call('No credentials entry for "*fantasy_example_com"'),
+        call('No credentials entry for "SCC*"'),
+        call('Non free extension SLES-LTSS/15.4/x86_64 removed')
+    ]
+
+
+@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.get_installed_products')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+def test_clean_non_free_extensions_failed(
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_logging,
+    mock_get_installed_products,
+    mock_exec_subprocess
+):
+    mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
+    response = Response()
+    response.status_code = requests.codes.ok
+    json_mock = Mock()
+    json_mock.return_value = {
+        'id': 2001,
+        'name': 'SUSE Linux Enterprise Server',
+        'identifier': 'SLES',
+        'former_identifier': 'SLES',
+        'version': '15.4',
+        'release_type': None,
+        'release_stage': 'released',
+        'arch': 'x86_64',
+        'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
+        'product_class': '30',
+        'extensions': [
+            {
+                'id': 23,
+                'name': 'SUSE Linux Enterprise Server LTSS',
+                'identifier': 'SLES-LTSS',
+                'former_identifier': 'SLES-LTSS',
+                'version': '15.4',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name':
+                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True
+            }
+        ]
+    }
+    response.json = json_mock
+    mock_requests_get.return_value = response
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    mock_exec_subprocess.return_value = 1
+    utils.clean_non_free_extensions()
+    assert mock_exec_subprocess.call_args_list == [
+        call(['SUSEConnect', '-d', '-p', 'SLES-LTSS/15.4/x86_64'])
+    ]
+    assert mock_logging.info.call_args_list == [
+        call('No credentials entry for "*fantasy_example_com"'),
+        call('No credentials entry for "SCC*"'),
+        call('Non free extension SLES-LTSS/15.4/x86_64 failed to be removed')
     ]
 
 
