@@ -177,7 +177,7 @@ def clear_rmt_as_scc_proxy_flag():
 
 # ----------------------------------------------------------------------------
 def clean_non_free_extensions():
-    """Remove non free extensions files from /etc/products.d/."""
+    """Remove/uninstall non free extensions from the system."""
     extensions = get_extensions()
     installed_products = get_installed_products()
 
@@ -193,11 +193,13 @@ def clean_non_free_extensions():
                 arch=triplet.arch
             )
             if triplet in installed_products:
-                return_code = exec_subprocess(
-                    ['SUSEConnect', '-d', '-p', triplet]
+                suseconnect = run_SUSEConnect(
+                    registration_target=get_current_smt(),
+                    product=triplet,
+                    de_register=True
                 )
                 msg = 'Non free extension {} '.format(triplet)
-                if return_code:
+                if suseconnect.returncode:
                     msg += 'failed to be removed'
                 else:
                     msg += 'removed'
@@ -329,6 +331,125 @@ def exec_subprocess(cmd, return_output=False):
         return proc.returncode
     except OSError:
         return -1
+
+
+# ----------------------------------------------------------------------------
+def get_register_cmd():
+    """Determine which command we need to use to register the system"""
+
+    register_cmd = '/usr/sbin/SUSEConnect'
+    # Figure out if we are on RO transactional-update system
+    p = subprocess.Popen(
+        ['findmnt', '--noheadings', '--json', '/'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    res = p.communicate()
+    # If we get an error from findmnt move forward on a best effort basis
+    if p.returncode:
+        logging.warning('Unable to find filesystem information for "/"')
+    else:
+        fsinfo = json.loads(res[0])
+        fsdata = fsinfo.get('filesystems')
+        if fsdata:
+            fsoptions = fsdata[0].get('options')
+            # If we are on a RO system we need to use the
+            # transactional-update command
+            if 'ro' in fsoptions.split(','):
+                cmd_name = 'transactional-update'
+                for path in ['/sbin/', '/usr/sbin/']:
+                    exec_path = path + cmd_name
+                    if os.path.exists(exec_path):
+                        register_cmd = exec_path
+                        break
+                else:
+                    err_msg = 'transactional-update command not found.'
+                    err_msg += 'But is required on a RO filesystem for '
+                    err_msg += 'registration'
+                    logging.error(err_msg)
+                    print(err_msg, file=sys.stderr)
+                    sys.exit(1)
+
+    return register_cmd
+
+
+# ----------------------------------------------------------------------------
+def run_SUSEConnect(
+    registration_target, regcode='', email='',
+    instance_data_filepath='', product='', de_register=False
+):
+    """
+    Wrapper for SUSEConnect
+
+    Call SUSEConnect or the respective transactional update call
+    with the given parameters:
+
+    registration_target:
+        SMT registration object
+    regcode:
+        registration code
+    email:
+        registration e-mail
+    instance_data_filepath:
+        CSP related metadata file
+    product:
+        SUSE product triplet
+    """
+    register_cmd = get_register_cmd()
+    if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
+        err_msg = 'No registration executable found'
+        logging.error(err_msg)
+        print(err_msg, file=sys.stderr)
+        sys.exit(1)
+
+    cmd = [register_cmd]
+    target_url = registration_target.get_FQDN()
+
+    # distinguish command between standard and read-only system(transactional)
+    if 'transactional' in register_cmd:
+        cmd += ['register']
+
+    cmd += ['--url', 'https://{0}'.format(target_url)]
+
+    if de_register:
+        cmd += ['--de-register']
+
+    # SUSE product triplet
+    if product:
+        cmd += ['--product', product]
+
+    # set path to a metadata file, cloud specific
+    if instance_data_filepath:
+        cmd += ['--instance-data', instance_data_filepath]
+
+    # set e-mail
+    if email:
+        cmd += ['--email', email]
+
+    # set registration code for given product
+    if regcode:
+        cmd += ['--regcode', regcode]
+
+    log_information = ' '.join(cmd)
+    if regcode:
+        # registration codes should not end up in the log
+        log_information = log_information.replace(regcode, 'XXXX')
+
+    logging.info('Registration: {0}'.format(log_information))
+    call = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    output, error = call.communicate()
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    return suseconnect_type(
+        returncode=call.returncode,
+        output=output.decode(),
+        error=error.decode()
+    )
 
 
 # ----------------------------------------------------------------------------
