@@ -412,13 +412,13 @@ def run_SUSEConnect(
     cmd += ['--url', 'https://{0}'.format(target_url)]
 
     if de_register:
-        if product:
-            cmd += ['--de-register']
-        else:
+        if not product:
             error_msg = 'De-register the system is not allowed for SUSEConnect'
             print(error_msg)
             logging.error(error_msg)
             sys.exit(1)
+
+        cmd += ['--de-register']
 
     # SUSE product triplet
     if product:
