@@ -398,8 +398,8 @@ def run_SUSEConnect(
     register_cmd = get_register_cmd()
     if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
         err_msg = 'No registration executable found'
-        logging.error(err_msg)
         print(err_msg, file=sys.stderr)
+        logging.error(err_msg)
         sys.exit(1)
 
     cmd = [register_cmd]
@@ -412,7 +412,13 @@ def run_SUSEConnect(
     cmd += ['--url', 'https://{0}'.format(target_url)]
 
     if de_register:
-        cmd += ['--de-register']
+        if product:
+            cmd += ['--de-register']
+        else:
+            error_msg = 'De-register the system is not allowed for SUSEConnect'
+            print(error_msg)
+            logging.error(error_msg)
+            sys.exit(1)
 
     # SUSE product triplet
     if product:

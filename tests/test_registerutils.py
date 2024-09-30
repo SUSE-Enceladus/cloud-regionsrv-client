@@ -1141,6 +1141,47 @@ def test_run_SUSEConnect_no_transactional_de_register_ok(
 @patch('cloudregister.registerutils.os.access')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.subprocess.Popen')
+def test_run_SUSEConnect_no_transactional_de_register_missing_product(
+    mock_popen, mock_os_path_exists,
+    mock_os_access, mock_logging,
+    mock_get_register_cmd
+):
+    mock_os_path_exists.return_value = True
+    mock_os_access.return_value = True
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="AA:BB:CC:DD"
+         SMTserverIP="1.2.3.5"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="foo-ec2.susecloud.net"
+         SMTregistryName="registry-ec2.susecloud.net"
+         region="antarctica-1"/>''')
+
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('OK'), str.encode('not_OK')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    with raises(SystemExit) as sys_exit:
+        utils.run_SUSEConnect(
+            registration_target=smt_server,
+            product='',
+            de_register=True
+        )
+    assert sys_exit.value.code == 1
+    print(mock_logging.error.call_args_list)
+    assert mock_logging.error.call_args_list == [
+        call('De-register the system is not allowed for SUSEConnect')
+    ]
+
+
+@patch('cloudregister.registerutils.get_register_cmd')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_run_SUSEConnect_transactional_ok(
     mock_popen, mock_os_path_exists,
     mock_os_access, mock_logging,
