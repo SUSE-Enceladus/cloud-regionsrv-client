@@ -86,6 +86,7 @@ def test_register_cloud_guest_no_regcode_email():
         assert register_cloud_guest.main(fake_args) is None
 
 
+@patch('cloudregister.registerutils.clean_non_free_extensions')
 @patch('register_cloud_guest.time.sleep')
 @patch('cloudregister.registerutils.get_config')
 @patch('cloudregister.registerutils.clean_framework_identifier')
@@ -95,7 +96,8 @@ def test_register_cloud_guest_no_regcode_email():
 @patch('cloudregister.registerutils.clean_registry_setup')
 def test_register_cloud_guest_cleanup(
     mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
-    mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep
+    mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
+    mock_clean_non_free_extensions
 ):
     fake_args = SimpleNamespace(
         clean_up=True,
@@ -108,6 +110,36 @@ def test_register_cloud_guest_cleanup(
         delay_time=1,
         config_file='config_file'
     )
+    with raises(SystemExit):
+        register_cloud_guest.main(fake_args)
+    mock_clean_reg_setup.assert_called_once()
+
+
+@patch('cloudregister.registerutils.clean_non_free_extensions')
+@patch('register_cloud_guest.time.sleep')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.clean_framework_identifier')
+@patch('cloudregister.registerutils.clear_new_registration_flag')
+@patch('cloudregister.registerutils.clean_smt_cache')
+@patch('cloudregister.registerutils.remove_registration_data')
+@patch('cloudregister.registerutils.clean_registry_setup')
+def test_register_cloud_guest_cleanup_exception(
+    mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
+    mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
+    mock_clean_non_free_extensions
+):
+    fake_args = SimpleNamespace(
+        clean_up=True,
+        force_new_registration=False,
+        user_smt_ip=None,
+        user_smt_fqdn=None,
+        user_smt_fp=None,
+        email=None,
+        reg_code=None,
+        delay_time=1,
+        config_file='config_file'
+    )
+    mock_clean_non_free_extensions.side_effect = Exception('oh no')
     with raises(SystemExit):
         register_cloud_guest.main(fake_args)
     mock_clean_reg_setup.assert_called_once()
