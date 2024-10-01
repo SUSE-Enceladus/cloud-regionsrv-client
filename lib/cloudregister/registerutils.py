@@ -1833,6 +1833,7 @@ def set_proxy():
         proxy_config = pc_file.readlines()
     http_proxy = ''
     https_proxy = ''
+    no_proxy = ''
     for entry in proxy_config:
         if 'PROXY_ENABLED' in entry and 'no' in entry:
             return False
