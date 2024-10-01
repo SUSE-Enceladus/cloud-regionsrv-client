@@ -1,0 +1,10 @@
+--- usr/sbin/registercloudguest.orig
++++ usr/sbin/registercloudguest
+@@ -62,6 +62,7 @@ def get_register_cmd():
+     """Determine which command we need to use to register the system"""
+ 
+     register_cmd = '/usr/sbin/SUSEConnect'
++    return register_cmd
+     # Figure out if we are on RO transactional-update system
+     p = subprocess.Popen(
+         ['findmnt', '--noheadings', '--json', '/'],
