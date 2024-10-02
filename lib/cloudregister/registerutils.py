@@ -2687,8 +2687,7 @@ def __set_registries_conf_podman(private_registry_fqdn):
 
 # ----------------------------------------------------------------------------
 def __set_registries_conf_docker(private_registry_fqdn):
-    # search is disabled for Docker server side for private registry
-    public_registry_url = 'https://{0}'.format(SUSE_REGISTRY)
+    suse_registry_url = 'https://{0}'.format(SUSE_REGISTRY)
     private_registry_url = 'https://{0}'.format(private_registry_fqdn)
     docker_cfg_json = {}
     registry_mirrors = []
@@ -2700,30 +2699,31 @@ def __set_registries_conf_docker(private_registry_fqdn):
         if failed:
             return False
 
+    modified_by_us = False
+    # Setup registry-mirrors in docker daemon.json
     registry_mirrors = docker_cfg_json.get('registry-mirrors', [])
-    modified = False
-    if registry_mirrors:
-        priv_index = -1
-        pub_index = -1
+    if private_registry_url not in registry_mirrors:
+        # susecloud registry not added, always place it first
+        registry_mirrors.insert(0, private_registry_url)
+        modified_by_us = True
 
-        if private_registry_url in registry_mirrors:
-            priv_index = registry_mirrors.index(private_registry_url)
-        if public_registry_url in registry_mirrors:
-            pub_index = registry_mirrors.index(public_registry_url)
+    if suse_registry_url not in registry_mirrors:
+        # the suse registry search is provided by the libcontainers-common
+        # package. For the case when we cannot find any suse registry we
+        # append it after the susecloud registry
+        #
+        # Note: docker search is disabled for Docker server side !
+        private_registry_index = registry_mirrors.index(
+            private_registry_url
+        )
+        registry_mirrors.insert(
+            private_registry_index + 1, suse_registry_url
+        )
+        modified_by_us = True
+    docker_cfg_json['registry-mirrors'] = registry_mirrors
 
-        if not priv_index == 0 or not pub_index == 1:
-            if priv_index > 0:
-                registry_mirrors.pop(priv_index)
-            if pub_index > 0:
-                registry_mirrors.pop(pub_index)
-            modified = True
-
-    if modified or not registry_mirrors:
-        [
-            registry_mirrors.insert(0, url) for url in
-            [public_registry_url, private_registry_url]
-        ]
-        docker_cfg_json['registry-mirrors'] = registry_mirrors
+    # write registry setup if modified by us
+    if modified_by_us:
         return write_registries_conf(
             docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
         )

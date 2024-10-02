@@ -5114,7 +5114,7 @@ def test_set_registries_conf_docker_no_matches(
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.json.dump')
-def test_set_registries_conf_docker_unordered_matches(
+def test_set_registries_conf_docker_not_OK_order_has_changed(
     mock_json_dump, mock_get_registry_conf_file
 ):
     with patch('builtins.open', create=True) as mock_open:
@@ -5124,8 +5124,6 @@ def test_set_registries_conf_docker_unordered_matches(
             return mock_open_podman_config.return_value
 
         mock_open.side_effect = open_file
-        file_handle = \
-            mock_open_podman_config.return_value.__enter__.return_value
         mock_get_registry_conf_file.return_value = {
             'registry-mirrors': [
                 'foo',
@@ -5135,17 +5133,10 @@ def test_set_registries_conf_docker_unordered_matches(
             'bar': ['bar'],
         }, False
         utils.__set_registries_conf_docker('registry-foo.susecloud.net')
-        mock_json_dump.assert_called_once_with(
-            {
-                'registry-mirrors': [
-                    'https://registry-foo.susecloud.net',
-                    'https://registry.suse.com',
-                    'foo'
-                ],
-                'bar': ['bar']
-            },
-            file_handle
-        )
+        # The registry setup contains the entries we care but was
+        # modified manually. Don't touch this user modified variant.
+        # This can be changed by the user via a --clean re-registration
+        assert not mock_json_dump.called
 
 
 # ---------------------------------------------------------------------------
