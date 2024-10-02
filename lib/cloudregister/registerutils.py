@@ -1133,82 +1133,42 @@ def clean_registries_conf_podman(private_registry_fqdn):
     if failed:
         return False
 
-    if not registries_conf and not failed:
-        logging.info(
-            'Either %s is empty or it has been backed up' %
-            REGISTRIES_CONF_PATH
-        )
-        return True
-
-    modified = False
+    modified_by_us = False
+    # Drop from unqualified-search-registries
     unqualified_search_reg = registries_conf.get(
         'unqualified-search-registries', []
     )
-    if unqualified_search_reg:
-        if private_registry_fqdn:
-            if private_registry_fqdn in unqualified_search_reg:
-                unqualified_search_reg.pop(
-                    unqualified_search_reg.index(private_registry_fqdn)
-                )
-                modified = True
-        else:
-            new_unq_search_reg = []
-            for fqdn in unqualified_search_reg:
-                if 'registry' in fqdn and 'susecloud.net' in fqdn:
-                    modified = True
-                    continue
-                new_unq_search_reg.append(fqdn)
+    if not private_registry_fqdn:
+        private_registry_fqdn = __matches_susecloud(unqualified_search_reg)
+    if private_registry_fqdn in unqualified_search_reg:
+        unqualified_search_reg.remove(private_registry_fqdn)
+        modified_by_us = True
+    registries_conf['unqualified-search-registries'] = unqualified_search_reg
 
-            if modified:
-                unqualified_search_reg = new_unq_search_reg
+    # Drop from registry
+    registry_mirrors = registries_conf.get(
+        'registry', []
+    )
+    mirror_index = 0
+    for registry_mirror in registry_mirrors:
+        if registry_mirror.get('location', '') == private_registry_fqdn:
+            registry_mirrors.pop(mirror_index)
+            modified_by_us = True
+            break
+        mirror_index += 1
+    registries_conf['registry'] = registry_mirrors
 
-        if modified:
-            registries_conf['unqualified-search-registries'] = \
-                unqualified_search_reg
-
-    registries = registries_conf.get('registry', [])
-    if registries:
-        if private_registry_fqdn:
-            private_registry = {
-                'location': private_registry_fqdn,
-                'insecure': False
-            }
-            if private_registry in registries:
-                registries.pop(registries.index(private_registry))
-                modified = True
-        else:
-            registry_index = None
-            for reg_index, registry in enumerate(registries):
-                location = registry.get('location', {})
-                if 'registry' in location and 'susecloud.net' in location:
-                    registry_index = reg_index
-
-            if registry_index is not None:
-                registries.pop(registry_index)
-                modified = True
-
-        if modified:
-            registries_conf['registry'] = registries
-
-    if (
-        modified and (
-            registries_conf.get('registry') or
-            registries_conf.get('unqualified-search-registries')
-        )
-    ):
+    # write registry setup if modified by us
+    if modified_by_us:
         logging.info(
-            'SUSE registry information has been removed from %s' %
-            REGISTRIES_CONF_PATH
+            'SUSE registry information has been removed from {0}'.format(
+                REGISTRIES_CONF_PATH
+            )
         )
         return write_registries_conf(
             registries_conf, REGISTRIES_CONF_PATH, 'podman'
         )
-    elif modified:
-        os.unlink(REGISTRIES_CONF_PATH)
-        logging.info(
-            '%s removed, empty content after removing SUSE registry info' %
-            REGISTRIES_CONF_PATH
-        )
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -1217,61 +1177,40 @@ def clean_registries_conf_docker(private_registry_fqdn):
     if not os.path.exists(DOCKER_CONFIG_PATH):
         return True
 
-    registries_conf, failed = get_registry_conf_file(
+    docker_cfg_json, failed = get_registry_conf_file(
         DOCKER_CONFIG_PATH, 'docker'
     )
     if failed:
         logging.info(
-            'Unable to read "%s", cleanup not possible' % DOCKER_CONFIG_PATH
+            'Unable to read "{0}", cleanup not possible'.format(
+                DOCKER_CONFIG_PATH
+            )
         )
         return False
 
-    if not registries_conf:
-        return True
-
-    modified = False
-    registry_mirrors = registries_conf.get('registry-mirrors', [])
-    if private_registry_fqdn:
-        private_registry_url = 'https://' + private_registry_fqdn
-        if private_registry_url in registry_mirrors:
-            registry_mirrors.pop(
-                registry_mirrors.index(private_registry_url)
-            )
-            modified = True
-
-        if 'https://{0}'.format(SUSE_REGISTRY) in registry_mirrors:
-            registry_mirrors.pop(
-                registry_mirrors.index('https://{0}'.format(SUSE_REGISTRY))
-            )
-            modified = True
+    modified_by_us = False
+    # Drop registry-mirrors in docker daemon.json
+    registry_mirrors = docker_cfg_json.get('registry-mirrors', [])
+    if not private_registry_fqdn:
+        private_registry_url = __matches_susecloud(registry_mirrors)
     else:
-        new_mirrors = []
-        for registry in registry_mirrors:
-            if (
-                ('registry' in registry and 'susecloud.net' in registry) or
-                SUSE_REGISTRY in registry
-            ):
-                modified = True
-                continue
-            new_mirrors.append(registry)
+        private_registry_url = 'https://{0}'.format(private_registry_fqdn)
+    if private_registry_url in registry_mirrors:
+        registry_mirrors.remove(private_registry_url)
+        modified_by_us = True
+    docker_cfg_json['registry-mirrors'] = registry_mirrors
 
-        if modified:
-            registries_conf['registry-mirrors'] = new_mirrors
-
-    if modified and registries_conf.get('registry-mirrors'):
+    # write registry setup if modified by us
+    if modified_by_us:
         logging.info(
-            'Registry content for "%s" has been modified' %
-            DOCKER_CONFIG_PATH
+            'SUSE registry information has been removed from {0}'.format(
+                DOCKER_CONFIG_PATH
+            )
         )
         return write_registries_conf(
-            registries_conf, DOCKER_CONFIG_PATH, 'docker'
+            docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
         )
-    elif modified:
-        os.unlink(DOCKER_CONFIG_PATH)
-        logging.info(
-            '%s removed, empty content after removing registry info' %
-            DOCKER_CONFIG_PATH
-        )
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -2765,3 +2704,11 @@ def __write_suma_conf(updated_content):
 
     message = 'Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH)
     logging.info(message)
+
+
+# ----------------------------------------------------------------------------
+def __matches_susecloud(elements):
+    for element in elements:
+        if 'registry-' in element and 'susecloud.net' in element:
+            return element
+    return ''

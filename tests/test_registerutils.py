@@ -4760,40 +4760,6 @@ def test_clean_registries_conf_podman_file_clean_content_smt_OK(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.os.unlink')
-@patch('cloudregister.registerutils.toml.load')
-@patch('cloudregister.registerutils.os.path.exists')
-def test_clean_registries_conf_podman_file_clean_content_smt_OK_empty(
-    mock_os_path_exists, mock_toml_load, mock_os_unlink, mock_logging
-):
-    mock_os_path_exists.return_value = True
-    registry_fqdn = 'registry-foo.susecloud.net'
-    mock_toml_load.return_value = {
-        'unqualified-search-registries': [
-            'registry-foo.susecloud.net'
-        ],
-        'registry': [
-            {'location': registry_fqdn, 'insecure': False}
-        ]
-    }
-    with patch('builtins.open', create=True) as mock_open:
-        assert utils.clean_registries_conf_podman(registry_fqdn) is None
-        assert mock_open.call_args_list == [
-            call('/etc/containers/registries.conf', 'r'),
-        ]
-        assert mock_logging.info.call_args_list == [
-            call(
-                '/etc/containers/registries.conf removed, empty content after '
-                'removing SUSE registry info'
-            ),
-        ]
-        assert mock_os_unlink.call_args_list == [
-            call('/etc/containers/registries.conf')
-        ]
-
-
-# ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_smt_from_store')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 @patch('cloudregister.registerutils.logging')
@@ -4974,45 +4940,15 @@ def test_clean_registries_conf_docker_file_clean_content_smt_OK(
         ]
         assert mock_logging.info.call_args_list == [
             call(
-                'Registry content for "/etc/docker/daemon.json" has '
-                'been modified'
+                'SUSE registry information has been removed '
+                'from /etc/docker/daemon.json'
             ),
             call('File /etc/docker/daemon.json updated')
         ]
         mock_json_dump.assert_called_once_with(
-            {'registry-mirrors': ['foo.com']},
+            {'registry-mirrors': ['foo.com', 'https://registry.suse.com']},
             file_handle
         )
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.os.unlink')
-@patch('cloudregister.registerutils.json.load')
-@patch('cloudregister.registerutils.os.path.exists')
-def test_clean_registries_conf_docker_file_clean_content_smt_OK_empty(
-    mock_os_path_exists, mock_json_load, mock_os_unlink, mock_logging
-):
-    mock_os_path_exists.return_value = True
-    registry_fqdn = 'registry-foo.susecloud.net'
-    registry_url = 'https://' + registry_fqdn
-    mock_json_load.return_value = {
-        'registry-mirrors': ['https://registry.suse.com', registry_url]
-    }
-    with patch('builtins.open', create=True) as mock_open:
-        assert utils.clean_registries_conf_docker(registry_fqdn) is None
-        assert mock_open.call_args_list == [
-            call('/etc/docker/daemon.json', 'r'),
-        ]
-        assert mock_logging.info.call_args_list == [
-            call(
-                '/etc/docker/daemon.json removed, empty content after '
-                'removing registry info'
-            ),
-        ]
-        assert mock_os_unlink.call_args_list == [
-            call('/etc/docker/daemon.json')
-        ]
 
 
 # ---------------------------------------------------------------------------
@@ -5037,15 +4973,16 @@ def test_clean_registries_conf_docker_file_clean_content_no_smt(
             call('/etc/docker/daemon.json', 'r'),
             call('/etc/docker/daemon.json', 'w')
         ]
+        print(mock_logging.info.call_args_list)
         assert mock_logging.info.call_args_list == [
             call(
-                'Registry content for "/etc/docker/daemon.json" has '
-                'been modified'
+                'SUSE registry information has been removed '
+                'from /etc/docker/daemon.json'
             ),
             call('File /etc/docker/daemon.json updated')
         ]
         mock_json_dump.assert_called_once_with(
-            {'registry-mirrors': ['foo.com']},
+            {'registry-mirrors': ['foo.com', 'registry.suse.com']},
             file_handle
         )
 
@@ -5427,6 +5364,17 @@ def test_write_suma_conf_error_yaml(
         assert mock_logging.info.call_args_list == [
             call('Could not parse /etc/uyuni/uyuni-tools.yaml')
         ]
+
+
+# ---------------------------------------------------------------------------
+def test__matches_susecloud():
+    assert utils.__matches_susecloud(['foo']) == ''
+    assert utils.__matches_susecloud(
+        ['registry-azure.susecloud.net']
+    ) == 'registry-azure.susecloud.net'
+    assert utils.__matches_susecloud(
+        ['foo', 'registry.susecloud.net', 'registry-azure.susecloud.net']
+    ) == 'registry-azure.susecloud.net'
 
 
 # ---------------------------------------------------------------------------
