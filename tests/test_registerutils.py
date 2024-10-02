@@ -4182,7 +4182,9 @@ def test_clean_registries_conf_podman_file_clean_content_smt_OK(
         ]
         mock_toml_dump.assert_called_once_with(
             {
-                'unqualified-search-registries': ['foo.com'],
+                'unqualified-search-registries': [
+                    'foo.com', 'registry.suse.com'
+                ],
                 'registry': [{'location': 'foo', 'insecure': False}]
             },
             file_handle
@@ -4201,7 +4203,7 @@ def test_clean_registries_conf_podman_file_clean_content_smt_OK_empty(
     registry_fqdn = 'registry-foo.susecloud.net'
     mock_toml_load.return_value = {
         'unqualified-search-registries': [
-            'registry.suse.com', 'registry-foo.susecloud.net'
+            'registry-foo.susecloud.net'
         ],
         'registry': [
             {'location': registry_fqdn, 'insecure': False}
@@ -4261,7 +4263,9 @@ def test_clean_registries_conf_podman_file_clean_content_no_smt(
         ]
         mock_toml_dump.assert_called_once_with(
             {
-                'unqualified-search-registries': ['foo.com'],
+                'unqualified-search-registries': [
+                    'foo.com', 'registry.suse.com'
+                ],
                 'registry': [{'location': 'foo', 'insecure': False}]
             },
             file_handle
