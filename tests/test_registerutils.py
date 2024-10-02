@@ -4546,7 +4546,7 @@ def test__set_registries_conf_podman_OK_content(
 @patch('cloudregister.registerutils.toml.dump')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK(
+def test__set_registries_conf_podman_content_setup_private_registry(
     mock_os_path_exists, mock_get_reg_conf_file,
     mock_toml_dump, mock_logging
 ):
@@ -4566,8 +4566,8 @@ def test__set_registries_conf_podman_content_not_OK(
             {
                 'unqualified-search-registries': [
                     'registry-ec2.susecloud.net',
-                    'registry.suse.com',
-                    'foo.com'
+                    'foo.com',
+                    'registry.suse.com'
                 ],
                 'registry': [
                     {
@@ -4596,7 +4596,7 @@ def test__set_registries_conf_podman_content_not_OK(
 @patch('cloudregister.registerutils.toml.dump')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK_wrong_order(
+def test__set_registries_conf_podman_content_not_OK_order_has_changed(
     mock_os_path_exists, mock_get_reg_conf_file,
     mock_toml_dump, mock_logging
 ):
@@ -4610,53 +4610,29 @@ def test__set_registries_conf_podman_content_not_OK_wrong_order(
             {'location': 'registry-ec2.susecloud.net', 'insecure': True}
         ]
     }, False
-    with patch('builtins.open', create=True) as mock_open:
-        file_handle = mock_open.return_value.__enter__.return_value
-        assert utils.__set_registries_conf_podman('registry-ec2.susecloud.net')
-        mock_toml_dump.assert_called_once_with(
-            {
-                'unqualified-search-registries': [
-                    'registry-ec2.susecloud.net',
-                    'registry.suse.com',
-                    'foo.com'
-                ],
-                'registry': [
-                    {
-                        'location': 'foo',
-                        'insecure': False
-                    },
-                    {
-                        'location': 'registry-ec2.susecloud.net',
-                        'insecure': False
-                    }
-                ]
-            },
-            file_handle
-        )
-        assert mock_logging.info.call_args_list == [
-            call(
-                'Content for /etc/containers/registries.conf has changed, '
-                'updating the file'
-            ),
-            call('File /etc/containers/registries.conf updated')
-        ]
+    with patch('builtins.open', create=True):
+        # someone has manually modified the registries setup
+        # Don't touch it. Users can fix via --clean re-registration
+        assert utils.__set_registries_conf_podman(
+            'registry-ec2.susecloud.net'
+        ) is None
 
 
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.toml.load')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK_wrong_order_file_error(
+def test__set_registries_conf_podman_file_open_error(
     mock_os_path_exists, mock_toml_load, mock_logging
 ):
     mock_os_path_exists.return_value = True
     mock_toml_load.return_value = {
         'unqualified-search-registries': [
-            'foo.com', 'registry.suse.com', 'registry-ec2.susecloud.net'
+            'foo.com', 'registry-ec2.susecloud.net'
         ],
         'registry': [
-            {'location': 'foo', 'insecure': False},
-            {'location': 'registry-ec2.susecloud.net', 'insecure': True}
+            {'location': 'foo', 'insecure': True},
+            {'location': 'registry-ec2.susecloud.net', 'insecure': False}
         ]
     }
     with patch('builtins.open', create=True) as mock_open:

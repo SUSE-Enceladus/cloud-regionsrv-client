@@ -2636,59 +2636,49 @@ def __set_registries_conf_podman(private_registry_fqdn):
         if failed:
             return False
 
+    modified_by_us = False
+    # Setup unqualified-search-registries
     unqualified_search_reg = registries_conf.get(
         'unqualified-search-registries', []
     )
-    modified = False
-    if unqualified_search_reg:
-        priv_index = -1
-        pub_index = -1
-        if private_registry_fqdn in unqualified_search_reg:
-            priv_index = unqualified_search_reg.index(private_registry_fqdn)
-        if SUSE_REGISTRY in unqualified_search_reg:
-            pub_index = unqualified_search_reg.index(SUSE_REGISTRY)
+    if private_registry_fqdn not in unqualified_search_reg:
+        # susecloud registry not added, always place it first
+        unqualified_search_reg.insert(0, private_registry_fqdn)
+        modified_by_us = True
 
-        if not priv_index == 0 or not pub_index == 1:
-            if priv_index > 0:
-                unqualified_search_reg.pop(priv_index)
-            if pub_index > 0:
-                unqualified_search_reg.pop(pub_index)
-            modified = True
-
-    if modified or not unqualified_search_reg:
-        [
-            unqualified_search_reg.insert(0, fqdn) for fqdn in
-            [SUSE_REGISTRY, private_registry_fqdn]
-        ]
-
-    private_registry = {'location': private_registry_fqdn, 'insecure': False}
-    # a list of dictionaries
-    registry_mirrors = registries_conf.get('registry', [])
-    present = False
-    if private_registry in registry_mirrors:
-        # exact match
-        present = True
-    else:
-        for registry_mirror in registry_mirrors:
-            if registry_mirror.get('location', {}) == private_registry_fqdn:
-                present = True
-                if registry_mirror.get('insecure', True):
-                    # FQDN is correct
-                    # the insecure content is not correct
-                    registry_mirror['insecure'] = False
-                    modified = True
-
-    if not present:
-        registry_mirrors.append(private_registry)
-        modified = True
-
+    if SUSE_REGISTRY not in unqualified_search_reg:
+        # the suse registry search is provided by the libcontainers-common
+        # package. For the case when we cannot find any suse registry we
+        # append it after the susecloud registry
+        private_registry_index = unqualified_search_reg.index(
+            private_registry_fqdn
+        )
+        unqualified_search_reg.insert(private_registry_index + 1, SUSE_REGISTRY)
+        modified_by_us = True
     registries_conf['unqualified-search-registries'] = unqualified_search_reg
+
+    # Setup registry mirror
+    registry_mirrors = registries_conf.get(
+        'registry', []
+    )
+    mirror_found = False
+    for registry_mirror in registry_mirrors:
+        if registry_mirror.get('location', '') == private_registry_fqdn:
+            mirror_found = True
+            break
+    if not mirror_found:
+        registry_mirrors.append(
+            {'location': private_registry_fqdn, 'insecure': False}
+        )
+        modified_by_us = True
     registries_conf['registry'] = registry_mirrors
 
-    if modified:
+    # write registry setup if modified by us
+    if modified_by_us:
         logging.info(
-            'Content for %s has changed, updating the file' %
-            REGISTRIES_CONF_PATH
+            'Content for {0} has changed, updating the file'.format(
+                REGISTRIES_CONF_PATH
+            )
         )
         return write_registries_conf(
             registries_conf, REGISTRIES_CONF_PATH, 'podman'
