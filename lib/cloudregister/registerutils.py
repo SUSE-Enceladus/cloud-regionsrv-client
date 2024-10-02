@@ -1143,7 +1143,6 @@ def clean_registries_conf_podman(private_registry_fqdn):
     unqualified_search_reg = registries_conf.get(
         'unqualified-search-registries', []
     )
-    pub_registry_fqdn = 'registry.suse.com'
     if unqualified_search_reg:
         if private_registry_fqdn:
             if private_registry_fqdn in unqualified_search_reg:
@@ -1161,12 +1160,6 @@ def clean_registries_conf_podman(private_registry_fqdn):
 
             if modified:
                 unqualified_search_reg = new_unq_search_reg
-
-        if pub_registry_fqdn in unqualified_search_reg:
-            unqualified_search_reg.pop(
-                unqualified_search_reg.index(pub_registry_fqdn)
-            )
-            modified = True
 
         if modified:
             registries_conf['unqualified-search-registries'] = \
