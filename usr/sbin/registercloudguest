@@ -29,11 +29,9 @@
 
 import argparse
 import ipaddress
-import json
 import logging
 import os
 import requests
-import subprocess
 import sys
 import time
 import urllib.parse
@@ -42,7 +40,6 @@ import uuid
 
 import cloudregister.registerutils as utils
 
-from collections import namedtuple
 from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
@@ -55,122 +52,6 @@ ZYPP_SERVICES = '/etc/zypp/services.d'
 # We have to check the server state API without certificate validation
 urllib3.disable_warnings()
 registration_returncode = 0
-
-
-# ----------------------------------------------------------------------------
-def get_register_cmd():
-    """Determine which command we need to use to register the system"""
-
-    register_cmd = '/usr/sbin/SUSEConnect'
-    # Figure out if we are on RO transactional-update system
-    p = subprocess.Popen(
-        ['findmnt', '--noheadings', '--json', '/'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    res = p.communicate()
-    # If we get an error from findmnt move forward on a best effort basis
-    if p.returncode:
-        logging.warning('Unable to find filesystem information for "/"')
-    else:
-        fsinfo = json.loads(res[0])
-        fsdata = fsinfo.get('filesystems')
-        if fsdata:
-            fsoptions = fsdata[0].get('options')
-            # If we are on a RO system we need to use the
-            # transactional-update command
-            if 'ro' in fsoptions.split(','):
-                cmd_name = 'transactional-update'
-                for path in ['/sbin/', '/usr/sbin/']:
-                    exec_path = path + cmd_name
-                    if os.path.exists(exec_path):
-                        register_cmd = exec_path
-                        break
-                else:
-                    err_msg = 'transactional-update command not found.'
-                    err_msg += 'But is required on a RO filesystem for '
-                    err_msg += 'registration'
-                    logging.error(err_msg)
-                    print(err_msg, file=sys.stderr)
-                    sys.exit(1)
-
-    return register_cmd
-
-
-# ----------------------------------------------------------------------------
-def run_SUSEConnect(
-    registration_target, regcode='', email='',
-    instance_data_filepath='', product=''
-):
-    """
-    Wrapper for SUSEConnect
-
-    Call SUSEConnect or the respective transactional update call
-    with the given parameters:
-
-    registration_target:
-        SMT registration object
-    regcode:
-        registration code
-    email:
-        registration e-mail
-    instance_data_filepath:
-        CSP related metadata file
-    product:
-        SUSE product triplet
-    """
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
-    register_cmd = get_register_cmd()
-    if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
-        err_msg = 'No registration executable found'
-        logging.error(err_msg)
-        print(err_msg, file=sys.stderr)
-        sys.exit(1)
-
-    cmd = [register_cmd]
-    target_url = registration_target.get_FQDN()
-
-    # distinguish command between standard and read-only system(transactional)
-    if 'transactional' in register_cmd:
-        cmd += ['register']
-
-    cmd += ['--url', 'https://{0}'.format(target_url)]
-
-    # SUSE product triplet
-    if product:
-        cmd += ['--product', product]
-
-    # set path to a metadata file, cloud specific
-    if instance_data_filepath:
-        cmd += ['--instance-data', instance_data_filepath]
-
-    # set e-mail
-    if email:
-        cmd += ['--email', email]
-
-    # set registration code for given product
-    if regcode:
-        cmd += ['--regcode', regcode]
-
-    log_information = ' '.join(cmd)
-    if regcode:
-        # registration codes should not end up in the log
-        log_information = log_information.replace(regcode, 'XXXX')
-
-    logging.info('Registration: {0}'.format(log_information))
-    call = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    output, error = call.communicate()
-    return suseconnect_type(
-        returncode=call.returncode,
-        output=output.decode(),
-        error=error.decode()
-    )
 
 
 # ----------------------------------------------------------------------------
@@ -196,7 +77,7 @@ def register_modules(
         if triplet in products and triplet not in registered:
             registered.append(triplet)
 
-            suseconnect = run_SUSEConnect(
+            suseconnect = utils.run_SUSEConnect(
                 registration_target=registration_target,
                 product=triplet,
                 instance_data_filepath=instance_data_filepath
@@ -231,6 +112,11 @@ def register_modules(
 # ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
+    try:
+        utils.clean_non_free_extensions()
+    except Exception as err:
+        print('Could not check the system product data: {}'.format(err))
+
     utils.clean_registry_setup()
     utils.remove_registration_data()
     utils.clean_smt_cache()
@@ -293,34 +179,6 @@ def get_responding_update_server(region_smt_servers):
 
 
 # ----------------------------------------------------------------------------
-def get_product_tree(product_file='/etc/products.d/baseproduct'):
-    """
-    Read product element from baseproduct and return an etree
-    """
-    if os.path.isfile(product_file):
-        with open(product_file, 'r') as product:
-            raw_xml = product.read()
-            product_entry_point = raw_xml.index('<product')
-            return etree.fromstring(raw_xml[product_entry_point:])
-
-
-# ----------------------------------------------------------------------------
-def get_product_triplet(product_tree):
-    """
-    Extract identifier, version and arch information from
-    the given product tree
-    """
-    product_type = namedtuple(
-        'product_type', ['name', 'version', 'arch']
-    )
-    return product_type(
-        name=product_tree.find('name').text,
-        version=product_tree.find('version').text,
-        arch=product_tree.find('arch').text
-    )
-
-
-# ----------------------------------------------------------------------------
 def setup_ltss_registration(
     registration_target, regcode, instance_data_filepath
 ):
@@ -329,7 +187,7 @@ def setup_ltss_registration(
     """
     logging.info('Running LTSS registration...')
     print('Running LTSS registration...this takes a little longer')
-    product = get_product_tree()
+    product = utils.get_product_tree()
     if product is None:
         message = 'Cannot find baseproduct registration for LTSS'
         logging.error(message)
@@ -347,7 +205,7 @@ def setup_ltss_registration(
         logging.info(message)
         print(message)
     else:
-        base_product = get_product_triplet(product)
+        base_product = utils.get_product_triplet(product)
 
         # The name of the product to register is the LTSS variant for the
         # registered base product. In theory other combinations are possible
@@ -356,7 +214,7 @@ def setup_ltss_registration(
             base_product.name, base_product.version, base_product.arch
         )
 
-        suseconnect = run_SUSEConnect(
+        suseconnect = utils.run_SUSEConnect(
             registration_target=registration_target,
             product=ltss_product_triplet,
             regcode=regcode,
@@ -722,7 +580,7 @@ def main(args):
     if not utils.is_registration_supported(cfg):
         sys.exit(0)
 
-    register_cmd = get_register_cmd()
+    register_cmd = utils.get_register_cmd()
     if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
         err_msg = 'No registration executable found'
         logging.error(err_msg)
@@ -745,7 +603,7 @@ def main(args):
 
     while not base_registered:
         utils.add_hosts_entry(registration_target)
-        suseconnect = run_SUSEConnect(
+        suseconnect = utils.run_SUSEConnect(
             registration_target=registration_target,
             email=args.email,
             regcode=args.reg_code,
@@ -806,8 +664,8 @@ def main(args):
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
-    base_product = get_product_triplet(
-        get_product_tree()
+    base_product = utils.get_product_triplet(
+        utils.get_product_tree()
     )
     headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
     query_args = 'identifier=%s&version=%s&arch=%s' % (

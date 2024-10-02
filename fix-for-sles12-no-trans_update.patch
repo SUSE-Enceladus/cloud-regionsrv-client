@@ -1,9 +1,10 @@
---- usr/sbin/registercloudguest.orig
-+++ usr/sbin/registercloudguest
-@@ -62,6 +62,7 @@ def get_register_cmd():
+--- lib/cloudregister/registerutils.py
++++ lib/cloudregister/registerutils.py
+@@ -338,6 +338,8 @@ def get_register_cmd():
      """Determine which command we need to use to register the system"""
  
      register_cmd = '/usr/sbin/SUSEConnect'
++    # Return early on SLE12
 +    return register_cmd
      # Figure out if we are on RO transactional-update system
      p = subprocess.Popen(

@@ -33,6 +33,7 @@ import time
 import toml
 import yaml
 
+from collections import namedtuple
 from lxml import etree
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
@@ -52,6 +53,7 @@ PROFILE_LOCAL_PATH = '/etc/profile.local'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
+BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -174,6 +176,112 @@ def clear_rmt_as_scc_proxy_flag():
 
 
 # ----------------------------------------------------------------------------
+def clean_non_free_extensions():
+    """Remove/uninstall non free extensions from the system."""
+    extensions = get_extensions()
+    installed_products = get_installed_products()
+
+    for extension in extensions:
+        # The following not free condition checks on
+        # the access capability of the extension
+        # This is a server side capability
+        if not extension.get('free', True):
+            triplet = get_product_triplet(extension)
+            triplet = '{name}/{version}/{arch}'.format(
+                name=triplet.name,
+                version=triplet.version,
+                arch=triplet.arch
+            )
+            if triplet in installed_products:
+                suseconnect = run_SUSEConnect(
+                    registration_target=get_current_smt(),
+                    product=triplet,
+                    de_register=True
+                )
+                msg = 'Non free extension {} '.format(triplet)
+                if suseconnect.returncode:
+                    msg += 'failed to be removed'
+                else:
+                    msg += 'removed'
+
+                logging.info(msg)
+
+
+# ----------------------------------------------------------------------------
+def get_product_tree(product_file=BASE_PRODUCT_PATH):
+    """
+    Read product element from baseproduct and return an etree
+    """
+    if os.path.isfile(product_file):
+        with open(product_file, 'r') as product:
+            raw_xml = product.read()
+            product_entry_point = raw_xml.index('<product')
+            return etree.fromstring(raw_xml[product_entry_point:])
+
+
+# ----------------------------------------------------------------------------
+def get_product_triplet(product_tree):
+    """
+    Extract identifier, version and arch information from
+    the given product tree
+    """
+    product_type = namedtuple(
+        'product_type', ['name', 'version', 'arch']
+    )
+    if type(product_tree) is dict:
+        return product_type(
+                name=product_tree.get('identifier'),
+                version=product_tree.get('version'),
+                arch=product_tree.get('arch')
+        )
+
+    return product_type(
+        name=product_tree.find('name').text,
+        version=product_tree.find('version').text,
+        arch=product_tree.find('arch').text
+    )
+
+
+# ----------------------------------------------------------------------------
+def get_extensions():
+    """Get the extensions of the base product on the update server."""
+    prod_data = get_product_data()
+    return prod_data.get('extensions', [])
+
+
+# ----------------------------------------------------------------------------
+def get_product_data(registration_target=None):
+    if not registration_target:
+        registration_target = get_current_smt()
+    if not registration_target:
+        logging.info('No update server set')
+        return {}
+
+    base_product = get_product_triplet(get_product_tree())
+    headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
+    query_args = 'identifier=%s&version=%s&arch=%s' % (
+        base_product.name, base_product.version, base_product.arch
+    )
+    user, password = get_credentials(get_credentials_file(registration_target))
+    auth_creds = HTTPBasicAuth(user, password)
+    url_system_products = 'https://%s/connect/systems/products?%s' % (
+        registration_target.get_FQDN(), query_args
+    )
+    res = requests.get(url_system_products, auth=auth_creds, headers=headers)
+    if res.status_code != requests.codes.ok:
+        err_msg = 'Unable to obtain product information from server "%s"\n'
+        err_msg += '\t%s\n\t%s, exiting.'
+        ips = '%s,%s' % (
+            registration_target.get_ipv4(), registration_target.get_ipv6()
+        )
+        err_msg = err_msg % (ips, res.reason, res.content.decode("UTF-8"))
+        logging.error(err_msg)
+        raise Exception(err_msg)
+
+    return res.json()
+
+
+# ----------------------------------------------------------------------------
 def credentials_files_are_equal(repo_credentials):
     """Compare the base credentials files the the repo header and make
        sure they have the same values."""
@@ -223,6 +331,131 @@ def exec_subprocess(cmd, return_output=False):
         return proc.returncode
     except OSError:
         return -1
+
+
+# ----------------------------------------------------------------------------
+def get_register_cmd():
+    """Determine which command we need to use to register the system"""
+
+    register_cmd = '/usr/sbin/SUSEConnect'
+    # Figure out if we are on RO transactional-update system
+    p = subprocess.Popen(
+        ['findmnt', '--noheadings', '--json', '/'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    res = p.communicate()
+    # If we get an error from findmnt move forward on a best effort basis
+    if p.returncode:
+        logging.warning('Unable to find filesystem information for "/"')
+    else:
+        fsinfo = json.loads(res[0])
+        fsdata = fsinfo.get('filesystems')
+        if fsdata:
+            fsoptions = fsdata[0].get('options')
+            # If we are on a RO system we need to use the
+            # transactional-update command
+            if 'ro' in fsoptions.split(','):
+                cmd_name = 'transactional-update'
+                for path in ['/sbin/', '/usr/sbin/']:
+                    exec_path = path + cmd_name
+                    if os.path.exists(exec_path):
+                        register_cmd = exec_path
+                        break
+                else:
+                    err_msg = 'transactional-update command not found.'
+                    err_msg += 'But is required on a RO filesystem for '
+                    err_msg += 'registration'
+                    logging.error(err_msg)
+                    print(err_msg, file=sys.stderr)
+                    sys.exit(1)
+
+    return register_cmd
+
+
+# ----------------------------------------------------------------------------
+def run_SUSEConnect(
+    registration_target, regcode='', email='',
+    instance_data_filepath='', product='', de_register=False
+):
+    """
+    Wrapper for SUSEConnect
+
+    Call SUSEConnect or the respective transactional update call
+    with the given parameters:
+
+    registration_target:
+        SMT registration object
+    regcode:
+        registration code
+    email:
+        registration e-mail
+    instance_data_filepath:
+        CSP related metadata file
+    product:
+        SUSE product triplet
+    """
+    register_cmd = get_register_cmd()
+    if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
+        err_msg = 'No registration executable found'
+        print(err_msg, file=sys.stderr)
+        logging.error(err_msg)
+        sys.exit(1)
+
+    cmd = [register_cmd]
+    target_url = registration_target.get_FQDN()
+
+    # distinguish command between standard and read-only system(transactional)
+    if 'transactional' in register_cmd:
+        cmd += ['register']
+
+    cmd += ['--url', 'https://{0}'.format(target_url)]
+
+    if de_register:
+        if not product:
+            error_msg = 'De-register the system is not allowed for SUSEConnect'
+            print(error_msg)
+            logging.error(error_msg)
+            sys.exit(1)
+
+        cmd += ['--de-register']
+
+    # SUSE product triplet
+    if product:
+        cmd += ['--product', product]
+
+    # set path to a metadata file, cloud specific
+    if instance_data_filepath:
+        cmd += ['--instance-data', instance_data_filepath]
+
+    # set e-mail
+    if email:
+        cmd += ['--email', email]
+
+    # set registration code for given product
+    if regcode:
+        cmd += ['--regcode', regcode]
+
+    log_information = ' '.join(cmd)
+    if regcode:
+        # registration codes should not end up in the log
+        log_information = log_information.replace(regcode, 'XXXX')
+
+    logging.info('Registration: {0}'.format(log_information))
+    call = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    output, error = call.communicate()
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    return suseconnect_type(
+        returncode=call.returncode,
+        output=output.decode(),
+        error=error.decode()
+    )
 
 
 # ----------------------------------------------------------------------------

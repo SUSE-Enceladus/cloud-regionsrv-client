@@ -11,7 +11,6 @@ from urllib.parse import ParseResult
 
 from pytest import raises
 from types import SimpleNamespace
-# from unittest import mock
 from unittest.mock import patch, call, Mock, mock_open
 
 test_path = os.path.abspath(
@@ -87,6 +86,7 @@ def test_register_cloud_guest_no_regcode_email():
         assert register_cloud_guest.main(fake_args) is None
 
 
+@patch('cloudregister.registerutils.clean_non_free_extensions')
 @patch('register_cloud_guest.time.sleep')
 @patch('cloudregister.registerutils.get_config')
 @patch('cloudregister.registerutils.clean_framework_identifier')
@@ -96,7 +96,8 @@ def test_register_cloud_guest_no_regcode_email():
 @patch('cloudregister.registerutils.clean_registry_setup')
 def test_register_cloud_guest_cleanup(
     mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
-    mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep
+    mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
+    mock_clean_non_free_extensions
 ):
     fake_args = SimpleNamespace(
         clean_up=True,
@@ -109,6 +110,36 @@ def test_register_cloud_guest_cleanup(
         delay_time=1,
         config_file='config_file'
     )
+    with raises(SystemExit):
+        register_cloud_guest.main(fake_args)
+    mock_clean_reg_setup.assert_called_once()
+
+
+@patch('cloudregister.registerutils.clean_non_free_extensions')
+@patch('register_cloud_guest.time.sleep')
+@patch('cloudregister.registerutils.get_config')
+@patch('cloudregister.registerutils.clean_framework_identifier')
+@patch('cloudregister.registerutils.clear_new_registration_flag')
+@patch('cloudregister.registerutils.clean_smt_cache')
+@patch('cloudregister.registerutils.remove_registration_data')
+@patch('cloudregister.registerutils.clean_registry_setup')
+def test_register_cloud_guest_cleanup_exception(
+    mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
+    mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
+    mock_clean_non_free_extensions
+):
+    fake_args = SimpleNamespace(
+        clean_up=True,
+        force_new_registration=False,
+        user_smt_ip=None,
+        user_smt_fqdn=None,
+        user_smt_fp=None,
+        email=None,
+        reg_code=None,
+        delay_time=1,
+        config_file='config_file'
+    )
+    mock_clean_non_free_extensions.side_effect = Exception('oh no')
     with raises(SystemExit):
         register_cloud_guest.main(fake_args)
     mock_clean_reg_setup.assert_called_once()
@@ -591,7 +622,7 @@ def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -679,7 +710,7 @@ def test_register_cloud_guest_force_reg_no_executable_found(
 @patch('cloudregister.registerutils.is_registration_supported')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -767,7 +798,7 @@ def test_register_cloud_guest_force_registration_not_supported(
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -861,7 +892,7 @@ def test_register_cloud_guest_force_reg_no_products_installed(
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -951,13 +982,13 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
 
 
 @patch('cloudregister.registerutils.set_proxy')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -1061,13 +1092,13 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
 @patch('register_cloud_guest.get_responding_update_server')
 @patch('cloudregister.registerutils.fetch_smt_data')
 @patch('cloudregister.registerutils.remove_registration_data')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -1191,16 +1222,16 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
 @patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -1326,16 +1357,16 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
 @patch('register_cloud_guest.os.unlink')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -1504,16 +1535,16 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
 @patch('register_cloud_guest.os.unlink')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -1706,16 +1737,16 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
 @patch('register_cloud_guest.os.unlink')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -1909,16 +1940,16 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
 @patch('register_cloud_guest.os.unlink')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -2110,16 +2141,16 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
 @patch('register_cloud_guest.os.unlink')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.get_register_cmd')
+@patch('cloudregister.registerutils.get_register_cmd')
 @patch('cloudregister.registerutils.update_rmt_cert')
 @patch('cloudregister.registerutils.has_registry_in_hosts')
 @patch('cloudregister.registerutils.add_hosts_entry')
@@ -2298,207 +2329,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
     ]
 
 
-@patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.subprocess.Popen')
-def test_get_register_cmd_error(mock_popen, mock_logging):
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode(''), str.encode('')]
-    )
-    mock_process.returncode = 1
-    mock_popen.return_value = mock_process
-    assert register_cloud_guest.get_register_cmd() == '/usr/sbin/SUSEConnect'
-    assert mock_logging.warning.call_args_list == [
-        call('Unable to find filesystem information for "/"')
-    ]
-
-
-@patch('register_cloud_guest.os.path.exists')
-@patch('register_cloud_guest.json.loads')
-@patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.subprocess.Popen')
-def test_get_register_cmd_path_not_exist(
-    mock_popen, mock_logging, mock_json_loads, mock_os_path_exists
-):
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode(''), str.encode('')]
-    )
-    mock_process.returncode = 0
-    mock_popen.return_value = mock_process
-    mock_json_loads.return_value = {
-        'filesystems': [
-            {
-                'target': '/',
-                'source': '/dev/xvda3',
-                'fstype': 'xfs',
-                'options':
-                'ro,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota'
-            }
-        ]
-    }
-    mock_os_path_exists.return_value = False
-    with raises(SystemExit) as sys_exit:
-        register_cloud_guest.get_register_cmd()
-    assert sys_exit.value.code == 1
-    assert mock_logging.error.call_args_list == [
-        call(
-            'transactional-update command not found.But is required on a RO '
-            'filesystem for registration'
-        )
-    ]
-
-
-@patch('register_cloud_guest.os.path.exists')
-@patch('register_cloud_guest.json.loads')
-@patch('register_cloud_guest.subprocess.Popen')
-def test_get_register_cmd_ok(
-    mock_popen, mock_json_loads, mock_os_path_exists
-):
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode(''), str.encode('')]
-    )
-    mock_process.returncode = 0
-    mock_popen.return_value = mock_process
-    mock_json_loads.return_value = {
-        'filesystems': [
-            {
-                'target': '/',
-                'source': '/dev/xvda3',
-                'fstype': 'xfs',
-                'options':
-                'ro,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota'
-            }
-        ]
-    }
-    mock_os_path_exists.return_value = True
-    assert register_cloud_guest.get_register_cmd() == \
-        '/sbin/transactional-update'
-
-
-@patch('register_cloud_guest.get_register_cmd')
-@patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.os.path.exists')
-@patch('register_cloud_guest.subprocess.Popen')
-def test_run_SUSEConnect_no_exists(
-    mock_popen, mock_os_path_exists,
-    mock_os_access, mock_logging,
-    mock_get_register_cmd
-):
-    mock_os_path_exists.return_value = False
-    with raises(SystemExit) as sys_exit:
-        register_cloud_guest.run_SUSEConnect('foo')
-    assert sys_exit.value.code == 1
-    assert mock_logging.error.call_args_list == [
-        call('No registration executable found')
-    ]
-
-
-@patch('register_cloud_guest.get_register_cmd')
-@patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.os.path.exists')
-@patch('register_cloud_guest.subprocess.Popen')
-def test_run_SUSEConnect_no_transactional_ok(
-    mock_popen, mock_os_path_exists,
-    mock_os_access, mock_logging,
-    mock_get_register_cmd
-):
-    mock_os_path_exists.return_value = True
-    mock_os_access.return_value = True
-    smt_data_ipv46 = dedent('''\
-        <smtInfo fingerprint="AA:BB:CC:DD"
-         SMTserverIP="1.2.3.5"
-         SMTserverIPv6="fc00::1"
-         SMTserverName="foo-ec2.susecloud.net"
-         SMTregistryName="registry-ec2.susecloud.net"
-         region="antarctica-1"/>''')
-
-    smt_server = SMT(etree.fromstring(smt_data_ipv46))
-    mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
-    expected_cmd = (
-        'Registration: '
-        '/usr/sbin/SUSEConnect '
-        '--url https://foo-ec2.susecloud.net '
-        '--product product '
-        '--instance-data instance_data_filepath '
-        '--email email '
-        '--regcode XXXX'
-    )
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode('OK'), str.encode('not_OK')]
-    )
-    mock_process.returncode = 0
-    mock_popen.return_value = mock_process
-    result = register_cloud_guest.run_SUSEConnect(
-        smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
-    )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
-    assert result == suseconnect_type(
-        returncode=0,
-        output='OK',
-        error='not_OK'
-    )
-    assert mock_logging.info.call_args_list == [call(expected_cmd)]
-
-
-@patch('register_cloud_guest.get_register_cmd')
-@patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.os.access')
-@patch('register_cloud_guest.os.path.exists')
-@patch('register_cloud_guest.subprocess.Popen')
-def test_run_SUSEConnect_transactional_ok(
-    mock_popen, mock_os_path_exists,
-    mock_os_access, mock_logging,
-    mock_get_register_cmd
-):
-    mock_os_path_exists.return_value = True
-    mock_os_access.return_value = True
-    smt_data_ipv46 = dedent('''\
-        <smtInfo fingerprint="AA:BB:CC:DD"
-         SMTserverIP="1.2.3.5"
-         SMTserverIPv6="fc00::1"
-         SMTserverName="foo-ec2.susecloud.net"
-         SMTregistryName="registry-ec2.susecloud.net"
-         region="antarctica-1"/>''')
-
-    smt_server = SMT(etree.fromstring(smt_data_ipv46))
-    mock_get_register_cmd.return_value = '/usr/sbin/transactional'
-    expected_cmd = (
-        'Registration: '
-        '/usr/sbin/transactional '
-        'register --url https://foo-ec2.susecloud.net '
-        '--product product '
-        '--instance-data instance_data_filepath '
-        '--email email '
-        '--regcode XXXX'
-    )
-    mock_process = Mock()
-    mock_process.communicate = Mock(
-        return_value=[str.encode('OK'), str.encode('not_OK')]
-    )
-    mock_process.returncode = 0
-    mock_popen.return_value = mock_process
-    result = register_cloud_guest.run_SUSEConnect(
-        smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
-    )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
-    assert result == suseconnect_type(
-        returncode=0,
-        output='OK',
-        error='not_OK'
-    )
-    assert mock_logging.info.call_args_list == [call(expected_cmd)]
-
-
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 def test_register_modules(mock_run_SUSEConnect):
     suseconnect_type = namedtuple(
         'suseconnect_type', ['returncode', 'output', 'error']
@@ -2637,30 +2468,8 @@ def test_get_responding_update_server_error(mock_logging):
     assert mock_logging.error.call_args_list == [call('No response from: []')]
 
 
-@patch('register_cloud_guest.os.path.isfile')
-def test_get_product_tree(mock_path_isfile):
-    base_product = dedent('''\
-        <?xml version="1.0" encoding="UTF-8"?>
-        <product schemeversion="0">
-          <vendor>SUSE</vendor>
-          <name>SLES</name>
-          <version>15.4</version>
-          <baseversion>15</baseversion>
-          <patchlevel>4</patchlevel>
-          <release>0</release>
-          <endoflife></endoflife>
-          <arch>x86_64</arch></product>''')
-    expected_tree = etree.fromstring(
-        base_product[base_product.index('<product'):]
-    )
-    mock_path_isfile.return_value = True
-    with patch('builtins.open', mock_open(read_data=base_product)):
-        result = register_cloud_guest.get_product_tree()
-        assert etree.tostring(result) == etree.tostring(expected_tree)
-
-
 @patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 def test_setup_ltss_registration_no_product(
     mock_get_product_tree, mock_logging
 ):
@@ -2678,7 +2487,7 @@ def test_setup_ltss_registration_no_product(
 @patch('register_cloud_guest.os.listdir')
 @patch('register_cloud_guest.os.path.isdir')
 @patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 def test_setup_ltss_registration_registered(
     mock_get_product_tree, mock_logging, mock_os_path_isdir, mock_os_listdir
 ):
@@ -2694,11 +2503,11 @@ def test_setup_ltss_registration_registered(
     ]
 
 
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('register_cloud_guest.os.listdir')
 @patch('register_cloud_guest.os.path.isdir')
 @patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 def test_setup_ltss_registration_registration_ok(
     mock_get_product_tree, mock_logging,
     mock_os_path_isdir, mock_os_listdir,
@@ -2737,11 +2546,11 @@ def test_setup_ltss_registration_registration_ok(
     ]
 
 
-@patch('register_cloud_guest.run_SUSEConnect')
+@patch('cloudregister.registerutils.run_SUSEConnect')
 @patch('register_cloud_guest.os.listdir')
 @patch('register_cloud_guest.os.path.isdir')
 @patch('register_cloud_guest.logging')
-@patch('register_cloud_guest.get_product_tree')
+@patch('cloudregister.registerutils.get_product_tree')
 def test_setup_ltss_registration_registration_failed(
     mock_get_product_tree, mock_logging,
     mock_os_path_isdir, mock_os_listdir,

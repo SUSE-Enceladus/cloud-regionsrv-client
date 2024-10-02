@@ -22,6 +22,7 @@ import sys
 import tempfile
 import toml
 import yaml
+from collections import namedtuple
 from pytest import raises
 from textwrap import dedent
 
@@ -754,6 +755,597 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
     mock_os_unlink.assert_called_once_with(
         '/var/cache/cloudregister/rmt_is_scc_proxy'
     )
+
+
+@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.get_installed_products')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+def test_clean_non_free_extensions(
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_logging,
+    mock_get_installed_products,
+    mock_run_SUSEConnect
+):
+    mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
+    response = Response()
+    response.status_code = requests.codes.ok
+    json_mock = Mock()
+    json_mock.return_value = {
+        'id': 2001,
+        'name': 'SUSE Linux Enterprise Server',
+        'identifier': 'SLES',
+        'former_identifier': 'SLES',
+        'version': '15.4',
+        'release_type': None,
+        'release_stage': 'released',
+        'arch': 'x86_64',
+        'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
+        'product_class': '30',
+        'extensions': [
+            {
+                'id': 23,
+                'name': 'SUSE Linux Enterprise Server LTSS',
+                'identifier': 'SLES-LTSS',
+                'former_identifier': 'SLES-LTSS',
+                'version': '15.4',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name':
+                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True
+            }
+        ]
+    }
+    response.json = json_mock
+    mock_requests_get.return_value = response
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    mock_run_SUSEConnect.return_value = suseconnect_type(
+        returncode=0,
+        output='all OK',
+        error='stderr'
+    )
+    utils.clean_non_free_extensions()
+    assert mock_run_SUSEConnect.call_args_list == [
+        call(
+            registration_target=smt_server,
+            product='SLES-LTSS/15.4/x86_64',
+            de_register=True
+        )
+    ]
+    assert mock_logging.info.call_args_list == [
+        call('No credentials entry for "*fantasy_example_com"'),
+        call('No credentials entry for "SCC*"'),
+        call('Non free extension SLES-LTSS/15.4/x86_64 removed')
+    ]
+
+
+@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.get_installed_products')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+def test_clean_non_free_extensions_failed(
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_logging,
+    mock_get_installed_products,
+    mock_run_SUSEConnect
+):
+    mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
+    response = Response()
+    response.status_code = requests.codes.ok
+    json_mock = Mock()
+    json_mock.return_value = {
+        'id': 2001,
+        'name': 'SUSE Linux Enterprise Server',
+        'identifier': 'SLES',
+        'former_identifier': 'SLES',
+        'version': '15.4',
+        'release_type': None,
+        'release_stage': 'released',
+        'arch': 'x86_64',
+        'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
+        'product_class': '30',
+        'extensions': [
+            {
+                'id': 23,
+                'name': 'SUSE Linux Enterprise Server LTSS',
+                'identifier': 'SLES-LTSS',
+                'former_identifier': 'SLES-LTSS',
+                'version': '15.4',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name':
+                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True
+            }
+        ]
+    }
+    response.json = json_mock
+    mock_requests_get.return_value = response
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    mock_run_SUSEConnect.return_value = suseconnect_type(
+        returncode=1,
+        output='all OK',
+        error='stderr'
+    )
+    utils.clean_non_free_extensions()
+    assert mock_run_SUSEConnect.call_args_list == [
+        call(
+            registration_target=smt_server,
+            product='SLES-LTSS/15.4/x86_64',
+            de_register=True
+        )
+    ]
+    assert mock_logging.info.call_args_list == [
+        call('No credentials entry for "*fantasy_example_com"'),
+        call('No credentials entry for "SCC*"'),
+        call('Non free extension SLES-LTSS/15.4/x86_64 failed to be removed')
+    ]
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+def test_clean_non_free_extensions_request_failed(
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_os_unlink,
+    mock_logging
+):
+    response = Response()
+    response.status_code = requests.codes.forbidden
+    response.reason = 'Because nope'
+    response.content = str(json.dumps('no accessio')).encode()
+    mock_requests_get.return_value = response
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    with raises(Exception):
+        utils.clean_non_free_extensions()
+    assert mock_os_unlink.mock_calls == []
+    assert mock_logging.error.call_args_list == [
+        call('No matching credentials file found'),
+        call(
+            'Unable to obtain product information '
+            'from server "192.168.1.1,fc00::1"\n\tBecause nope\n\t'
+            '"no accessio", exiting.'
+        )
+    ]
+
+
+@patch('cloudregister.registerutils.os.unlink')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+def test_clean_non_free_extensions_no_credentials(
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_os_unlink
+):
+    mock_get_current_smt.return_value = None
+    utils.clean_non_free_extensions()
+    assert mock_os_unlink.mock_calls == []
+
+
+@patch('cloudregister.registerutils.get_register_cmd')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_run_SUSEConnect_no_transactional_ok(
+    mock_popen, mock_os_path_exists,
+    mock_os_access, mock_logging,
+    mock_get_register_cmd
+):
+    mock_os_path_exists.return_value = True
+    mock_os_access.return_value = True
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="AA:BB:CC:DD"
+         SMTserverIP="1.2.3.5"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="foo-ec2.susecloud.net"
+         SMTregistryName="registry-ec2.susecloud.net"
+         region="antarctica-1"/>''')
+
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
+    expected_cmd = (
+        'Registration: '
+        '/usr/sbin/SUSEConnect '
+        '--url https://foo-ec2.susecloud.net '
+        '--product product '
+        '--instance-data instance_data_filepath '
+        '--email email '
+        '--regcode XXXX'
+    )
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('OK'), str.encode('not_OK')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    result = utils.run_SUSEConnect(
+        smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
+    )
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    assert result == suseconnect_type(
+        returncode=0,
+        output='OK',
+        error='not_OK'
+    )
+    assert mock_logging.info.call_args_list == [call(expected_cmd)]
+
+
+@patch('cloudregister.registerutils.get_register_cmd')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_run_SUSEConnect_no_transactional_de_register_ok(
+    mock_popen, mock_os_path_exists,
+    mock_os_access, mock_logging,
+    mock_get_register_cmd
+):
+    mock_os_path_exists.return_value = True
+    mock_os_access.return_value = True
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="AA:BB:CC:DD"
+         SMTserverIP="1.2.3.5"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="foo-ec2.susecloud.net"
+         SMTregistryName="registry-ec2.susecloud.net"
+         region="antarctica-1"/>''')
+
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
+    expected_cmd = (
+        'Registration: '
+        '/usr/sbin/SUSEConnect '
+        '--url https://foo-ec2.susecloud.net '
+        '--de-register '
+        '--product product'
+    )
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('OK'), str.encode('not_OK')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    result = utils.run_SUSEConnect(
+        registration_target=smt_server,
+        product='product',
+        de_register=True
+    )
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    assert result == suseconnect_type(
+        returncode=0,
+        output='OK',
+        error='not_OK'
+    )
+    assert mock_logging.info.call_args_list == [call(expected_cmd)]
+
+
+@patch('cloudregister.registerutils.get_register_cmd')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_run_SUSEConnect_no_transactional_de_register_missing_product(
+    mock_popen, mock_os_path_exists,
+    mock_os_access, mock_logging,
+    mock_get_register_cmd
+):
+    mock_os_path_exists.return_value = True
+    mock_os_access.return_value = True
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="AA:BB:CC:DD"
+         SMTserverIP="1.2.3.5"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="foo-ec2.susecloud.net"
+         SMTregistryName="registry-ec2.susecloud.net"
+         region="antarctica-1"/>''')
+
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('OK'), str.encode('not_OK')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    with raises(SystemExit) as sys_exit:
+        utils.run_SUSEConnect(
+            registration_target=smt_server,
+            product='',
+            de_register=True
+        )
+    assert sys_exit.value.code == 1
+    print(mock_logging.error.call_args_list)
+    assert mock_logging.error.call_args_list == [
+        call('De-register the system is not allowed for SUSEConnect')
+    ]
+
+
+@patch('cloudregister.registerutils.get_register_cmd')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_run_SUSEConnect_transactional_ok(
+    mock_popen, mock_os_path_exists,
+    mock_os_access, mock_logging,
+    mock_get_register_cmd
+):
+    mock_os_path_exists.return_value = True
+    mock_os_access.return_value = True
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="AA:BB:CC:DD"
+         SMTserverIP="1.2.3.5"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="foo-ec2.susecloud.net"
+         SMTregistryName="registry-ec2.susecloud.net"
+         region="antarctica-1"/>''')
+
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_register_cmd.return_value = '/usr/sbin/transactional'
+    expected_cmd = (
+        'Registration: '
+        '/usr/sbin/transactional '
+        'register --url https://foo-ec2.susecloud.net '
+        '--product product '
+        '--instance-data instance_data_filepath '
+        '--email email '
+        '--regcode XXXX'
+    )
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('OK'), str.encode('not_OK')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    result = utils.run_SUSEConnect(
+        smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
+    )
+    suseconnect_type = namedtuple(
+        'suseconnect_type', ['returncode', 'output', 'error']
+    )
+    assert result == suseconnect_type(
+        returncode=0,
+        output='OK',
+        error='not_OK'
+    )
+    assert mock_logging.info.call_args_list == [call(expected_cmd)]
+
+
+@patch('cloudregister.registerutils.get_register_cmd')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.os.access')
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_run_SUSEConnect_no_exists(
+    mock_popen, mock_os_path_exists,
+    mock_os_access, mock_logging,
+    mock_get_register_cmd
+):
+    mock_os_path_exists.return_value = False
+    with raises(SystemExit) as sys_exit:
+        utils.run_SUSEConnect('foo')
+    assert sys_exit.value.code == 1
+    assert mock_logging.error.call_args_list == [
+        call('No registration executable found')
+    ]
+
+
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_register_cmd_error(mock_popen, mock_logging):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 1
+    mock_popen.return_value = mock_process
+    assert utils.get_register_cmd() == '/usr/sbin/SUSEConnect'
+    assert mock_logging.warning.call_args_list == [
+        call('Unable to find filesystem information for "/"')
+    ]
+
+
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.json.loads')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_register_cmd_path_not_exist(
+    mock_popen, mock_logging, mock_json_loads, mock_os_path_exists
+):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_json_loads.return_value = {
+        'filesystems': [
+            {
+                'target': '/',
+                'source': '/dev/xvda3',
+                'fstype': 'xfs',
+                'options':
+                'ro,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota'
+            }
+        ]
+    }
+    mock_os_path_exists.return_value = False
+    with raises(SystemExit) as sys_exit:
+        utils.get_register_cmd()
+    assert sys_exit.value.code == 1
+    assert mock_logging.error.call_args_list == [
+        call(
+            'transactional-update command not found.But is required on a RO '
+            'filesystem for registration'
+        )
+    ]
+
+
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.json.loads')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_register_cmd_ok(
+    mock_popen, mock_json_loads, mock_os_path_exists
+):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_json_loads.return_value = {
+        'filesystems': [
+            {
+                'target': '/',
+                'source': '/dev/xvda3',
+                'fstype': 'xfs',
+                'options':
+                'ro,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota'
+            }
+        ]
+    }
+    mock_os_path_exists.return_value = True
+    assert utils.get_register_cmd() == \
+        '/sbin/transactional-update'
+
+
+@patch('cloudregister.registerutils.os.path.isfile')
+def test_get_product_tree(mock_path_isfile):
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SLES</name>
+          <version>15.4</version>
+          <baseversion>15</baseversion>
+          <patchlevel>4</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    expected_tree = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    mock_path_isfile.return_value = True
+    with patch('builtins.open', mock_open(read_data=base_product)):
+        result = utils.get_product_tree()
+        assert etree.tostring(result) == etree.tostring(expected_tree)
 
 
 @patch('cloudregister.registerutils.get_credentials')
