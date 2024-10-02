@@ -54,6 +54,7 @@ REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
 BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
+SUSE_REGISTRY = 'registry.suse.com'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -1238,9 +1239,9 @@ def clean_registries_conf_docker(private_registry_fqdn):
             )
             modified = True
 
-        if 'https://registry.suse.com' in registry_mirrors:
+        if 'https://{0}'.format(SUSE_REGISTRY) in registry_mirrors:
             registry_mirrors.pop(
-                registry_mirrors.index('https://registry.suse.com')
+                registry_mirrors.index('https://{0}'.format(SUSE_REGISTRY))
             )
             modified = True
     else:
@@ -1248,7 +1249,7 @@ def clean_registries_conf_docker(private_registry_fqdn):
         for registry in registry_mirrors:
             if (
                 ('registry' in registry and 'susecloud.net' in registry) or
-                'registry.suse.com' in registry
+                SUSE_REGISTRY in registry
             ):
                 modified = True
                 continue
@@ -2635,8 +2636,6 @@ def __set_registries_conf_podman(private_registry_fqdn):
         if failed:
             return False
 
-    public_registry_fqdn = 'registry.suse.com'
-    unqualified_search_reg = []
     unqualified_search_reg = registries_conf.get(
         'unqualified-search-registries', []
     )
@@ -2646,8 +2645,8 @@ def __set_registries_conf_podman(private_registry_fqdn):
         pub_index = -1
         if private_registry_fqdn in unqualified_search_reg:
             priv_index = unqualified_search_reg.index(private_registry_fqdn)
-        if public_registry_fqdn in unqualified_search_reg:
-            pub_index = unqualified_search_reg.index(public_registry_fqdn)
+        if SUSE_REGISTRY in unqualified_search_reg:
+            pub_index = unqualified_search_reg.index(SUSE_REGISTRY)
 
         if not priv_index == 0 or not pub_index == 1:
             if priv_index > 0:
@@ -2659,7 +2658,7 @@ def __set_registries_conf_podman(private_registry_fqdn):
     if modified or not unqualified_search_reg:
         [
             unqualified_search_reg.insert(0, fqdn) for fqdn in
-            [public_registry_fqdn, private_registry_fqdn]
+            [SUSE_REGISTRY, private_registry_fqdn]
         ]
 
     private_registry = {'location': private_registry_fqdn, 'insecure': False}
@@ -2699,8 +2698,8 @@ def __set_registries_conf_podman(private_registry_fqdn):
 # ----------------------------------------------------------------------------
 def __set_registries_conf_docker(private_registry_fqdn):
     # search is disabled for Docker server side for private registry
-    public_registry_url = 'https://registry.suse.com'
-    private_registry_url = 'https://' + private_registry_fqdn
+    public_registry_url = 'https://{0}'.format(SUSE_REGISTRY)
+    private_registry_url = 'https://{0}'.format(private_registry_fqdn)
     docker_cfg_json = {}
     registry_mirrors = []
     os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
