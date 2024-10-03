@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Thu Oct  3 10:31:39 UTC 2024 - Marcus Schäfer <marcus.schaefer@suse.com>
+
+- Deregister non free extensions at registercloudguest --clean
+- Fix registry cleanup at registercloudguest --clean, don't remove files
+- Prevent duplicate search entries in registry setup
+
+-------------------------------------------------------------------
 Wed Sep 11 13:20:32 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
 
 - Update spec file to build in all code streams,
