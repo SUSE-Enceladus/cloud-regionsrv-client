@@ -4546,7 +4546,7 @@ def test__set_registries_conf_podman_OK_content(
 @patch('cloudregister.registerutils.toml.dump')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK(
+def test__set_registries_conf_podman_content_setup_private_registry(
     mock_os_path_exists, mock_get_reg_conf_file,
     mock_toml_dump, mock_logging
 ):
@@ -4566,8 +4566,8 @@ def test__set_registries_conf_podman_content_not_OK(
             {
                 'unqualified-search-registries': [
                     'registry-ec2.susecloud.net',
-                    'registry.suse.com',
-                    'foo.com'
+                    'foo.com',
+                    'registry.suse.com'
                 ],
                 'registry': [
                     {
@@ -4596,7 +4596,7 @@ def test__set_registries_conf_podman_content_not_OK(
 @patch('cloudregister.registerutils.toml.dump')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK_wrong_order(
+def test__set_registries_conf_podman_content_not_OK_order_has_changed(
     mock_os_path_exists, mock_get_reg_conf_file,
     mock_toml_dump, mock_logging
 ):
@@ -4610,53 +4610,29 @@ def test__set_registries_conf_podman_content_not_OK_wrong_order(
             {'location': 'registry-ec2.susecloud.net', 'insecure': True}
         ]
     }, False
-    with patch('builtins.open', create=True) as mock_open:
-        file_handle = mock_open.return_value.__enter__.return_value
-        assert utils.__set_registries_conf_podman('registry-ec2.susecloud.net')
-        mock_toml_dump.assert_called_once_with(
-            {
-                'unqualified-search-registries': [
-                    'registry-ec2.susecloud.net',
-                    'registry.suse.com',
-                    'foo.com'
-                ],
-                'registry': [
-                    {
-                        'location': 'foo',
-                        'insecure': False
-                    },
-                    {
-                        'location': 'registry-ec2.susecloud.net',
-                        'insecure': False
-                    }
-                ]
-            },
-            file_handle
-        )
-        assert mock_logging.info.call_args_list == [
-            call(
-                'Content for /etc/containers/registries.conf has changed, '
-                'updating the file'
-            ),
-            call('File /etc/containers/registries.conf updated')
-        ]
+    with patch('builtins.open', create=True):
+        # someone has manually modified the registries setup
+        # Don't touch it. Users can fix via --clean re-registration
+        assert utils.__set_registries_conf_podman(
+            'registry-ec2.susecloud.net'
+        ) is None
 
 
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.toml.load')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK_wrong_order_file_error(
+def test__set_registries_conf_podman_file_open_error(
     mock_os_path_exists, mock_toml_load, mock_logging
 ):
     mock_os_path_exists.return_value = True
     mock_toml_load.return_value = {
         'unqualified-search-registries': [
-            'foo.com', 'registry.suse.com', 'registry-ec2.susecloud.net'
+            'foo.com', 'registry-ec2.susecloud.net'
         ],
         'registry': [
-            {'location': 'foo', 'insecure': False},
-            {'location': 'registry-ec2.susecloud.net', 'insecure': True}
+            {'location': 'foo', 'insecure': True},
+            {'location': 'registry-ec2.susecloud.net', 'insecure': False}
         ]
     }
     with patch('builtins.open', create=True) as mock_open:
@@ -4781,40 +4757,6 @@ def test_clean_registries_conf_podman_file_clean_content_smt_OK(
             },
             file_handle
         )
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.os.unlink')
-@patch('cloudregister.registerutils.toml.load')
-@patch('cloudregister.registerutils.os.path.exists')
-def test_clean_registries_conf_podman_file_clean_content_smt_OK_empty(
-    mock_os_path_exists, mock_toml_load, mock_os_unlink, mock_logging
-):
-    mock_os_path_exists.return_value = True
-    registry_fqdn = 'registry-foo.susecloud.net'
-    mock_toml_load.return_value = {
-        'unqualified-search-registries': [
-            'registry-foo.susecloud.net'
-        ],
-        'registry': [
-            {'location': registry_fqdn, 'insecure': False}
-        ]
-    }
-    with patch('builtins.open', create=True) as mock_open:
-        assert utils.clean_registries_conf_podman(registry_fqdn) is None
-        assert mock_open.call_args_list == [
-            call('/etc/containers/registries.conf', 'r'),
-        ]
-        assert mock_logging.info.call_args_list == [
-            call(
-                '/etc/containers/registries.conf removed, empty content after '
-                'removing SUSE registry info'
-            ),
-        ]
-        assert mock_os_unlink.call_args_list == [
-            call('/etc/containers/registries.conf')
-        ]
 
 
 # ---------------------------------------------------------------------------
@@ -4998,45 +4940,15 @@ def test_clean_registries_conf_docker_file_clean_content_smt_OK(
         ]
         assert mock_logging.info.call_args_list == [
             call(
-                'Registry content for "/etc/docker/daemon.json" has '
-                'been modified'
+                'SUSE registry information has been removed '
+                'from /etc/docker/daemon.json'
             ),
             call('File /etc/docker/daemon.json updated')
         ]
         mock_json_dump.assert_called_once_with(
-            {'registry-mirrors': ['foo.com']},
+            {'registry-mirrors': ['foo.com', 'https://registry.suse.com']},
             file_handle
         )
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.os.unlink')
-@patch('cloudregister.registerutils.json.load')
-@patch('cloudregister.registerutils.os.path.exists')
-def test_clean_registries_conf_docker_file_clean_content_smt_OK_empty(
-    mock_os_path_exists, mock_json_load, mock_os_unlink, mock_logging
-):
-    mock_os_path_exists.return_value = True
-    registry_fqdn = 'registry-foo.susecloud.net'
-    registry_url = 'https://' + registry_fqdn
-    mock_json_load.return_value = {
-        'registry-mirrors': ['https://registry.suse.com', registry_url]
-    }
-    with patch('builtins.open', create=True) as mock_open:
-        assert utils.clean_registries_conf_docker(registry_fqdn) is None
-        assert mock_open.call_args_list == [
-            call('/etc/docker/daemon.json', 'r'),
-        ]
-        assert mock_logging.info.call_args_list == [
-            call(
-                '/etc/docker/daemon.json removed, empty content after '
-                'removing registry info'
-            ),
-        ]
-        assert mock_os_unlink.call_args_list == [
-            call('/etc/docker/daemon.json')
-        ]
 
 
 # ---------------------------------------------------------------------------
@@ -5061,15 +4973,16 @@ def test_clean_registries_conf_docker_file_clean_content_no_smt(
             call('/etc/docker/daemon.json', 'r'),
             call('/etc/docker/daemon.json', 'w')
         ]
+        print(mock_logging.info.call_args_list)
         assert mock_logging.info.call_args_list == [
             call(
-                'Registry content for "/etc/docker/daemon.json" has '
-                'been modified'
+                'SUSE registry information has been removed '
+                'from /etc/docker/daemon.json'
             ),
             call('File /etc/docker/daemon.json updated')
         ]
         mock_json_dump.assert_called_once_with(
-            {'registry-mirrors': ['foo.com']},
+            {'registry-mirrors': ['foo.com', 'registry.suse.com']},
             file_handle
         )
 
@@ -5138,7 +5051,7 @@ def test_set_registries_conf_docker_no_matches(
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.json.dump')
-def test_set_registries_conf_docker_unordered_matches(
+def test_set_registries_conf_docker_not_OK_order_has_changed(
     mock_json_dump, mock_get_registry_conf_file
 ):
     with patch('builtins.open', create=True) as mock_open:
@@ -5148,8 +5061,6 @@ def test_set_registries_conf_docker_unordered_matches(
             return mock_open_podman_config.return_value
 
         mock_open.side_effect = open_file
-        file_handle = \
-            mock_open_podman_config.return_value.__enter__.return_value
         mock_get_registry_conf_file.return_value = {
             'registry-mirrors': [
                 'foo',
@@ -5159,17 +5070,10 @@ def test_set_registries_conf_docker_unordered_matches(
             'bar': ['bar'],
         }, False
         utils.__set_registries_conf_docker('registry-foo.susecloud.net')
-        mock_json_dump.assert_called_once_with(
-            {
-                'registry-mirrors': [
-                    'https://registry-foo.susecloud.net',
-                    'https://registry.suse.com',
-                    'foo'
-                ],
-                'bar': ['bar']
-            },
-            file_handle
-        )
+        # The registry setup contains the entries we care but was
+        # modified manually. Don't touch this user modified variant.
+        # This can be changed by the user via a --clean re-registration
+        assert not mock_json_dump.called
 
 
 # ---------------------------------------------------------------------------
@@ -5460,6 +5364,17 @@ def test_write_suma_conf_error_yaml(
         assert mock_logging.info.call_args_list == [
             call('Could not parse /etc/uyuni/uyuni-tools.yaml')
         ]
+
+
+# ---------------------------------------------------------------------------
+def test__matches_susecloud():
+    assert utils.__matches_susecloud(['foo']) == ''
+    assert utils.__matches_susecloud(
+        ['registry-azure.susecloud.net']
+    ) == 'registry-azure.susecloud.net'
+    assert utils.__matches_susecloud(
+        ['foo', 'registry.susecloud.net', 'registry-azure.susecloud.net']
+    ) == 'registry-azure.susecloud.net'
 
 
 # ---------------------------------------------------------------------------
