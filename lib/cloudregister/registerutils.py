@@ -1143,7 +1143,6 @@ def clean_registries_conf_podman(private_registry_fqdn):
     if private_registry_fqdn in unqualified_search_reg:
         unqualified_search_reg.remove(private_registry_fqdn)
         modified_by_us = True
-    registries_conf['unqualified-search-registries'] = unqualified_search_reg
 
     # Drop from registry
     registry_mirrors = registries_conf.get(
@@ -1156,10 +1155,12 @@ def clean_registries_conf_podman(private_registry_fqdn):
             modified_by_us = True
             break
         mirror_index += 1
-    registries_conf['registry'] = registry_mirrors
 
     # write registry setup if modified by us
     if modified_by_us:
+        registries_conf['unqualified-search-registries'] = \
+            unqualified_search_reg
+        registries_conf['registry'] = registry_mirrors
         logging.info(
             'SUSE registry information has been removed from {0}'.format(
                 REGISTRIES_CONF_PATH
@@ -1198,10 +1199,10 @@ def clean_registries_conf_docker(private_registry_fqdn):
     if private_registry_url in registry_mirrors:
         registry_mirrors.remove(private_registry_url)
         modified_by_us = True
-    docker_cfg_json['registry-mirrors'] = registry_mirrors
 
     # write registry setup if modified by us
     if modified_by_us:
+        docker_cfg_json['registry-mirrors'] = registry_mirrors
         logging.info(
             'SUSE registry information has been removed from {0}'.format(
                 DOCKER_CONFIG_PATH
@@ -2594,7 +2595,6 @@ def __set_registries_conf_podman(private_registry_fqdn):
         )
         unqualified_search_reg.insert(private_registry_index + 1, SUSE_REGISTRY)
         modified_by_us = True
-    registries_conf['unqualified-search-registries'] = unqualified_search_reg
 
     # Setup registry mirror
     registry_mirrors = registries_conf.get(
@@ -2610,10 +2610,12 @@ def __set_registries_conf_podman(private_registry_fqdn):
             {'location': private_registry_fqdn, 'insecure': False}
         )
         modified_by_us = True
-    registries_conf['registry'] = registry_mirrors
 
     # write registry setup if modified by us
     if modified_by_us:
+        registries_conf['unqualified-search-registries'] = \
+            unqualified_search_reg
+        registries_conf['registry'] = registry_mirrors
         logging.info(
             'Content for {0} has changed, updating the file'.format(
                 REGISTRIES_CONF_PATH
@@ -2659,10 +2661,10 @@ def __set_registries_conf_docker(private_registry_fqdn):
             private_registry_index + 1, suse_registry_url
         )
         modified_by_us = True
-    docker_cfg_json['registry-mirrors'] = registry_mirrors
 
     # write registry setup if modified by us
     if modified_by_us:
+        docker_cfg_json['registry-mirrors'] = registry_mirrors
         return write_registries_conf(
             docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
         )
