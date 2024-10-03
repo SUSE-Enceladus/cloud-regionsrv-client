@@ -12,6 +12,40 @@
 # Lesser General Public License for more details.
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
+
+"""
+Check the different states of the license type:
+START -> The state of the instance when this code is executed
+         This code is executed by a timer
+
+    START   LICENSE CHANGED TO     CACHE   ACTION
+1   BYOS-1  PAYG                   No      Register - Update Infra
+2   BYOS-1  PAYG                   BYOS    Register - Update Infra
+3   BYOS-1  BYOS-1                 No      Do nothing
+4   BYOS-1  BYOS-1                 BYOS    Do nothing
+5   BYOS-1  BYOS-2                 No      Do nothing
+6   BYOS-1  BYOS-2                 BYOS    Do nothing
+
+7   BYOS-2  PAYG                   No      Do nothing
+8   BYOS-2  PAYG                   BYOS    Re-register - Update Infra
+9   BYOS-2  BYOS-1                 No      De-register - Update Infra
+10  BYOS-2  BYOS-1                 BYOS    De-register - Update Infra
+11  BYOS-3  PAYG                   No      No de-register from SCC, register with update infrastructure
+12  BYOS-3  PAYG                   BYOS    No de-register from SCC, register with update infrastructure
+
+13  PAYG    BYOS-1                 No      De-register - Update Infra
+14  PAYG    BYOS-1                 PAYG    De-register - Update Infra
+15  PAYG    BYOS-2,3               No      Do nothing
+16  PAYG    BYOS-2,3               PAYG    Do nothing
+17  PAYG    PAYG                   No      Do nothing
+18  PAYG    PAYG                   PAYG    Do nothing
+
+BYOS-1 -> BYOS unregistered
+BYOS-2 -> BYOS registered
+BYOS-3 -> BYOS Registered to SCC
+NOTE: When an instance starts the license_type value from IMDS is none (empty)
+"""
+
 import logging
 import os
 import requests
@@ -19,6 +53,7 @@ import subprocess
 import sys
 
 import cloudregister.registerutils as utils
+
 
 CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), 'cached_license')
 
@@ -37,7 +72,7 @@ def has_license_changed(license_type):
             return license_type != old_license
     except FileNotFoundError:
         update_license_cache(license_type)
-
+    return False
 
 def get_license_type():
     proxies = {
@@ -96,22 +131,39 @@ def run_command(command):
 utils.start_logging()
 service_name = 'guestregister'
 license_type = get_license_type()
+update_server = utils.get_smt()
 
-if ('BYOS' in license_type and has_license_changed(license_type) and
-    not utils.uses_rmt_as_scc_proxy()):
-    run_command(['registercloudguest', '--clean'])
-    run_command(['systemctl', 'disable', service_name])
-    update_license_cache(license_type)
+if ('BYOS' in license_type and not utils.uses_rmt_as_scc_proxy() and
+    not utils.is_scc_connected()
+):
+    # system license type has been set to BYOS via AHB but
+    # neither has been registered to the update infrastructure with a reg code
+    # nor to SCC
+    if has_license_changed(license_type):
+        update_license_cache(license_type)
+    if update_server and utils.is_registered(update_server.get_FQDN()):
+        # system is registered to update infrastructure
+        # covers cases 9, 10, 13, 14
+        run_command(['registercloudguest', '--clean'])
+        run_command(['systemctl', 'disable', service_name])
 elif license_type and 'BYOS' not in license_type:
     # if no license type, system could be a BYOS without AHB
     # or PAYG without AHB
-    update_server = utils.get_smt()
     if update_server:
-        if (not has_license_changed(license_type) and
+        license_has_changed = has_license_changed(license_type)
+        if (not license_has_changed and
             utils.is_registered(update_server.get_FQDN())):
+            # covers cases 7, 15, 16, 17, 18
+            if utils.is_scc_connected():
+                # cover cases 11
+                run_command(['registercloudguest', '--force-new'])
+                run_command(['systemctl', 'enable', service_name])
             sys.exit(0)
-        update_license_cache(license_type)
         update_server = None
     if not update_server:
+        # cover cases 1, 2, 8, 12
+        if has_license_changed(license_type):
+            # cover cases 2, 8, 12
+            update_license_cache(license_type)
         run_command(['registercloudguest', '--force-new'])
         run_command(['systemctl', 'enable', service_name])
