@@ -66,7 +66,8 @@ def register_modules(
         # baseproduct registration. No need to run another registration
         if extension.get('recommended'):
             register_modules(
-                extension.get('extensions'), products, registered, failed
+                extension.get('extensions'), products, registration_target,
+                instance_data_filepath, registered, failed
             )
             continue
 
@@ -77,16 +78,16 @@ def register_modules(
         if triplet in products and triplet not in registered:
             registered.append(triplet)
 
-            suseconnect = utils.run_SUSEConnect(
+            prod_reg = utils.register_product(
                 registration_target=registration_target,
                 product=triplet,
                 instance_data_filepath=instance_data_filepath
             )
 
-            if suseconnect.returncode:
-                registration_returncode = suseconnect.returncode
+            if prod_reg.returncode:
+                registration_returncode = prod_reg.returncode
                 # Even on error SUSEConnect writes messages to stdout, go figure
-                error_message = suseconnect.output
+                error_message = prod_reg.output
                 if (
                     registration_returncode == 67 and
                     'registration code' in error_message.lower()
@@ -105,7 +106,8 @@ def register_modules(
                     logging.error('\tRegistration failed: %s' % error_message)
 
         register_modules(
-            extension.get('extensions'), products, registered, failed
+            extension.get('extensions'), products, registration_target,
+            instance_data_filepath, registered, failed
         )
 
 
@@ -183,7 +185,7 @@ def setup_ltss_registration(
     registration_target, regcode, instance_data_filepath
 ):
     """
-    Run SUSEConnect to register LTSS for this instance
+    Run registration command to register LTSS for this instance
     """
     logging.info('Running LTSS registration...')
     print('Running LTSS registration...this takes a little longer')
@@ -214,16 +216,16 @@ def setup_ltss_registration(
             base_product.name, base_product.version, base_product.arch
         )
 
-        suseconnect = utils.run_SUSEConnect(
+        prod_reg = utils.register_product(
             registration_target=registration_target,
             product=ltss_product_triplet,
             regcode=regcode,
             instance_data_filepath=instance_data_filepath
         )
-        if suseconnect.returncode != 0:
+        if prod_reg.returncode != 0:
             # Something went wrong...
             # Even on error SUSEConnect writes messages to stdout, go figure
-            message = suseconnect.output
+            message = prod_reg.output
             logging.error('LTSS registration failed')
             logging.error('\t{0}'.format(message))
             print(
@@ -603,16 +605,16 @@ def main(args):
 
     while not base_registered:
         utils.add_hosts_entry(registration_target)
-        suseconnect = utils.run_SUSEConnect(
+        prod_reg = utils.register_product(
             registration_target=registration_target,
             email=args.email,
             regcode=args.reg_code,
             instance_data_filepath=instance_data_filepath
         )
-        if suseconnect.returncode:
-            registration_returncode = suseconnect.returncode
+        if prod_reg.returncode:
+            registration_returncode = prod_reg.returncode
             # Even on error SUSEConnect writes messages to stdout, go figure
-            error_message = suseconnect.output
+            error_message = prod_reg.output
             failed_smts.append(registration_target.get_ipv4())
             if (
                 len(failed_smts) == len(region_smt_servers) or
@@ -725,6 +727,9 @@ def main(args):
             'the following command:'
         )
         activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
+        if utils.is_transactional_system():
+            activate_prod_cmd = 'transactional-update register -p {} '
+            activate_prod_cmd += '-r ADDITIONAL REGCODE'
         for failed_extension in failed_extensions:
             print(activate_prod_cmd.format(failed_extension))
 

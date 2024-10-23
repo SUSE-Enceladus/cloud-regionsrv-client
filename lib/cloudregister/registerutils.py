@@ -194,13 +194,13 @@ def clean_non_free_extensions():
                 arch=triplet.arch
             )
             if triplet in installed_products:
-                suseconnect = run_SUSEConnect(
+                reg_prod = register_product(
                     registration_target=get_current_smt(),
                     product=triplet,
                     de_register=True
                 )
                 msg = 'Non free extension {} '.format(triplet)
-                if suseconnect.returncode:
+                if reg_prod.returncode:
                     msg += 'failed to be removed'
                 else:
                     msg += 'removed'
@@ -318,7 +318,7 @@ def exec_subprocess(cmd, return_output=False):
     """Execute the given command as a subprocess (blocking)
        Returns one off:
            - exit code of the command
-           - stdout and stderr
+           - stdout, stderr and exit code
            - -1 indicates an exception"""
     try:
         proc = subprocess.Popen(
@@ -328,7 +328,7 @@ def exec_subprocess(cmd, return_output=False):
         )
         out, err = proc.communicate()
         if return_output:
-            return (out, err)
+            return (out, err, proc.returncode)
         return proc.returncode
     except OSError:
         return -1
@@ -339,43 +339,19 @@ def get_register_cmd():
     """Determine which command we need to use to register the system"""
 
     register_cmd = '/usr/sbin/SUSEConnect'
-    # Figure out if we are on RO transactional-update system
-    p = subprocess.Popen(
-        ['findmnt', '--noheadings', '--json', '/'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    res = p.communicate()
-    # If we get an error from findmnt move forward on a best effort basis
-    if p.returncode:
-        logging.warning('Unable to find filesystem information for "/"')
-    else:
-        fsinfo = json.loads(res[0])
-        fsdata = fsinfo.get('filesystems')
-        if fsdata:
-            fsoptions = fsdata[0].get('options')
-            # If we are on a RO system we need to use the
-            # transactional-update command
-            if 'ro' in fsoptions.split(','):
-                cmd_name = 'transactional-update'
-                for path in ['/sbin/', '/usr/sbin/']:
-                    exec_path = path + cmd_name
-                    if os.path.exists(exec_path):
-                        register_cmd = exec_path
-                        break
-                else:
-                    err_msg = 'transactional-update command not found.'
-                    err_msg += 'But is required on a RO filesystem for '
-                    err_msg += 'registration'
-                    logging.error(err_msg)
-                    print(err_msg, file=sys.stderr)
-                    sys.exit(1)
+    if is_transactional_system():
+        cmd_name = 'transactional-update'
+        for path in ['/sbin/', '/usr/sbin/']:
+            exec_path = path + cmd_name
+            if os.path.exists(exec_path):
+                register_cmd = exec_path
+                break
 
     return register_cmd
 
 
 # ----------------------------------------------------------------------------
-def run_SUSEConnect(
+def register_product(
     registration_target, regcode='', email='',
     instance_data_filepath='', product='', de_register=False
 ):
@@ -1370,7 +1346,7 @@ def get_instance_data(config):
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                instance_data, errors = exec_subprocess(
+                instance_data, errors, returncode = exec_subprocess(
                     instance_data_cmd.split(), True
                 )
                 if errors:
@@ -1698,7 +1674,7 @@ def has_rmt_ipv6_access(smt):
 def has_nvidia_support():
     """Check if the instance has Nvidia capabilities"""
     try:
-        pci_info, errors = exec_subprocess(['lspci'], True)
+        pci_info, errors, returncode = exec_subprocess(['lspci'], True)
     except TypeError:
         logging.info(
             'lspci command not found, instance Nvidia support cannot '
@@ -1864,7 +1840,7 @@ def get_profile_env_var(varname, profile_file):
             profile_file, varname
         )
     ]
-    variable_content, error = exec_subprocess(shell_command, True)
+    variable_content, error, returncode = exec_subprocess(shell_command, True)
     if not error:
         return variable_content.decode().strip()
 
@@ -1951,6 +1927,46 @@ def is_scc_connected():
                 return True
 
     return False
+
+
+# ----------------------------------------------------------------------------
+def is_transactional_system():
+    """
+    Determine if we are running on a transactional update system. This means
+    the root filesystem is read only and the transactional-update command
+    can be found.
+    """
+    # Figure out if we are on RO transactional-update system
+    output, error, returncode = exec_subprocess(
+        ['findmnt', '--noheadings', '--json', '/'], return_output=True
+    )
+    if returncode != 0:
+        logging.warning('Unable to find filesystem information for "/"')
+        return False
+    else:
+        fsinfo = json.loads(output.decode())
+        fsdata = fsinfo.get('filesystems')
+        if fsdata:
+            fsoptions = fsdata[0].get('options')
+            # If we are on a RO system we need to use the
+            # transactional-update command
+            if 'ro' in fsoptions.split(','):
+                cmd_name = 'transactional-update'
+                for path in ['/sbin/', '/usr/sbin/']:
+                    exec_path = path + cmd_name
+                    if os.path.exists(exec_path):
+                        return True
+            else:
+                return False
+            err_msg = 'transactional-update command not found.'
+            err_msg += ' But is required on a RO filesystem for '
+            err_msg += 'registration'
+            logging.error(err_msg)
+            print(err_msg, file=sys.stderr)
+            # If we cannot find the transactional-update command a number of
+            # follow on errors would be triggered. Exit to avoid triggering
+            # these meaningless errors.
+            sys.exit(1)
 
 
 # ----------------------------------------------------------------------------
@@ -2401,7 +2417,7 @@ def __get_service_plugins():
 def __get_system_mfg():
     """Returns the system manufacturer information"""
     try:
-        vendor, error = exec_subprocess(
+        vendor, error, returncode = exec_subprocess(
             ['dmidecode', '-s', 'system-manufacturer'], True
         )
     except TypeError:

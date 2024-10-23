@@ -161,7 +161,7 @@ def test_get_zypper_target_root_set_root_long(zypp_cmd):
 @patch('cloudregister.registerutils.get_framework_identifier_path')
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_region_changed_no_change(subproc, id_path, plugin, srvargs):
-    subproc.return_value = (b'Google', b'')
+    subproc.return_value = (b'Google', b'', 0)
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-central1-d'
@@ -193,7 +193,7 @@ def test_has_region_changed_no_plugin(plugin, mfg):
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_region_changed_provider_change(subproc, id_path, plugin, srvargs):
     cfg = get_test_config()
-    subproc.return_value = (b'Amazon EC2', b'')
+    subproc.return_value = (b'Amazon EC2', b'', 0)
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-central1-d'
@@ -207,7 +207,7 @@ def test_has_region_changed_provider_change(subproc, id_path, plugin, srvargs):
 def test_has_region_changed_provider_and_region_change(
         subproc, id_path, plugin, srvargs
 ):
-    subproc.return_value = (b'Amazon EC2', b'')
+    subproc.return_value = (b'Amazon EC2', b'', 0)
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-east-1'
@@ -222,7 +222,7 @@ def test_has_region_changed_provider_and_region_change(
 def test_has_region_changed_region_change(
         subproc, id_path, plugin, srvargs
 ):
-    subproc.return_value = (b'Google', b'')
+    subproc.return_value = (b'Google', b'', 0)
     id_path.return_value = data_path + 'framework_info'
     plugin.return_value = True
     srvargs.return_value = 'regionHint=us-east2-f'
@@ -242,7 +242,7 @@ def test_has_region_changed_provider_and_region_change_exception(
     mock_srvargs,
     mock_json_loads
 ):
-    mock_subproc.return_value = (b'Amazon EC2', b'')
+    mock_subproc.return_value = (b'Amazon EC2', b'', 0)
     mock_id_path.return_value = data_path + 'framework_info'
     mock_plugin.return_value = True
     mock_srvargs.return_value = 'regionHint=us-east-1'
@@ -757,7 +757,7 @@ def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
     )
 
 
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_credentials')
@@ -771,7 +771,7 @@ def test_clean_non_free_extensions(
     mock_get_creds,
     mock_logging,
     mock_get_installed_products,
-    mock_run_SUSEConnect
+    mock_register_product
 ):
     mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
     response = Response()
@@ -836,16 +836,16 @@ def test_clean_non_free_extensions(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=0,
         output='all OK',
         error='stderr'
     )
     utils.clean_non_free_extensions()
-    assert mock_run_SUSEConnect.call_args_list == [
+    assert mock_register_product.call_args_list == [
         call(
             registration_target=smt_server,
             product='SLES-LTSS/15.4/x86_64',
@@ -859,7 +859,7 @@ def test_clean_non_free_extensions(
     ]
 
 
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_credentials')
@@ -873,7 +873,7 @@ def test_clean_non_free_extensions_failed(
     mock_get_creds,
     mock_logging,
     mock_get_installed_products,
-    mock_run_SUSEConnect
+    mock_register_product
 ):
     mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
     response = Response()
@@ -938,16 +938,16 @@ def test_clean_non_free_extensions_failed(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=1,
         output='all OK',
         error='stderr'
     )
     utils.clean_non_free_extensions()
-    assert mock_run_SUSEConnect.call_args_list == [
+    assert mock_register_product.call_args_list == [
         call(
             registration_target=smt_server,
             product='SLES-LTSS/15.4/x86_64',
@@ -1039,7 +1039,7 @@ def test_clean_non_free_extensions_no_credentials(
 @patch('cloudregister.registerutils.os.access')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.subprocess.Popen')
-def test_run_SUSEConnect_no_transactional_ok(
+def test_register_product_no_transactional_ok(
     mock_popen, mock_os_path_exists,
     mock_os_access, mock_logging,
     mock_get_register_cmd
@@ -1071,13 +1071,13 @@ def test_run_SUSEConnect_no_transactional_ok(
     )
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
-    result = utils.run_SUSEConnect(
+    result = utils.register_product(
         smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    assert result == suseconnect_type(
+    assert result == prod_reg_type(
         returncode=0,
         output='OK',
         error='not_OK'
@@ -1090,7 +1090,7 @@ def test_run_SUSEConnect_no_transactional_ok(
 @patch('cloudregister.registerutils.os.access')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.subprocess.Popen')
-def test_run_SUSEConnect_no_transactional_de_register_ok(
+def test_register_product_no_transactional_de_register_ok(
     mock_popen, mock_os_path_exists,
     mock_os_access, mock_logging,
     mock_get_register_cmd
@@ -1120,15 +1120,15 @@ def test_run_SUSEConnect_no_transactional_de_register_ok(
     )
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
-    result = utils.run_SUSEConnect(
+    result = utils.register_product(
         registration_target=smt_server,
         product='product',
         de_register=True
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    assert result == suseconnect_type(
+    assert result == prod_reg_type(
         returncode=0,
         output='OK',
         error='not_OK'
@@ -1141,7 +1141,7 @@ def test_run_SUSEConnect_no_transactional_de_register_ok(
 @patch('cloudregister.registerutils.os.access')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.subprocess.Popen')
-def test_run_SUSEConnect_no_transactional_de_register_missing_product(
+def test_register_product_no_transactional_de_register_missing_product(
     mock_popen, mock_os_path_exists,
     mock_os_access, mock_logging,
     mock_get_register_cmd
@@ -1165,7 +1165,7 @@ def test_run_SUSEConnect_no_transactional_de_register_missing_product(
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
     with raises(SystemExit) as sys_exit:
-        utils.run_SUSEConnect(
+        utils.register_product(
             registration_target=smt_server,
             product='',
             de_register=True
@@ -1182,7 +1182,7 @@ def test_run_SUSEConnect_no_transactional_de_register_missing_product(
 @patch('cloudregister.registerutils.os.access')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.subprocess.Popen')
-def test_run_SUSEConnect_transactional_ok(
+def test_register_product_transactional_ok(
     mock_popen, mock_os_path_exists,
     mock_os_access, mock_logging,
     mock_get_register_cmd
@@ -1214,13 +1214,13 @@ def test_run_SUSEConnect_transactional_ok(
     )
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
-    result = utils.run_SUSEConnect(
+    result = utils.register_product(
         smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    assert result == suseconnect_type(
+    assert result == prod_reg_type(
         returncode=0,
         output='OK',
         error='not_OK'
@@ -1233,14 +1233,14 @@ def test_run_SUSEConnect_transactional_ok(
 @patch('cloudregister.registerutils.os.access')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.subprocess.Popen')
-def test_run_SUSEConnect_no_exists(
+def test_register_product_no_exists(
     mock_popen, mock_os_path_exists,
     mock_os_access, mock_logging,
     mock_get_register_cmd
 ):
     mock_os_path_exists.return_value = False
     with raises(SystemExit) as sys_exit:
-        utils.run_SUSEConnect('foo')
+        utils.register_product('foo')
     assert sys_exit.value.code == 1
     assert mock_logging.error.call_args_list == [
         call('No registration executable found')
@@ -1292,7 +1292,7 @@ def test_get_register_cmd_path_not_exist(
     assert sys_exit.value.code == 1
     assert mock_logging.error.call_args_list == [
         call(
-            'transactional-update command not found.But is required on a RO '
+            'transactional-update command not found. But is required on a RO '
             'filesystem for registration'
         )
     ]
@@ -1324,6 +1324,33 @@ def test_get_register_cmd_ok(
     mock_os_path_exists.return_value = True
     assert utils.get_register_cmd() == \
         '/sbin/transactional-update'
+
+
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.json.loads')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_get_register_cmd_ok_not_transactional(
+    mock_popen, mock_json_loads, mock_os_path_exists
+):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_json_loads.return_value = {
+        'filesystems': [
+            {
+                'target': '/',
+                'source': '/dev/xvda3',
+                'fstype': 'xfs',
+                'options':
+                'rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota'
+            }
+        ]
+    }
+    mock_os_path_exists.return_value = True
+    assert utils.get_register_cmd() == '/usr/sbin/SUSEConnect'
 
 
 @patch('cloudregister.registerutils.os.path.isfile')
@@ -1395,7 +1422,7 @@ def test_exec_subprocess(mock_popen):
     mock_process.returncode = 1
     mock_popen.return_value = mock_process
     assert utils.exec_subprocess(['foo'], True) == (
-        'stdout'.encode(), 'stderr'.encode()
+        'stdout'.encode(), 'stderr'.encode(), 1
     )
     assert utils.exec_subprocess(['foo']) == 1
 
@@ -2063,7 +2090,7 @@ def test_get_instance_data_cmd_error(
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'dataProvider', '/foo')
-    mock_exec_sub.return_value = (b'', b'bar')
+    mock_exec_sub.return_value = (b'', b'bar', 0)
     mock_access.return_value = True
     expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
@@ -2085,7 +2112,7 @@ def test_get_instance_data_no_data(
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'dataProvider', '/foo')
-    mock_exec_sub.return_value = (b'', b'')
+    mock_exec_sub.return_value = (b'', b'', 0)
     mock_access.return_value = True
     expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
@@ -2107,7 +2134,7 @@ def test_get_instance_data_instance_data(
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'dataProvider', '/foo')
-    mock_exec_sub.return_value = (b'<mydata>', b'')
+    mock_exec_sub.return_value = (b'<mydata>', b'', 0)
     mock_access.return_value = True
     expected_data = '<mydata><repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
@@ -2662,7 +2689,7 @@ def test_has_rmt_ipv6_access_exception(
 
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_nvidia_support(mock_subprocess):
-    mock_subprocess.return_value = b'NVIDIA', 'bar'
+    mock_subprocess.return_value = b'NVIDIA', 'bar', 0
     assert utils.has_nvidia_support() is True
 
 
@@ -2678,7 +2705,7 @@ def test_has_nvidia_support_exception(mock_subprocess, mock_logging):
 
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_nvidia_no_support(mock_subprocess):
-    mock_subprocess.return_value = b'foo', 'bar'
+    mock_subprocess.return_value = b'foo', 'bar', 0
     assert utils.has_nvidia_support() is False
 
 
