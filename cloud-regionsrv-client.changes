@@ -1,15 +1,20 @@
 -------------------------------------------------------------------
-Thu Oct  3 10:31:39 UTC 2024 - Marcus Schäfer <marcus.schaefer@suse.com>
+Upcoming 10.3.6
 
-- Deregister non free extensions at registercloudguest --clean
-- Fix registry cleanup at registercloudguest --clean, don't remove files
-- Prevent duplicate search entries in registry setup
+- Update to 10.3.6 (jsc#PCT-471)
+  + Deregister non free extensions at registercloudguest --clean
+  + Fix registry cleanup at registercloudguest --clean, don't remove files
+  + Prevent duplicate search entries in registry setup
+- Update EC2 plugin to 1.0.5
+  + Switch to using the region endpoint from IMDS to determine the region
+    instead of deriving the data from the availability zone
 
 -------------------------------------------------------------------
 Wed Sep 11 13:20:32 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
 
-- Update spec file to build in all code streams,
-  SLE 12, SLE 15, ALP, and SLFO and have proper dependencies
+- Update to 10.3.5
+  + Update spec file to build in all code streams,
+    SLE 12, SLE 15, ALP, and SLFO and have proper dependencies
 
 -------------------------------------------------------------------
 Wed Aug 28 20:17:24 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
