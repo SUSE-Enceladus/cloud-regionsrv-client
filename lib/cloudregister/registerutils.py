@@ -1278,10 +1278,15 @@ def get_hosts(with_loopback=False):
             # no loopback addresses wanted
             continue
         for hostname in hostnames:
+            # ipv6 vs. ipv4 address detection is based on the following
+            # information. All valid IPv6 address strings contain at
+            # least 1 colon in the first 6 characters, and no valid
+            # IPv4 address strings contain a colon in the first 6
+            # characters.
             hosts[hostname] = {
                 'address': hostaddress,
-                'ipv6': True if '::' in hostaddress else False,
-                'ipv4': False if '::' in hostaddress else True
+                'ipv6': True if ':' in hostaddress[:6] else False,
+                'ipv4': False if ':' in hostaddress[:6] else True
             }
     return hosts
 
