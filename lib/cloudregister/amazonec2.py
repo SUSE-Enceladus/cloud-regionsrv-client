@@ -60,49 +60,24 @@ def generateRegionSrvArgs():
         if ':' in imds_ip and '[' not in imds_ip:
             imds_addr = '[%s]' % imds_ip
         metadata_url = 'http://%s/latest/meta-data/' % imds_addr
-        zone_info = 'placement/availability-zone'
+        region_data = 'placement/region'
 
         try:
-            zone_resp = requests.get(
-                metadata_url + zone_info, headers=zone_req_header
+            region_resp = requests.get(
+                metadata_url + region_data, headers=zone_req_header
             )
         except requests.exceptions.RequestException:
             msg = 'Unable to determine instance placement from "%s"'
-            logging.warning(msg % (metadata_url + zone_info))
+            logging.warning(msg % (metadata_url + region_data))
             if imds_ip == imds_ips[-1]:
                 return
             continue
 
-        if zone_resp.status_code == 200:
-            # For local zones the format is geo-loc-regionid-metro-regionidaz
-            # For example us-east-1-iah-1a
-            # For regions in the standard partition the format
-            # is geo-loc-regionidaz
-            # For example us-east-1f
-            # For regions in the gov partition the format is
-            # geo-gov-loc-regionidaz
-            # For example us-gov-west-1a
-            # What we need is geo-(gov)-loc-regionid,
-            # i.e. us-east-1 or us-gov-west-1 as the region hint
-            region_data = zone_resp.text.split('-')
-            # Find the az (availability zone) indicator which is the first
-            # entry starting with a number
-            az_index = 0
-            for entry in region_data:
-                if entry[0].isdigit():
-                    break
-                az_index += 1
-            region_id_az = region_data[az_index]
-            region_id = ''
-            for c in region_id_az:
-                if c.isdigit():
-                    region_id += c
-            region = '-'.join(region_data[:az_index] + [region_id])
-        else:
-            logging.warning('Unable to get availability zone metadata')
-            logging.warning('\tReturn code: %d' % zone_resp.status_code)
-            logging.warning('\tMessage: %s' % zone_resp.text)
+        if not region_resp.status_code == 200:
+            logging.warning('Unable to get region metadata')
+            logging.warning('\tReturn code: %d' % region_resp.status_code)
+            logging.warning('\tMessage: %s' % region_resp.text)
             if imds_ip == imds_ips[-1]:
                 return
 
-    return 'regionHint=' + region
+    return 'regionHint=' + region_resp.text

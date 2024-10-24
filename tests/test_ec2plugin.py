@@ -47,8 +47,8 @@ def test_request_fail(mock_logging, mock_request_get, mock_request_put):
         call('Unable to retrieve IMDSv2 token using fd00:ec2::254')
     ]
     expected_urls = [
-        'http://169.254.169.254/latest/meta-data/placement/availability-zone',
-        'http://[fd00:ec2::254]/latest/meta-data/placement/availability-zone'
+        'http://169.254.169.254/latest/meta-data/placement/region',
+        'http://[fd00:ec2::254]/latest/meta-data/placement/region'
     ]
     assert mock_logging.warning.call_args_list == [
         call('Falling back to IMDSv1'),
@@ -83,10 +83,10 @@ def test_request_fail_response_error(
     assert mock_logging.warning.called
     assert mock_logging.warning.call_args_list == [
         call('Falling back to IMDSv1'),
-        call('Unable to get availability zone metadata'),
+        call('Unable to get region metadata'),
         call('\tReturn code: 500'),
         call('\tMessage: Test server failure'),
-        call('Unable to get availability zone metadata'),
+        call('Unable to get region metadata'),
         call('\tReturn code: 500'),
         call('\tMessage: Test server failure')
     ]
@@ -95,32 +95,10 @@ def test_request_fail_response_error(
 # ----------------------------------------------------------------------------
 @patch('amazonec2.requests.put')
 @patch('amazonec2.requests.get')
-def test_request_succeed_gov_part(mock_request_get, mock_request_put):
+def test_request_succeed(mock_request_get, mock_request_put):
     """Test behavior with expected return value"""
-    mock_request_put.return_value = _get_expected_response_gov_part()
-    mock_request_get.return_value = _get_expected_response_gov_part()
-    result = ec2.generateRegionSrvArgs()
-    assert 'regionHint=us-gov-east-1' == result
-
-
-# ----------------------------------------------------------------------------
-@patch('amazonec2.requests.put')
-@patch('amazonec2.requests.get')
-def test_request_succeed_std_part(mock_request_get, mock_request_put):
-    """Test behavior with expected return value"""
-    mock_request_put.return_value = _get_expected_response_std_part()
-    mock_request_get.return_value = _get_expected_response_std_part()
-    result = ec2.generateRegionSrvArgs()
-    assert 'regionHint=us-east-1' == result
-
-
-# ----------------------------------------------------------------------------
-@patch('amazonec2.requests.put')
-@patch('amazonec2.requests.get')
-def test_request_succeed_local_zone(mock_request_get, mock_request_put):
-    """Test behavior with expected return value"""
-    mock_request_put.return_value = _get_expected_response_local_zone()
-    mock_request_get.return_value = _get_expected_response_local_zone()
+    mock_request_put.return_value = _get_expected_region_response()
+    mock_request_get.return_value = _get_expected_region_response()
     result = ec2.generateRegionSrvArgs()
     assert 'regionHint=us-east-1' == result
 
@@ -135,29 +113,11 @@ def _get_error_response():
 
 
 # ----------------------------------------------------------------------------
-def _get_expected_response_local_zone():
+def _get_expected_region_response():
     """Return an object mocking a expected response"""
     response = Response()
     response.status_code = 200
-    response.text = 'us-east-1-bos-1a'
-    return response
-
-
-# ----------------------------------------------------------------------------
-def _get_expected_response_gov_part():
-    """Return an object mocking a expected response"""
-    response = Response()
-    response.status_code = 200
-    response.text = 'us-gov-east-1a'
-    return response
-
-
-# ----------------------------------------------------------------------------
-def _get_expected_response_std_part():
-    """Return an object mocking a expected response"""
-    response = Response()
-    response.status_code = 200
-    response.text = 'us-east-1f'
+    response.text = 'us-east-1'
     return response
 
 
