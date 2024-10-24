@@ -1,7 +1,15 @@
 -------------------------------------------------------------------
 Upcoming 10.3.6
 
-- Update to 10.3.6 (jsc#PCT-471)
+- Update to 10.3.6 (jsc#PCT-471, bsc#1230615)
+  + Fix sudo setup
+    ~ permissions cloudguestregistryauth
+    ~ directory ownership /etc/sudoers.d
+  + spec file
+    ~ Remove traces of registry related entries on SLE 12
+  + Forward port
+    ~ fix-for-sles12-disable-registry.patch
+    ~ fix-for-sles12-no-trans_update.patch
   + Deregister non free extensions at registercloudguest --clean
   + Fix registry cleanup at registercloudguest --clean, don't remove files
   + Prevent duplicate search entries in registry setup
