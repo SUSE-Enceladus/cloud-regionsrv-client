@@ -1,7 +1,7 @@
 #
 # spec file for package cloud-regionsrv-client
 #
-# Copyright (c) 2022 SUSE LLC
+# Copyright (c) 2024 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -111,6 +111,7 @@ Requires:       cloud-regionsrv-client >= 6.0.0
 
 %description plugin-gce
 Guest registration plugin for images intended for Google Compute Engine
+providing information to get the appropriate data form the region server.
 
 %package plugin-ec2
 Version:        1.0.5
@@ -120,7 +121,8 @@ Group:          Productivity/Networking/Web/Servers
 Requires:       cloud-regionsrv-client >= 6.0.0
 
 %description plugin-ec2
-Guest registration plugin for images intended for Amazon EC2
+Guest registration plugin for images intended for Amazon EC2 providing
+information to get the appropriate data form the region server.
 
 %package plugin-azure
 Version:        2.0.0
@@ -131,7 +133,8 @@ Requires:       cloud-regionsrv-client >= 6.0.0
 Requires:       python3-dnspython
 
 %description plugin-azure
-Guest registration plugin for images intended for Microsoft Azure
+Guest registration plugin for images intended for Microsoft Azure providing
+information to get the appropriate data form the region server.
 
 %package addon-azure
 Version:	1.0.5
@@ -144,7 +147,8 @@ Requires:	cloud-regionsrv-client-plugin-azure
 BuildArch:      noarch
 
 %description addon-azure
-Enable/Disable Guest Registration for Microsoft Azure
+Enable/Disable Guest Registration for Microsoft Azure when changes in the
+instance status are detected for PAYG vs. BYOS
 
 %prep
 %setup -q
@@ -152,8 +156,6 @@ Enable/Disable Guest Registration for Microsoft Azure
 %patch -P 0
 %patch -P 1
 %patch -P 2
-test -e usr/sbin/registercloudguest.orig && rm usr/sbin/registercloudguest.orig
-test -e lib/cloudregister/registerutils.py.orig && rm lib/cloudregister/registerutils.py.orig
 %endif
 
 %build
@@ -175,13 +177,15 @@ cp -r usr %{buildroot}
 mkdir -p %{buildroot}/usr/lib/regionService/certs
 # The directory for the cache data
 mkdir -p %{buildroot}/var/cache/cloudregister
-# The directory for sudoers
-mkdir -p %{buildroot}%{_sysconfdir}/sudoers.d
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.service %{buildroot}%{_unitdir}
 install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.timer %{buildroot}%{_unitdir}
-install -m 644 etc/sudoers.d/* %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
+install -m 440 etc/sudoers.d/cloudguestregistryauth %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
+%if 0%{?suse_version} == 1315
+rm -rf %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
+rm -rf %{buildroot}%{_bindir}/cloudguestregistryauth
+%endif
 gzip %{buildroot}/%{_mandir}/man1/*
 
 %pre
@@ -226,11 +230,12 @@ fi
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
 %dir /var/cache/cloudregister
-%dir %{_sysconfdir}/sudoers.d
 %{_mandir}/man*/*
 # Do not expect the user that needs containers to have root access
 # on the system
+%if 0%{?suse_version} > 1315
 %{_bindir}/cloudguestregistryauth
+%endif
 %{_sbindir}/cloudguest-repo-service
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/createregioninfo
@@ -238,7 +243,9 @@ fi
 %{_sbindir}/registercloudguest
 %{_sbindir}/updatesmtcache
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
-%{_sysconfdir}/sudoers.d/*
+%if 0%{?suse_version} > 1315
+%config %{_sysconfdir}/sudoers.d/*
+%endif
 %{_unitdir}/guestregister.service
 %{_unitdir}/containerbuild-regionsrv.service
 %exclude %{_sitelibdir}/cloudregister/google*
