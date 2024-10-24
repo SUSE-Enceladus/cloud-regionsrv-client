@@ -3,6 +3,7 @@ import json
 import os
 import requests
 
+from io import StringIO
 from collections import namedtuple
 from importlib.machinery import SourceFileLoader
 from lxml import etree
@@ -982,7 +983,7 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
 
 
 @patch('cloudregister.registerutils.set_proxy')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1029,7 +1030,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect, mock_set_proxy
+    mock_import_smt_cert, mock_register_product, mock_set_proxy
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1069,10 +1070,10 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=67,
         output='registration code',
         error='stderr'
@@ -1092,7 +1093,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
 @patch('register_cloud_guest.get_responding_update_server')
 @patch('cloudregister.registerutils.fetch_smt_data')
 @patch('cloudregister.registerutils.remove_registration_data')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1139,7 +1140,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect, mock_remove_reg_data,
+    mock_import_smt_cert, mock_register_product, mock_remove_reg_data,
     mock_fetch_smt_data, mock_get_responding_update_server,
     mock_is_reg_supported, mock_is_equivalent, mock_set_proxy
 ):
@@ -1196,10 +1197,10 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=64,
         output='some error',
         error='stderr'
@@ -1225,7 +1226,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1272,7 +1273,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect, mock_set_rmt_as_scc_proxy_flag,
+    mock_import_smt_cert, mock_register_product, mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_set_proxy
 ):
@@ -1313,10 +1314,10 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=0,
         output='registration code',
         error='stderr'
@@ -1360,7 +1361,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1407,7 +1408,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect,
+    mock_import_smt_cert, mock_register_product,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_set_proxy
@@ -1449,16 +1450,16 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.side_effect = [
-        suseconnect_type(
+    mock_register_product.side_effect = [
+        prod_reg_type(
             returncode=0,
             output='all OK',
             error='stderr'
         ),
-        suseconnect_type(
+        prod_reg_type(
             returncode=6,
             output='registration code',
             error='stderr'
@@ -1538,7 +1539,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1585,7 +1586,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect,
+    mock_import_smt_cert, mock_register_product,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
@@ -1629,16 +1630,16 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.side_effect = [
-        suseconnect_type(
+    mock_register_product.side_effect = [
+        prod_reg_type(
             returncode=0,
             output='all OK',
             error='stderr'
         ),
-        suseconnect_type(
+        prod_reg_type(
             returncode=0,
             output='registration code',
             error='stderr'
@@ -1740,7 +1741,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1787,7 +1788,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect,
+    mock_import_smt_cert, mock_register_product,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
@@ -1830,16 +1831,16 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.side_effect = [
-        suseconnect_type(
+    mock_register_product.side_effect = [
+        prod_reg_type(
             returncode=0,
             output='all OK',
             error='stderr'
         ),
-        suseconnect_type(
+        prod_reg_type(
             returncode=0,
             output='registration code',
             error='stderr'
@@ -1929,7 +1930,6 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
 
 @patch('register_cloud_guest.os.system')
 @patch('cloudregister.registerutils.set_proxy')
-@patch('builtins.print')
 @patch('register_cloud_guest.urllib.parse.urlparse')
 @patch('cloudregister.registerutils.enable_repository')
 @patch('cloudregister.registerutils.exec_subprocess')
@@ -1943,7 +1943,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -1976,7 +1976,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
 @patch('cloudregister.registerutils.get_state_dir')
 @patch('cloudregister.registerutils.get_config')
 @patch('register_cloud_guest.cleanup')
-def test_register_cloud_baseprod_ok_recommended_extensions_failed(
+def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     mock_cleanup, mock_get_config,
     mock_get_state_dir, mock_time_sleep,
     mock_os_path_isdir, mock_os_makedirs,
@@ -1990,12 +1990,12 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect,
+    mock_import_smt_cert, mock_register_product,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse, mock_print, mock_set_proxy, mock_os_system
+    mock_urlparse, mock_set_proxy, mock_os_system
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -2033,16 +2033,16 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
     mock_get_installed_products.return_value = 'SLES-LTSS-FOO/15.4/x86_64'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.side_effect = [
-        suseconnect_type(
+    mock_register_product.side_effect = [
+        prod_reg_type(
             returncode=0,
             output='all OK',
             error='stderr'
         ),
-        suseconnect_type(
+        prod_reg_type(
             returncode=67,
             output='registration code',
             error='stderr'
@@ -2108,23 +2108,27 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
         'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
         'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
     )
-    mock_exec_subprocess.side_effect = [True, False]
+    findmnt_return = b'{"filesystems": [{"target": "/","source": ' + \
+        b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
+    mock_exec_subprocess.return_value = findmnt_return, b'', 0
+    mock_os_path_exists.reset_mock()
+    mock_os_path_exists.return_value = True
     mock_urlparse.return_value = ParseResult(
         scheme='https', netloc='susecloud.net:443',
         path='/some/repo', params='',
         query='highlight=params', fragment='url-parsing'
     )
     mock_set_proxy.return_value = False
-    assert register_cloud_guest.main(fake_args) is None
-    assert mock_print.call_args_list == [
-        call('Registration succeeded'),
-        call(
-            'There are products that were not registered '
-            'because they need an additional registration code, '
-            'to register them please run the following command:'
-        ),
-        call('SUSEConnect -p SLES-LTSS-FOO/15.4/x86_64 -r ADDITIONAL REGCODE')
-    ]
+
+    with patch('sys.stdout', new_callable=StringIO) as buffer:
+        assert register_cloud_guest.main(fake_args) is None
+    fake_stdout = buffer.getvalue()
+
+    assert 'Registration succeeded' in fake_stdout
+    assert 'There are products that were not registered' in fake_stdout
+    assert 'transactional-update register -p' in fake_stdout
+    assert 'SLES-LTSS-FOO/15.4/x86_64' in fake_stdout
+    assert '-r ADDITIONAL REGCODE' in fake_stdout
 
 
 @patch('cloudregister.registerutils.set_proxy')
@@ -2144,7 +2148,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_failed(
 @patch('cloudregister.registerutils.get_product_tree')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.import_smt_cert')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('register_cloud_guest.logging')
@@ -2191,7 +2195,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
     mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
     mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
-    mock_import_smt_cert, mock_run_SUSEConnect,
+    mock_import_smt_cert, mock_register_product,
     mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
@@ -2238,16 +2242,16 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.side_effect = [
-        suseconnect_type(
+    mock_register_product.side_effect = [
+        prod_reg_type(
             returncode=0,
             output='all OK',
             error='stderr'
         ),
-        suseconnect_type(
+        prod_reg_type(
             returncode=0,
             output='registration code',
             error='stderr'
@@ -2329,13 +2333,13 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
     ]
 
 
-@patch('cloudregister.registerutils.run_SUSEConnect')
-def test_register_modules(mock_run_SUSEConnect):
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+@patch('cloudregister.registerutils.register_product')
+def test_register_modules(mock_register_product):
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
 
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=67,
         output='registration code',
         error='stderr'
@@ -2503,7 +2507,7 @@ def test_setup_ltss_registration_registered(
     ]
 
 
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('register_cloud_guest.os.listdir')
 @patch('register_cloud_guest.os.path.isdir')
 @patch('register_cloud_guest.logging')
@@ -2511,7 +2515,7 @@ def test_setup_ltss_registration_registered(
 def test_setup_ltss_registration_registration_ok(
     mock_get_product_tree, mock_logging,
     mock_os_path_isdir, mock_os_listdir,
-    mock_run_SUSEConnect
+    mock_register_product
 ):
     mock_os_path_isdir.return_value = True
     mock_os_listdir.return_value = ['foo']
@@ -2529,10 +2533,10 @@ def test_setup_ltss_registration_registration_ok(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=0,
         output='all OK',
         error='stderr'
@@ -2546,7 +2550,7 @@ def test_setup_ltss_registration_registration_ok(
     ]
 
 
-@patch('cloudregister.registerutils.run_SUSEConnect')
+@patch('cloudregister.registerutils.register_product')
 @patch('register_cloud_guest.os.listdir')
 @patch('register_cloud_guest.os.path.isdir')
 @patch('register_cloud_guest.logging')
@@ -2554,7 +2558,7 @@ def test_setup_ltss_registration_registration_ok(
 def test_setup_ltss_registration_registration_failed(
     mock_get_product_tree, mock_logging,
     mock_os_path_isdir, mock_os_listdir,
-    mock_run_SUSEConnect
+    mock_register_product
 ):
     mock_os_path_isdir.return_value = True
     mock_os_listdir.return_value = ['foo']
@@ -2572,10 +2576,10 @@ def test_setup_ltss_registration_registration_failed(
     mock_get_product_tree.return_value = etree.fromstring(
         base_product[base_product.index('<product'):]
     )
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
     )
-    mock_run_SUSEConnect.return_value = suseconnect_type(
+    mock_register_product.return_value = prod_reg_type(
         returncode=7,
         output='not OK',
         error='stderr'
