@@ -22,7 +22,7 @@
 %endif
 %global _sitelibdir %{%{pythons}_sitelib}
 
-%define base_version 10.3.5
+%define base_version 10.3.6
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0
