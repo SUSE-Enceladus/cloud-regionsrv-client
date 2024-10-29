@@ -1,5 +1,5 @@
 -------------------------------------------------------------------
-Upcoming 10.3.6
+Tue Oct 29 13:44:21 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
 
 - Update to 10.3.6 (jsc#PCT-471, bsc#1230615)
   + Fix sudo setup
