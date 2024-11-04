@@ -1,0 +1,16 @@
+name: CI-Patch-Validation
+
+on: [push]
+
+jobs:
+  apply_patches:
+    name: Validate custom patches carried with the package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Apply Patches
+        run: |
+          patch -p0 < fix-for-sles12-disable-ipv6.patch
+          patch -p0 < fix-for-sles12-disable-registry.patch
+          patch -p0 < fix-for-sles12-no-trans_update.patch
