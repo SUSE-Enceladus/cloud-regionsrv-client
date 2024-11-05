@@ -208,12 +208,10 @@ def setup_ltss_registration(
         print(message)
     else:
         base_product = utils.get_product_triplet(product)
-
-        # The name of the product to register is the LTSS variant for the
-        # registered base product. In theory other combinations are possible
-        # but we don't allow this for the moment
-        ltss_product_triplet = '{0}-LTSS/{1}/{2}'.format(
-            base_product.name, base_product.version, base_product.arch
+        # LTSS registration is always SLES even for variants such as
+        # SAP and HPC.
+        ltss_product_triplet = 'SLES-LTSS/{0}/{1}'.format(
+            base_product.version, base_product.arch
         )
 
         prod_reg = utils.register_product(

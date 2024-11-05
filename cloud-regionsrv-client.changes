@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Upcoming:
+
+- Update to 10.3.7 (bsc#1232770)
+  + Fix the product triplet for LTSS, it is always SLES-LTSS, not
+    $BASEPRODUCT-LTSS
+ 
+-------------------------------------------------------------------
 Tue Oct 29 13:44:21 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
 
 - Update to 10.3.6 (jsc#PCT-471, bsc#1230615)
