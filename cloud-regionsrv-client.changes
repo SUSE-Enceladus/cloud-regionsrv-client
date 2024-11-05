@@ -1,5 +1,5 @@
 -------------------------------------------------------------------
-Upcoming:
+Tue Nov  5 13:58:12 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
 
 - Update to 10.3.7 (bsc#1232770)
   + Fix the product triplet for LTSS, it is always SLES-LTSS, not
