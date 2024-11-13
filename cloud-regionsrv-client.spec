@@ -54,6 +54,14 @@ Requires:       %{pythons}-urllib3
 Requires:       %{pythons}-zypp-plugin
 %if 0%{?suse_version} > 1315
 Requires:       %{pythons}-toml
+# Add requirement for libcontainers-common to make sure all
+# podman related config files gets pulled in. We modify
+# /etc/containers/registries.conf
+Requires:       libcontainers-common
+# Add requirement for docker to make sure all docker related
+# config files gets pulled in. We modify
+# /etc/docker/daemon.json
+Requires:       docker
 %endif
 Requires:       regionsrv-certs
 Requires:       sudo
