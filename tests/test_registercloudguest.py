@@ -2370,6 +2370,43 @@ def test_register_modules(mock_register_product):
     )
 
 
+@patch('cloudregister.registerutils.register_product')
+def test_register_modules_failed_credentials(mock_register_product):
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
+    )
+
+    mock_register_product.return_value = prod_reg_type(
+        returncode=67,
+        output='',
+        error='missing system credentials try again'
+    )
+    extensions = [
+        {
+            'id': 23,
+            'name': 'SUSE Linux Enterprise Server LTSS',
+            'identifier': 'SLES-LTSS',
+            'former_identifier': 'SLES-LTSS',
+            'version': '15.4',
+            'release_type': None,
+            'release_stage': 'released',
+            'arch': 'x86_64',
+            'friendly_name':
+            'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+            'product_class': 'SLES15-SP4-LTSS-X86',
+            'free': False,
+            'repositories': [],
+            'product_type': 'extension',
+            'extensions': [],
+            'recommended': False,
+            'available': True
+        }
+    ]
+    register_cloud_guest.register_modules(
+        extensions, ['SLES-LTSS/15.4/x86_64'], 'reg_target', 'path', [], []
+    )
+
+
 @patch('cloudregister.registerutils.is_registry_registered')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')

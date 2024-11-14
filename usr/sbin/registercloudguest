@@ -86,11 +86,16 @@ def register_modules(
 
             if prod_reg.returncode:
                 registration_returncode = prod_reg.returncode
-                # Even on error SUSEConnect writes messages to stdout, go figure
+                # Older versions of SUSEConnect wrote error messages to stdout
                 error_message = prod_reg.output
+                if not error_message:
+                    error_message = prod_reg.error
                 if (
                     registration_returncode == 67 and
-                    'registration code' in error_message.lower()
+                    (
+                        'registration code' in error_message.lower() or
+                        'system credentials' in error_message.lower()
+                    )
                 ):
                     # SUSEConnect sets the following exit codes:
                     # 0:  Registration successful
