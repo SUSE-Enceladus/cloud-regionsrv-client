@@ -1,5 +1,5 @@
 -------------------------------------------------------------------
-Wed Nov 13 16:12:23 UTC 2024 - Marcus Schäfer <marcus.schaefer@suse.com>
+Wed Nov 18 16:12:23 UTC 2024 - Marcus Schäfer <marcus.schaefer@suse.com>
 
 - Update to 10.3.8 (bsc#1233333)
   + Fix the package requirements for cloud-regionsrv-client
