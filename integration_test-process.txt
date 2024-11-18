@@ -56,6 +56,14 @@ After installing the test package with "zypper in"
   + systemctl stop docker.service
   + zypper in podman
   + podman pull bci/bci-base
+  # The next test (until the end of this section) is still a bit flaky
+  # If it fails ignore if you are certain it is not broken because of changes
+  # in this code
+  + zypper in libcontainers-sles-mounts
+  + systemctl start containerbuild-regionsrv.service
+  + systemctl status containerbuild-regionsrv.service
+  + podman run --network host -it bci/bci-base
+  + zypper lr should have SLES repos
 - registercloudguest --clean
   + zypper lr has no repos
   On SLE 15
