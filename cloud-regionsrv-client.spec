@@ -161,9 +161,9 @@ instance status are detected for PAYG vs. BYOS
 %prep
 %setup -q
 %if 0%{?suse_version} == 1315
-%patch -P 0
-%patch -P 1
-%patch -P 2
+%patch -P 0 -p1
+%patch -P 1 -p1
+%patch -P 2 -p1
 %endif
 
 %build

@@ -1,5 +1,7 @@
---- lib/cloudregister/registerutils.py.orig
-+++ lib/cloudregister/registerutils.py
+diff --git a/lib/cloudregister/registerutils.py b/lib/cloudregister/registerutils.py
+index 7825ff0..5a712b0 100644
+--- a/lib/cloudregister/registerutils.py
++++ b/lib/cloudregister/registerutils.py
 @@ -30,7 +30,8 @@ import stat
  import subprocess
  import sys
@@ -46,7 +48,7 @@
      smt = get_smt_from_store(__get_registered_smt_file_path())
      private_registry_fqdn = smt.get_registry_FQDN() if smt else ''
      clean_registry_auth(private_registry_fqdn)
-@@ -1193,6 +1199,8 @@ def clean_registries_conf_docker(private
+@@ -1193,6 +1199,8 @@ def clean_registries_conf_docker(private_registry_fqdn):
  # ----------------------------------------------------------------------------
  def write_registries_conf(registries_conf, container_path, container_name):
      """Write registries_conf content to container_path."""
@@ -55,9 +57,11 @@
      try:
          if container_name == 'podman':
              with open(container_path, 'w') as registries_conf_file:
---- usr/sbin/registercloudguest.orig
-+++ usr/sbin/registercloudguest
-@@ -134,6 +134,8 @@ def setup_registry(registration_target,
+diff --git a/usr/sbin/registercloudguest b/usr/sbin/registercloudguest
+index d32f036..c5f40d3 100755
+--- a/usr/sbin/registercloudguest
++++ b/usr/sbin/registercloudguest
+@@ -139,6 +139,8 @@ def setup_registry(registration_target, clean='registry'):
      clean == all -> cleans repository and registry setup
      clean == registry -> clean only registry artifacts
      """
