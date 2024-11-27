@@ -11,6 +11,4 @@ jobs:
       - uses: actions/checkout@v3
       - name: Apply Patches
         run: |
-          patch -p0 < fix-for-sles12-disable-ipv6.patch
-          patch -p0 < fix-for-sles12-disable-registry.patch
-          patch -p0 < fix-for-sles12-no-trans_update.patch
+          ./apply_patches

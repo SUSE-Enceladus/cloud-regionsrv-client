@@ -1,5 +1,7 @@
---- lib/cloudregister/registerutils.py
-+++ lib/cloudregister/registerutils.py
+diff --git a/lib/cloudregister/registerutils.py b/lib/cloudregister/registerutils.py
+index 7825ff0..6770e23 100644
+--- a/lib/cloudregister/registerutils.py
++++ b/lib/cloudregister/registerutils.py
 @@ -339,6 +339,8 @@ def get_register_cmd():
      """Determine which command we need to use to register the system"""
  
