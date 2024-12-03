@@ -57,7 +57,7 @@ registration_returncode = 0
 # ----------------------------------------------------------------------------
 def register_modules(
     extensions, products, registration_target, instance_data_filepath,
-    regcode, registered=[], failed=[]
+    regcode='', registered=[], failed=[]
 ):
     """Register modules obeying dependencies"""
     global registration_returncode
