@@ -57,7 +57,7 @@ registration_returncode = 0
 # ----------------------------------------------------------------------------
 def register_modules(
     extensions, products, registration_target, instance_data_filepath,
-    registered=[], failed=[]
+    regcode='', registered=[], failed=[]
 ):
     """Register modules obeying dependencies"""
     global registration_returncode
@@ -67,7 +67,7 @@ def register_modules(
         if extension.get('recommended'):
             register_modules(
                 extension.get('extensions'), products, registration_target,
-                instance_data_filepath, registered, failed
+                instance_data_filepath, regcode, registered, failed
             )
             continue
 
@@ -80,6 +80,7 @@ def register_modules(
 
             prod_reg = utils.register_product(
                 registration_target=registration_target,
+                regcode=regcode,
                 product=triplet,
                 instance_data_filepath=instance_data_filepath
             )
@@ -112,7 +113,7 @@ def register_modules(
 
         register_modules(
             extension.get('extensions'), products, registration_target,
-            instance_data_filepath, registered, failed
+            instance_data_filepath, regcode, registered, failed
         )
 
 
@@ -704,6 +705,7 @@ def main(args):
         products,
         registration_target,
         instance_data_filepath,
+        args.reg_code,
         failed=failed_extensions
     )
     if os.path.exists(instance_data_filepath):
