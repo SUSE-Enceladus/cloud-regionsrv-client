@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Tue Dec  3 17:21:52 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
+
+- Update to 10.3.9 (bsc#1234050)
+  + Send registration code for the extensions, not only base product
+
+-------------------------------------------------------------------
 Wed Nov 18 16:12:23 UTC 2024 - Marcus Schäfer <marcus.schaefer@suse.com>
 
 - Update to 10.3.8 (bsc#1233333)
