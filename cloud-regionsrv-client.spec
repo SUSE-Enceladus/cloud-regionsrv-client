@@ -67,6 +67,7 @@ Requires:       regionsrv-certs
 Requires:       sudo
 Requires:       zypper
 BuildRequires:  systemd
+BuildRequires:  findutils
 Conflicts:      container-suseconnect
 %if 0%{?suse_version} == 1315
 %{?systemd_requires}
@@ -164,6 +165,13 @@ instance status are detected for PAYG vs. BYOS
 %patch -P 0 -p1
 %patch -P 1 -p1
 %patch -P 2 -p1
+
+# %patch macro does not support to call patch such that it
+# does not create .orig files. Under certain conditions patch
+# creates them and this will break the build for files found
+# but not packaged
+find . -name *.orig -delete
+
 %endif
 
 %build
