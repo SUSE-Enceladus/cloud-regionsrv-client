@@ -30,7 +30,7 @@ Summary:        Cloud Environment Guest Registration
 License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
 URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
-Source0:        %{name}-%{version}.tar.bz2
+Source0:        %{name}.tar.bz2
 # PATCH-FIX-SLES12 bsc#1203382 fix-for-sles12-disable-ipv6.patch
 Patch0:         fix-for-sles12-disable-ipv6.patch
 # PATCH-FIX-SLES12 fix-for-sles12-disable-registry.patch

@@ -15,6 +15,7 @@ package: tar
 	git pull
 	mkdir -p dist
 	rm -f dist/*
+	mv cloud-regionsrv-client.tar.bz2 dist/
 	cp cloud-regionsrv-client* dist/
 	cp *.patch dist/
 	@echo "Find package files for submission below dist/"
@@ -25,7 +26,7 @@ tar:
 	find "$(nv)" -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
 	find "$(nv)" -path "*/lib/cloudregister.egg-info/*" -delete
 	find "$(nv)" -type d -name "cloudregister.egg-info" -delete
-	tar -cjf "$(nv).tar.bz2" "$(nv)"
+	tar -cjf "cloud-regionsrv-client.tar.bz2" "$(nv)"
 	rm -rf "$(nv)"
 
 install:
