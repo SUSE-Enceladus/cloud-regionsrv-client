@@ -10,6 +10,15 @@ ifneq "$(verSpec)" "$(verSrc)"
     $(error "Version mismatch, will not take any action")
 endif
 
+package: tar
+	git checkout master
+	git pull
+	mkdir -p dist
+	rm -f dist/*
+	cp cloud-regionsrv-client* dist/
+	cp *.patch dist/
+	@echo "Find package files for submission below dist/"
+
 tar:
 	mkdir "$(nv)"
 	cp -r $(dirs) lib $(files) "$(nv)"

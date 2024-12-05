@@ -7,3 +7,6 @@
 .cache
 **/*/__pycache__/
 .pytest_cache
+
+dist
+*.tar.bz2
