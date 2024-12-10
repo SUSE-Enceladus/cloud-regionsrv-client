@@ -242,6 +242,24 @@ def setup_ltss_registration(
         print(message)
 
 
+#-----------------------------------------------------------------------------
+def get_proxies():
+    """Return the proxies set in the environment in a dictionary or None."""
+    proxies = None
+    if utils.set_proxy():
+        http_proxy = os.environ.get('http_proxy')
+        https_proxy = os.environ.get('https_proxy')
+        no_proxy = os.environ.get('no_proxy')
+        proxies = {
+            'http_proxy': http_proxy,
+            'https_proxy': https_proxy,
+            'no_proxy': no_proxy
+        }
+        logging.info('Using proxy settings: %s' % proxies)
+
+    return proxies
+
+
 # ----------------------------------------------------------------------------
 argparse = argparse.ArgumentParser(description='Register on-demand instance')
 argparse.add_argument(
@@ -408,16 +426,7 @@ def main(args):
         cached_smt_servers = []
 
     # Proxy setup
-    proxies = None
-    proxy = utils.set_proxy()
-    if proxy:
-        http_proxy = os.environ.get('http_proxy')
-        https_proxy = os.environ.get('https_proxy')
-        no_proxy = os.environ.get('no_proxy')
-        proxies = {'http_proxy': http_proxy,
-                   'https_proxy': https_proxy,
-                   'no_proxy': no_proxy}
-        logging.info('Using proxy settings: %s' % proxies)
+    proxies = get_proxies()
 
     if args.user_smt_ip:
         smt_xml = '<regionSMTdata><smtInfo '
