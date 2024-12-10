@@ -243,6 +243,26 @@ def setup_ltss_registration(
 
 
 # ----------------------------------------------------------------------------
+def get_update_servers(region_smt_data, cfg):
+    """Return available update servers in a list."""
+    region_smt_servers = []
+    https_only = utils.https_only(cfg)
+    for cnt, child in enumerate(region_smt_data, start=1):
+        smt_server = smt.SMT(child, https_only)
+        region_smt_servers.append(smt_server)
+        # Write the available servers to cache as well
+        utils.store_smt_data(
+            os.path.join(
+            utils.get_state_dir(),
+                utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+            ),
+            smt_server
+        )
+
+    return region_smt_servers
+
+
+# ----------------------------------------------------------------------------
 argparse = argparse.ArgumentParser(description='Register on-demand instance')
 argparse.add_argument(
     '--clean',
@@ -463,19 +483,7 @@ def main(args):
         utils.write_framework_identifier(cfg)
 
     if not region_smt_servers:
-        cnt = 1
-        for child in region_smt_data:
-            smt_server = smt.SMT(child, utils.https_only(cfg))
-            region_smt_servers.append(smt_server)
-            # Write the available servers to cache as well
-            utils.store_smt_data(
-                os.path.join(
-                    utils.get_state_dir(),
-                    utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
-                ),
-                smt_server
-            )
-            cnt += 1
+        region_smt_servers = get_update_servers(region_smt_data, cfg)
 
     # Check if the target RMT for the registration is alive or if we can
     # find a server that is alive in this region
