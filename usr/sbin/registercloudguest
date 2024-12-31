@@ -714,7 +714,6 @@ def main(args):
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
-
     extensions = get_extensions(registration_target)
     failed_extensions = []
     register_modules(
