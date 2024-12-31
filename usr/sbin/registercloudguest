@@ -242,7 +242,7 @@ def setup_ltss_registration(
         print(message)
 
 
-#-----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 def get_proxies():
     """Return the proxies set in the environment in a dictionary or None."""
     proxies = None
