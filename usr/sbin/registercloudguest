@@ -253,7 +253,7 @@ def get_update_servers(region_smt_data, cfg):
         # Write the available servers to cache as well
         utils.store_smt_data(
             os.path.join(
-            utils.get_state_dir(),
+                utils.get_state_dir(),
                 utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
             ),
             smt_server
