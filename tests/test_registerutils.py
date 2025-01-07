@@ -5045,9 +5045,11 @@ def test_get_registry_config_file_docker_not_parsed(
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.json.dump')
+@patch('os.path.exists')
 def test_set_registries_conf_docker_no_matches(
-    mock_json_dump, mock_get_registry_conf_file
+    mock_os_path_exists, mock_json_dump, mock_get_registry_conf_file
 ):
+    mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
 
@@ -5078,9 +5080,11 @@ def test_set_registries_conf_docker_no_matches(
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.json.dump')
+@patch('os.path.exists')
 def test_set_registries_conf_docker_not_OK_order_has_changed(
-    mock_json_dump, mock_get_registry_conf_file
+    mock_os_path_exists, mock_json_dump, mock_get_registry_conf_file
 ):
+    mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
 
@@ -5106,9 +5110,11 @@ def test_set_registries_conf_docker_not_OK_order_has_changed(
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.json.dump')
+@patch('os.path.exists')
 def test_set_registries_conf_docker_not_key_mirror(
-    mock_json_dump, mock_get_registry_conf_file
+    mock_os_path_exists, mock_json_dump, mock_get_registry_conf_file
 ):
+    mock_os_path_exists.return_value = True
     with patch('builtins.open', create=True) as mock_open:
         mock_open_podman_config = MagicMock(spec=io.IOBase)
 
@@ -5134,9 +5140,11 @@ def test_set_registries_conf_docker_not_key_mirror(
 
 # ---------------------------------------------------------------------------
 @patch('cloudregister.registerutils.get_registry_conf_file')
+@patch('os.path.exists')
 def test_set_registries_conf_docker_error_file_not_preserved(
-    mock_get_registry_conf_file
+    mock_os_path_exists, mock_get_registry_conf_file
 ):
+    mock_os_path_exists.return_value = True
     mock_get_registry_conf_file.return_value = {}, True
     assert utils.__set_registries_conf_docker(
         'registry-foo.susecloud.net'
