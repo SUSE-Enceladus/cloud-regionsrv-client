@@ -146,7 +146,7 @@ Guest registration plugin for images intended for Microsoft Azure providing
 information to get the appropriate data form the region server.
 
 %package addon-azure
-Version:	1.0.5
+Version:	1.0.6
 Release:	0
 Summary:	Enable/Disable Guest Registration for Microsoft Azure
 Group:		Productivity/Networking/Web/Servers
