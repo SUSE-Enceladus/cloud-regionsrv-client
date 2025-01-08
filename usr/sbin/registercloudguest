@@ -243,6 +243,26 @@ def setup_ltss_registration(
 
 
 # ----------------------------------------------------------------------------
+def get_region_smt_data(args, cfg, proxies):
+    """Return the region SMT data."""
+    if args.user_smt_ip:
+        smt_xml = '<regionSMTdata><smtInfo '
+        smt_xml += 'fingerprint="%s" ' % args.user_smt_fp
+        smt_ip = ipaddress.ip_address(args.user_smt_ip)
+        if isinstance(smt_ip, ipaddress.IPv6Address):
+            smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
+        elif isinstance(smt_ip, ipaddress.IPv4Address):
+            smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
+        smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+        registry_fqdn = 'registry-{}'.format(args.user_smt_fqdn.split('-')[1])
+        smt_xml += 'SMTregistryName="%s"' % registry_fqdn
+        smt_xml += '/></regionSMTdata>'
+        return etree.fromstring(smt_xml)
+    else:
+        return utils.fetch_smt_data(cfg, proxies)
+
+
+# ----------------------------------------------------------------------------
 argparse = argparse.ArgumentParser(description='Register on-demand instance')
 argparse.add_argument(
     '--clean',
@@ -419,22 +439,7 @@ def main(args):
                    'no_proxy': no_proxy}
         logging.info('Using proxy settings: %s' % proxies)
 
-    if args.user_smt_ip:
-        smt_xml = '<regionSMTdata><smtInfo '
-        smt_xml += 'fingerprint="%s" ' % args.user_smt_fp
-        smt_ip = ipaddress.ip_address(args.user_smt_ip)
-        if isinstance(smt_ip, ipaddress.IPv6Address):
-            smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
-        elif isinstance(smt_ip, ipaddress.IPv4Address):
-            smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
-        smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
-        registry_fqdn = 'registry-{}'.format(args.user_smt_fqdn.split('-')[1])
-        smt_xml += 'SMTregistryName="%s"' % registry_fqdn
-        smt_xml += '/></regionSMTdata>'
-        region_smt_data = etree.fromstring(smt_xml)
-    else:
-        region_smt_data = utils.fetch_smt_data(cfg, proxies)
-
+    region_smt_data = get_region_smt_data(args, cfg, proxies)
     registration_smt = utils.get_current_smt()
 
     # Check if we are in the same region
