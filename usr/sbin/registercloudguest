@@ -243,6 +243,76 @@ def setup_ltss_registration(
 
 
 # ----------------------------------------------------------------------------
+def register_base_product(
+    registration_target, instance_data_filepath, args, region_smt_servers
+):
+    base_registered = False
+    failed_smts = []
+    while not base_registered:
+        utils.add_hosts_entry(registration_target)
+        prod_reg = utils.register_product(
+            registration_target=registration_target,
+            email=args.email,
+            regcode=args.reg_code,
+            instance_data_filepath=instance_data_filepath
+        )
+        if prod_reg.returncode:
+            registration_returncode = prod_reg.returncode
+            # Even on error SUSEConnect writes messages to stdout, go figure
+            error_message = prod_reg.output
+            failed_smts.append(registration_target.get_ipv4())
+            if (
+                len(failed_smts) == len(region_smt_servers) or
+                (registration_returncode == 67 and
+                 'registration code' in error_message.lower() and
+                 args.reg_code)
+            ):
+                # there are no more RMT servers to try to register to or
+                # registration failed because of an invalid reg code
+                # and that SCC response will not change, independently
+                # of the RMT sibling selected
+                # SCC exit codes:
+                # 0: Registration successful
+                # 64: Connection refused
+                # 65: Access error, e.g. files not readable
+                # 66: Parser error: Server JSON response was not parseable
+                # 67: Server responded with error: see log output
+                logging.error('Baseproduct registration failed')
+                logging.error('\t%s' % error_message)
+                cleanup()
+                print(error_message, file=sys.stderr)
+                sys.exit(1)
+            for smt_srv in region_smt_servers:
+                target_smt_ipv4 = registration_target.get_ipv4()
+                target_smt_ipv6 = registration_target.get_ipv6()
+                new_smt_ipv4 = smt_srv.get_ipv4()
+                new_smt_ipv6 = smt_srv.get_ipv6()
+                if (
+                        smt_srv.get_ipv4() != registration_target.get_ipv4() and
+                        smt_srv.get_ipv4() not in failed_smts
+                ):
+                    error_msg = 'Registration with %s failed. Trying %s'
+                    logging.error(
+                        error_msg % (
+                            str((target_smt_ipv4, target_smt_ipv6)),
+                            str((new_smt_ipv4, new_smt_ipv6))
+                        )
+                    )
+                    utils.remove_registration_data()
+                    utils.clean_hosts_file(
+                        registration_target.get_domain_name()
+                    )
+                    registration_target = smt_srv
+                    break
+        else:
+            logging.info('Baseproduct registration complete')
+            base_registered = True
+            utils.clear_new_registration_flag()
+            if args.email or args.reg_code:
+                utils.set_rmt_as_scc_proxy_flag()
+
+
+# ----------------------------------------------------------------------------
 argparse = argparse.ArgumentParser(description='Register on-demand instance')
 argparse.add_argument(
     '--clean',
@@ -604,72 +674,9 @@ def main(args):
         sys.exit(1)
 
     # Register the base product first
-    base_registered = False
-    failed_smts = []
-
-    while not base_registered:
-        utils.add_hosts_entry(registration_target)
-        prod_reg = utils.register_product(
-            registration_target=registration_target,
-            email=args.email,
-            regcode=args.reg_code,
-            instance_data_filepath=instance_data_filepath
-        )
-        if prod_reg.returncode:
-            registration_returncode = prod_reg.returncode
-            # Even on error SUSEConnect writes messages to stdout, go figure
-            error_message = prod_reg.output
-            failed_smts.append(registration_target.get_ipv4())
-            if (
-                len(failed_smts) == len(region_smt_servers) or
-                (registration_returncode == 67 and
-                 'registration code' in error_message.lower() and
-                 args.reg_code)
-            ):
-                # there are no more RMT servers to try to register to or
-                # registration failed because of an invalid reg code
-                # and that SCC response will not change, independently
-                # of the RMT sibling selected
-                # SCC exit codes:
-                # 0: Registration successful
-                # 64: Connection refused
-                # 65: Access error, e.g. files not readable
-                # 66: Parser error: Server JSON response was not parseable
-                # 67: Server responded with error: see log output
-                logging.error('Baseproduct registration failed')
-                logging.error('\t%s' % error_message)
-                cleanup()
-                print(error_message, file=sys.stderr)
-                sys.exit(1)
-            for smt_srv in region_smt_servers:
-                target_smt_ipv4 = registration_target.get_ipv4()
-                target_smt_ipv6 = registration_target.get_ipv6()
-                new_smt_ipv4 = smt_srv.get_ipv4()
-                new_smt_ipv6 = smt_srv.get_ipv6()
-                if (
-                        smt_srv.get_ipv4() != registration_target.get_ipv4() and
-                        smt_srv.get_ipv4() not in failed_smts
-                ):
-                    error_msg = 'Registration with %s failed. Trying %s'
-                    logging.error(
-                        error_msg % (
-                            str((target_smt_ipv4, target_smt_ipv6)),
-                            str((new_smt_ipv4, new_smt_ipv6))
-                        )
-                    )
-                    utils.remove_registration_data()
-                    utils.clean_hosts_file(
-                        registration_target.get_domain_name()
-                    )
-                    registration_target = smt_srv
-                    break
-        else:
-            logging.info('Baseproduct registration complete')
-            base_registered = True
-            utils.clear_new_registration_flag()
-            if args.email or args.reg_code:
-                utils.set_rmt_as_scc_proxy_flag()
-
+    register_base_product(
+        registration_target, instance_data_filepath, args, region_smt_servers
+    )
     base_product = utils.get_product_triplet(
         utils.get_product_tree()
     )
