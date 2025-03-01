@@ -7,6 +7,7 @@ NEXT version
     is being removed when the package gets removed (bsc#1240310, bsc#1240311)
   + Turn docker into an optional setup
     Change the Requires into a Recommends and adapt the code accordingly
+  + Support flexible licenses in GCE (jsc#PCT-531)
     
 -------------------------------------------------------------------
 Tue Dec  3 17:21:52 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
