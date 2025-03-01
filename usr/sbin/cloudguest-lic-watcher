@@ -1,0 +1,53 @@
+#!/usr/bin/python3
+
+# Copyright (c) 2025, SUSE LLC, All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library.
+
+import logging
+
+import instance_billing_flavor_check.utils as inst_flvr_utils
+import cloudregister.registerutils as utils
+
+CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), 'cached_license')
+
+def update_license_cache(license_type):
+    """Update the cache to track the license type"""
+    with open(CACHE_LICENSE_PATH, 'w+') as cached_license:
+        cached_license.write(license_type)
+
+def has_license_changed(license_type):
+    """Check license type changes against metadata info"""
+    try:
+        with open(CACHE_LICENSE_PATH, 'r') as cached_license:
+            old_license = cached_license.read()
+            return license_type != old_license
+    except FileNotFoundError:
+        update_license_cache(license_type)
+
+
+utils.start_logging()
+service_name = 'guestregister'
+current_flavor = inst_flvr_utils.check_payg_byos()[0]
+if has_license_changed(current_flavor):
+    if current_flovor == 'BYOS' and not utils.uses_rmt_as_scc_proxy():
+        logging.info('Detected flavor change to BYOS, clean up registration')
+        utils.clean_all()
+        exec_subprocess(['systemctl', 'disable', service_name])
+        update_license_cache(license_type)
+    if current_flovor == 'PAYG':
+        logging.info('Detected flavor change to PAYG, registering')
+        exec_subprocess(['registercloudguest'])
+        exec_subprocess(['systemctl', 'enable', service_name])
+        
+        
+    

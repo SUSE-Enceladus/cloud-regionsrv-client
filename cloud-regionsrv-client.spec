@@ -159,6 +159,16 @@ BuildArch:      noarch
 Enable/Disable Guest Registration for Microsoft Azure when changes in the
 instance status are detected for PAYG vs. BYOS
 
+%package license-watcher
+Version:	1.0.0
+Release:	0
+Summary:	Enable/Disable Guest Registration for a running instance
+Group:		Productivity/Networking/Web/Servers
+Requires:	cloud-regionsrv-client >= 9.0.0
+Requires:       python-instance-billing-flavor-check >= 1.0.0
+
+BuildArch:      noarch
+
 %prep
 %setup -q
 %if 0%{?suse_version} == 1315
@@ -208,7 +218,10 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %service_add_pre guestregister.service containerbuild-regionsrv.service
 
 %pre addon-azure
-%service_add_pre regionsrv-enabler.timer
+%service_add_pre regionsrv-enabler-azure.timer
+
+%pre license-watcher
+%service_add_pre guestregister-lic-watcher.timer
 
 %post
 # Scripts need access to the update infrastructure, do not execute them
@@ -226,17 +239,26 @@ fi
 %post addon-azure
 %service_add_post regionsrv-enabler.timer
 
+%post license-watcher
+%service_add_post guestregister-lic-watcher.timer
+
 %preun
 %service_del_preun guestregister.service containerbuild-regionsrv.service
 
 %preun addon-azure
 %service_del_preun regionsrv-enabler-azure.timer
 
+%preun license-watcher
+%service_del_preun guestregister-lic-watcher.timer
+
 %postun
 %service_del_postun guestregister.service containerbuild-regionsrv.service
 
 %postun addon-azure
 %service_del_postun regionsrv-enabler-azure.timer
+
+%postun license-watcher
+%service_del_postun guestregister-lic-watcher.timer
 
 %files
 %defattr(-,root,root,-)
@@ -300,6 +322,12 @@ fi
 %{_unitdir}/regionsrv-enabler-azure.service
 %{_unitdir}/regionsrv-enabler-azure.timer
 %attr(744, root, root) %{_sbindir}/regionsrv-enabler-azure
+
+%files license-watcher
+%defattr(-,root,root,-)
+%{_unitdir}/guestregister-lic-watcher.service
+%{_unitdir}/guestregister-lic-watcher.timer
+%attr(744, root, root) %{_sbindir}/cloudguest-lic-watcher
 
 
 %changelog
