@@ -145,20 +145,6 @@ Requires:       python3-dnspython
 Guest registration plugin for images intended for Microsoft Azure providing
 information to get the appropriate data form the region server.
 
-%package addon-azure
-Version:	1.0.5
-Release:	0
-Summary:	Enable/Disable Guest Registration for Microsoft Azure
-Group:		Productivity/Networking/Web/Servers
-Requires:	cloud-regionsrv-client >= 9.0.0
-Requires:	cloud-regionsrv-client-plugin-azure
-
-BuildArch:      noarch
-
-%description addon-azure
-Enable/Disable Guest Registration for Microsoft Azure when changes in the
-instance status are detected for PAYG vs. BYOS
-
 %prep
 %setup -q
 %if 0%{?suse_version} == 1315
@@ -207,9 +193,6 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %pre
 %service_add_pre guestregister.service containerbuild-regionsrv.service
 
-%pre addon-azure
-%service_add_pre regionsrv-enabler.timer
-
 %post
 # Scripts need access to the update infrastructure, do not execute them
 # in the build service.
@@ -223,20 +206,11 @@ fi
 fi
 %service_add_post guestregister.service containerbuild-regionsrv.service
 
-%post addon-azure
-%service_add_post regionsrv-enabler.timer
-
 %preun
 %service_del_preun guestregister.service containerbuild-regionsrv.service
 
-%preun addon-azure
-%service_del_preun regionsrv-enabler-azure.timer
-
 %postun
 %service_del_postun guestregister.service containerbuild-regionsrv.service
-
-%postun addon-azure
-%service_del_postun regionsrv-enabler-azure.timer
 
 %files
 %defattr(-,root,root,-)
@@ -294,12 +268,5 @@ fi
 %files plugin-azure
 %defattr(-,root,root,-)
 %{_sitelibdir}/cloudregister/msft*
-
-%files addon-azure
-%defattr(-,root,root,-)
-%{_unitdir}/regionsrv-enabler-azure.service
-%{_unitdir}/regionsrv-enabler-azure.timer
-%attr(744, root, root) %{_sbindir}/regionsrv-enabler-azure
-
 
 %changelog
