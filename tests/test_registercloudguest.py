@@ -2527,8 +2527,50 @@ def test_setup_registry_ok(
     mock_set_registries_conf_docker.return_value = True
     mock_set_registry_fqdn_suma.return_value = True
     assert register_cloud_guest.setup_registry(smt_server) is None
-    mock_is_docker_present.return_value = True
+    mock_set_registries_conf_podman.assert_called_once_with(
+        'registry-ec2.susecloud.net'
+    )
+    mock_set_registries_conf_docker.assert_called_once_with(
+        'registry-ec2.susecloud.net'
+    )
+    mock_set_registry_fqdn_suma.assert_called_once_with(
+        'registry-ec2.susecloud.net'
+    )
+
+
+@patch('cloudregister.registerutils.prepare_registry_setup')
+@patch('cloudregister.registerutils.set_registries_conf_podman')
+@patch('cloudregister.registerutils.set_registries_conf_docker')
+@patch('cloudregister.registerutils.set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.is_suma_instance')
+@patch('cloudregister.registerutils.is_registry_registered')
+@patch('cloudregister.registerutils.get_credentials_file')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.is_docker_present')
+def test_setup_registry_ok_without_docker(
+    mock_is_docker_present, mock_get_credentials,
+    mock_get_credentials_file, mock_is_registry_registered,
+    mock_is_suma_instance, mock_set_registry_fqdn_suma,
+    mock_set_registries_conf_docker, mock_set_registries_conf_podman,
+    mock_prepare_registry_setup
+):
+    mock_is_docker_present.return_value = False
+    mock_is_suma_instance.return_value = True
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="AA:BB:CC:DD"
+         SMTserverIP="1.2.3.5"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="foo-ec2.susecloud.net"
+         SMTregistryName="registry-ec2.susecloud.net"
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_credentials.return_value = 'foo', 'bar'
+    mock_is_registry_registered.return_value = False
+    mock_prepare_registry_setup.return_value = True
+    mock_set_registries_conf_podman.return_value = True
+    mock_set_registry_fqdn_suma.return_value = True
     assert register_cloud_guest.setup_registry(smt_server) is None
+    assert not mock_set_registries_conf_docker.called
 
 
 @patch('register_cloud_guest.logging')
