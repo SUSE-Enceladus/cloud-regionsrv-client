@@ -147,8 +147,11 @@ def setup_registry(registration_target, clean='registry'):
     if not utils.is_docker_present():
         with_docker = False
         logging.info(
-            'Registration for docker registry skipped, '
-            'docker is not installed.'
+            'docker config file {} not found. '
+            'Registration for docker skipped. '
+            'Install docker to add docker support.'.format(
+                utils.DOCKER_CONFIG_PATH
+            )
         )
 
     registry_fqdn = registration_target.get_registry_FQDN()
