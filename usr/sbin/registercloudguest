@@ -163,7 +163,7 @@ def setup_registry(registration_target, clean='registry'):
             # if the required modifications are not included.
             docker_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
 
-            # registry_setup_ok will take a True/False value on a real
+            # docker_setup_ok will take a True/False value on a real
             # action that happened. In any other case a None value is
             # present which indicates no action was performed.
             if docker_setup_ok is False:
