@@ -164,6 +164,7 @@ def setup_registry(registration_target, clean='registry'):
             # setup routine even though docker was setup before. However,
             # the code will only effectively write a new registry setup
             # if the required modifications are not included.
+            logging.info('Adding docker support')
             docker_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
 
             # docker_setup_ok will take a True/False value on a real
@@ -188,8 +189,10 @@ def setup_registry(registration_target, clean='registry'):
     )
     registry_setup_ok = False
     if utils.prepare_registry_setup(registry_fqdn, user, password):
+        logging.info('Adding podman support')
         registry_setup_ok = utils.set_registries_conf_podman(registry_fqdn)
         if with_docker:
+            logging.info('Adding docker support')
             registry_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
         if utils.is_suma_instance():
             registry_setup_ok = utils.set_registry_fqdn_suma(registry_fqdn)

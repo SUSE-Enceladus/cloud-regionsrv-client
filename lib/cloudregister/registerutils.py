@@ -2582,7 +2582,6 @@ def __mv_file_backup(filename):
 # ----------------------------------------------------------------------------
 def set_registries_conf_podman(private_registry_fqdn):
     """Set the registry search order for Podman."""
-    logging.info('Adding podman support')
     registries_conf = {}
     if os.path.exists(REGISTRIES_CONF_PATH):
         registries_conf, failed = get_registry_conf_file(
@@ -2648,7 +2647,6 @@ def set_registries_conf_docker(private_registry_fqdn):
     docker_cfg_json = {}
     registry_mirrors = []
     if is_docker_present():
-        logging.info('Adding docker support')
         docker_cfg_json, failed = get_registry_conf_file(
             DOCKER_CONFIG_PATH, 'docker'
         )
