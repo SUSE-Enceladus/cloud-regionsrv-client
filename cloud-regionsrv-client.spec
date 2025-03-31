@@ -211,11 +211,11 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %service_add_pre regionsrv-enabler.timer
 
 %preun
-# Do not run during an upgrade process
-# When the package is removed we need to clean up or we will leave
-# repositories with "plugin://" behind while the plugin we supply is
-# being removed (bsc#1240310)
-if [ "$1" -eq 0 ]; then
+%service_del_preun guestregister.service containerbuild-regionsrv.service
+# When the package is removed (do not run during an upgrade) we need
+# to clean up or we will leave repositories with "plugin://" behind
+# while the plugin we supply is being removed (bsc#1240310)
+if [ "$1" -eq 0 ] && [ -e "%{_sysconfdir}/regionserverclnt.cfg" ]; then
     %{_sbindir}/registercloudguest --clean
 fi
 
@@ -234,9 +234,6 @@ fi
 
 %post addon-azure
 %service_add_post regionsrv-enabler.timer
-
-%preun
-%service_del_preun guestregister.service containerbuild-regionsrv.service
 
 %preun addon-azure
 %service_del_preun regionsrv-enabler-azure.timer
