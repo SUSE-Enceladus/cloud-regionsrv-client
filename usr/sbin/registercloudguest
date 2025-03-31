@@ -35,7 +35,6 @@ import requests
 import sys
 import time
 import urllib.parse
-import urllib3
 import uuid
 
 import cloudregister.registerutils as utils
@@ -50,7 +49,9 @@ ZYPP_SERVICES = '/etc/zypp/services.d'
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
-urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings(
+    requests.packages.urllib3.exceptions.InsecureRequestWarning
+)
 registration_returncode = 0
 
 
