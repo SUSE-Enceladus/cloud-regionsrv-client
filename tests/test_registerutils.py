@@ -3875,7 +3875,10 @@ def test_has_network_access_by_ip_address_no_connection(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.set_registries_conf')
+@patch('cloudregister.registerutils.set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.set_registries_conf_docker')
+@patch('cloudregister.registerutils.set_registries_conf_podman')
+@patch('cloudregister.registerutils.is_suma_instance')
 @patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
@@ -3883,17 +3886,20 @@ def test_has_network_access_by_ip_address_no_connection(
 @patch('cloudregister.registerutils.json.load')
 def test_setup_registry_empty_file(
     mock_json_load, mock_json_dump, mock_os_makedirs,
-    mock_os_path_exists, mock_set_container_engines_env_vars, _
+    mock_os_path_exists, mock_set_container_engines_env_vars,
+    mock_is_suma_instance, mock_set_registries_conf_podman,
+    mock_set_registries_conf_docker, mock_set_registry_fqdn_suma
 ):
     mock_os_path_exists.return_value = [False, True]
     mock_json_load.return_value = {}
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
-        utils.setup_registry(
-            'registry-supercloud.susecloud.net',
-            'login',
-            'pass'
+        utils.prepare_registry_setup(
+            'registry-supercloud.susecloud.net', 'login', 'pass'
         )
+        utils.set_registries_conf_podman('registry-supercloud.susecloud.net')
+        utils.set_registries_conf_docker('registry-supercloud.susecloud.net')
+        utils.set_registry_fqdn_suma('registry-supercloud.susecloud.net')
         assert mock_open.call_args_list == [
             call('/etc/containers/config.json', 'r'),
             call('/etc/containers/config.json', 'w')
@@ -3911,23 +3917,29 @@ def test_setup_registry_empty_file(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.set_registries_conf')
+@patch('cloudregister.registerutils.set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.set_registries_conf_docker')
+@patch('cloudregister.registerutils.set_registries_conf_podman')
+@patch('cloudregister.registerutils.is_suma_instance')
 @patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.json.dump')
 def test_setup_registry_file_not_exists(
-    mock_json_dump, _mock_os_makedirs,  mock_os_path_exists,
-    _mock_set_container_env_vars, _mock_set_reg_conf
+    mock_json_dump, _mock_os_makedirs, mock_os_path_exists,
+    mock_set_container_env_vars, mock_is_suma_instance,
+    mock_set_registries_conf_podman, mock_set_registries_conf_docker,
+    mock_set_registry_fqdn_suma
 ):
     mock_os_path_exists.side_effect = [False, False]
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
-        utils.setup_registry(
-            'registry-supercloud.susecloud.net',
-            'login',
-            'pass'
+        utils.prepare_registry_setup(
+            'registry-supercloud.susecloud.net', 'login', 'pass'
         )
+        utils.set_registries_conf_podman('registry-supercloud.susecloud.net')
+        utils.set_registries_conf_docker('registry-supercloud.susecloud.net')
+        utils.set_registry_fqdn_suma('registry-supercloud.susecloud.net')
         assert mock_open.call_args_list == [
             call('/etc/containers/config.json', 'w')
         ]
@@ -3944,7 +3956,10 @@ def test_setup_registry_file_not_exists(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.set_registries_conf')
+@patch('cloudregister.registerutils.set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.set_registries_conf_docker')
+@patch('cloudregister.registerutils.set_registries_conf_podman')
+@patch('cloudregister.registerutils.is_suma_instance')
 @patch('cloudregister.registerutils.set_container_engines_env_vars')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.os.makedirs')
@@ -3953,7 +3968,9 @@ def test_setup_registry_file_not_exists(
 def test_setup_registry_content(
     mock_json_load, mock_json_dump,
     mock_os_makedirs, mock_os_path_exists,
-    mock_set_env_vars, mock_set_reg_conf
+    mock_set_env_vars, mock_is_suma_instance,
+    mock_set_registries_conf_podman, mock_set_registries_conf_docker,
+    mock_set_registry_fqdn_suma
 ):
     mock_os_path_exists.return_value = True
     mock_json_load.return_value = {
@@ -3963,11 +3980,12 @@ def test_setup_registry_content(
     }
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
-        utils.setup_registry(
-            'registry-supercloud.susecloud.net',
-            'login',
-            'pass'
+        utils.prepare_registry_setup(
+            'registry-supercloud.susecloud.net', 'login', 'pass'
         )
+        utils.set_registries_conf_podman('registry-supercloud.susecloud.net')
+        utils.set_registries_conf_docker('registry-supercloud.susecloud.net')
+        utils.set_registry_fqdn_suma('registry-supercloud.susecloud.net')
         assert mock_open.call_args_list == [
             call('/etc/containers/config.json', 'r'),
             call('/etc/containers/config.json', 'w')
@@ -3991,19 +4009,19 @@ def test_setup_registry_content(
 @patch('cloudregister.registerutils.os.makedirs')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.json.load')
+@patch('cloudregister.registerutils.toml.load')
 def test_setup_registry_content_json_error_preserve_fail(
-    mock_json_load, mock_logging, mock_os_makedirs,
+    mock_toml_load, mock_json_load, mock_logging, mock_os_makedirs,
     mock_os_path_exists, mock_exec_subprocess
 ):
     mock_os_path_exists.return_value = [False, True]
-    mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
+    mock_toml_load.side_effect = toml.decoder.TomlDecodeError('msg', 'doc', 0)
+    mock_json_load.side_effect = json.decoder.JSONDecodeError('msg', 'doc', 0)
     mock_exec_subprocess.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
         mock_exec_subprocess.return_value = 1
-        assert utils.setup_registry(
-            'registry-supercloud.susecloud.net',
-            'login',
-            'pass'
+        assert utils.prepare_registry_setup(
+            'registry-supercloud.susecloud.net', 'login', 'pass'
         ) is False
         mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
         log_calls = [
@@ -4035,7 +4053,7 @@ def test_setup_registry_content_open_file_error(
     with patch('builtins.open', create=True) as mock_open:
         mock_open.side_effect = OSError('oh no ! an error')
         mock_exec_subprocess.return_value = 1
-        assert utils.setup_registry(
+        assert utils.prepare_registry_setup(
             'registry-supercloud.susecloud.net',
             'login',
             'pass'
@@ -4072,7 +4090,7 @@ def test_setup_registry_content_write_error(
     mock_os_path_exists.return_value = False
     mock_json_dump.side_effect = Exception('something happened !')
     with patch('builtins.open', create=True) as mock_open:
-        utils.setup_registry(
+        utils.prepare_registry_setup(
             'registry-supercloud.susecloud.net',
             'login',
             'pass'
@@ -4309,7 +4327,10 @@ def test_clean_registry_auth_no_registry_entry_in_file(
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.set_registries_conf')
+@patch('cloudregister.registerutils.set_registry_fqdn_suma')
+@patch('cloudregister.registerutils.set_registries_conf_docker')
+@patch('cloudregister.registerutils.set_registries_conf_podman')
+@patch('cloudregister.registerutils.is_suma_instance')
 @patch('cloudregister.registerutils.exec_subprocess')
 @patch('cloudregister.registerutils.__generate_registry_auth_token')
 @patch('cloudregister.registerutils.os.path.exists')
@@ -4318,7 +4339,8 @@ def test_clean_registry_auth_no_registry_entry_in_file(
 def test_clean_registry_auth_no_registry_entry_in_file_wrong_dict_content(
     mock_json_load, mock_logging, mock_os_path_exists,
     mock_generate_registry_auth_token, mock_exec_subprocess,
-    mock_set_Registries_conf
+    mock_is_suma_instance, mock_set_registries_conf_podman,
+    mock_set_registries_conf_docker, mock_set_registry_fqdn_suma
 ):
     mock_generate_registry_auth_token.return_value = 'auth_token'
     mock_json_load.return_value = {'auths': 'bar'}
@@ -4536,22 +4558,9 @@ def test_update_bashrc_open_file_error(mock_logging):
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.is_suma_instance')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test_set_registries_conf(
-    mock_os_path_exists, mock_get_reg_conf_file, mock_is_suma
-):
-    mock_os_path_exists.return_value = True
-    mock_is_suma.return_value = False
-    mock_get_reg_conf_file.return_value = {}, True
-    assert utils.set_registries_conf('foo') is False
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.get_registry_conf_file')
-@patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_OK_content(
+def test_set_registries_conf_podman_OK_content(
     mock_os_path_exists, mock_get_reg_conf_file
 ):
     mock_os_path_exists.return_value = True
@@ -4563,7 +4572,7 @@ def test__set_registries_conf_podman_OK_content(
             {'location': 'registry-ec2.susecloud.net', 'insecure': False}
         ]
     }, False
-    assert utils.__set_registries_conf_podman(
+    assert utils.set_registries_conf_podman(
         'registry-ec2.susecloud.net'
     ) is None
 
@@ -4573,7 +4582,7 @@ def test__set_registries_conf_podman_OK_content(
 @patch('cloudregister.registerutils.toml.dump')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_setup_private_registry(
+def test_set_registries_conf_podman_content_setup_private_registry(
     mock_os_path_exists, mock_get_reg_conf_file,
     mock_toml_dump, mock_logging
 ):
@@ -4588,7 +4597,7 @@ def test__set_registries_conf_podman_content_setup_private_registry(
     }, False
     with patch('builtins.open', create=True) as mock_open:
         file_handle = mock_open.return_value.__enter__.return_value
-        assert utils.__set_registries_conf_podman('registry-ec2.susecloud.net')
+        assert utils.set_registries_conf_podman('registry-ec2.susecloud.net')
         mock_toml_dump.assert_called_once_with(
             {
                 'unqualified-search-registries': [
@@ -4623,7 +4632,7 @@ def test__set_registries_conf_podman_content_setup_private_registry(
 @patch('cloudregister.registerutils.toml.dump')
 @patch('cloudregister.registerutils.get_registry_conf_file')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK_order_has_changed(
+def test_set_registries_conf_podman_content_not_OK_order_has_changed(
     mock_os_path_exists, mock_get_reg_conf_file,
     mock_toml_dump, mock_logging
 ):
@@ -4640,7 +4649,7 @@ def test__set_registries_conf_podman_content_not_OK_order_has_changed(
     with patch('builtins.open', create=True):
         # someone has manually modified the registries setup
         # Don't touch it. Users can fix via --clean re-registration
-        assert utils.__set_registries_conf_podman(
+        assert utils.set_registries_conf_podman(
             'registry-ec2.susecloud.net'
         ) is None
 
@@ -4649,7 +4658,7 @@ def test__set_registries_conf_podman_content_not_OK_order_has_changed(
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.toml.load')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_file_open_error(
+def test_set_registries_conf_podman_file_open_error(
     mock_os_path_exists, mock_toml_load, mock_logging
 ):
     mock_os_path_exists.return_value = True
@@ -4667,9 +4676,9 @@ def test__set_registries_conf_podman_file_open_error(
             MagicMock(spec=io.IOBase).return_value,
             OSError('oh no !')
         ]
-        assert utils.__set_registries_conf_podman(
+        assert utils.set_registries_conf_podman(
             'registry-ec2.susecloud.net'
-        ) is None
+        ) is False
         assert mock_open.call_args_list == [
             call('/etc/containers/registries.conf', 'r'),
             call('/etc/containers/registries.conf', 'w')
@@ -4691,14 +4700,14 @@ def test__set_registries_conf_podman_file_open_error(
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.toml.load')
 @patch('cloudregister.registerutils.os.path.exists')
-def test__set_registries_conf_podman_content_not_OK_read_error_not_preserved(
+def test_set_registries_conf_podman_content_not_OK_read_error_not_preserved(
     mock_os_path_exists, mock_toml_load, mock_logging, mock_exec_subprocess
 ):
     mock_os_path_exists.return_value = True
     mock_exec_subprocess.return_value = 1
     with patch('builtins.open', create=True) as mock_open:
         mock_open.side_effect = OSError('oh no !')
-        assert utils.__set_registries_conf_podman(
+        assert utils.set_registries_conf_podman(
             'registry-ec2.susecloud.net'
         ) is False
         assert mock_open.call_args_list == [
@@ -4851,7 +4860,7 @@ def test_set_registry_order_search_podman_no_configured(
         mock_open.side_effect = open_file
         file_handle = \
             mock_open_podman_config.return_value.__enter__.return_value
-        utils.__set_registries_conf_podman('rmt-registry.susecloud.net')
+        utils.set_registries_conf_podman('rmt-registry.susecloud.net')
         assert mock_toml_dump.call_args_list == [
             call({
                 'search-registries': ['docker.io'],
@@ -4885,7 +4894,7 @@ def test_set_registry_order_search_podman_conf_missing_suse_registry(
         mock_open.side_effect = open_file
         file_handle = \
             mock_open_podman_config.return_value.__enter__.return_value
-        utils.__set_registries_conf_podman('rmt-registry.susecloud.net')
+        utils.set_registries_conf_podman('rmt-registry.susecloud.net')
         mock_toml_dump.assert_called_once_with({
             'unqualified-search-registries': [
                 'rmt-registry.susecloud.net',
@@ -5063,7 +5072,7 @@ def test_set_registries_conf_docker_no_matches(
             'registry-mirrors': ['foo'],
             'bar': ['bar'],
         }, False
-        utils.__set_registries_conf_docker('registry-foo.susecloud.net')
+        utils.set_registries_conf_docker('registry-foo.susecloud.net')
         mock_json_dump.assert_called_once_with(
             {
                 'registry-mirrors': [
@@ -5100,7 +5109,7 @@ def test_set_registries_conf_docker_not_OK_order_has_changed(
             ],
             'bar': ['bar'],
         }, False
-        utils.__set_registries_conf_docker('registry-foo.susecloud.net')
+        utils.set_registries_conf_docker('registry-foo.susecloud.net')
         # The registry setup contains the entries we care but was
         # modified manually. Don't touch this user modified variant.
         # This can be changed by the user via a --clean re-registration
@@ -5125,7 +5134,7 @@ def test_set_registries_conf_docker_not_key_mirror(
         file_handle = \
             mock_open_podman_config.return_value.__enter__.return_value
         mock_get_registry_conf_file.return_value = {'foo': ['foo']}, False
-        utils.__set_registries_conf_docker('registry-foo.susecloud.net')
+        utils.set_registries_conf_docker('registry-foo.susecloud.net')
         mock_json_dump.assert_called_once_with(
             {
                 'foo': ['foo'],
@@ -5146,7 +5155,7 @@ def test_set_registries_conf_docker_error_file_not_preserved(
 ):
     mock_os_path_exists.return_value = True
     mock_get_registry_conf_file.return_value = {}, True
-    assert utils.__set_registries_conf_docker(
+    assert utils.set_registries_conf_docker(
         'registry-foo.susecloud.net'
     ) is False
 
@@ -5175,43 +5184,13 @@ def test_write_registries_conf_dump_error(mock_json_dump, mock_logging):
         file_handle = mock_open.return_value.__enter__.return_value
         assert utils.write_registries_conf(
             'foo', 'docker_path', 'docker'
-        ) is None
+        ) is False
         assert mock_json_dump.call_args_list == [
             call('foo', file_handle)
         ]
         assert mock_logging.error.call_args_list == [
             call('Could not write docker_path')
         ]
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.__set_registry_fqdn_suma')
-@patch('cloudregister.registerutils.__set_registries_conf_docker')
-@patch('cloudregister.registerutils.__set_registries_conf_podman')
-@patch('cloudregister.registerutils.is_suma_instance')
-def test_suma_registry_conf_no_suma_instance(
-    mock_is_suma, mock_set_podman, mock_set_docker, mock_fqdn_suma
-):
-    mock_is_suma.return_value = False
-    mock_set_podman.return_value = True
-    mock_set_docker.return_value = True
-    assert utils.set_registries_conf('foo.com')
-    assert mock_fqdn_suma.call_count == 0
-
-
-# ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.__set_registry_fqdn_suma')
-@patch('cloudregister.registerutils.__set_registries_conf_docker')
-@patch('cloudregister.registerutils.__set_registries_conf_podman')
-@patch('cloudregister.registerutils.is_suma_instance')
-def test_suma_registry_conf_suma_instance(
-    mock_is_suma, mock_set_podman, mock_set_docker, mock_fqdn_suma
-):
-    mock_is_suma.return_value = True
-    mock_set_podman.return_value = True
-    mock_set_docker.return_value = True
-    mock_fqdn_suma.return_value = True
-    assert utils.set_registries_conf('registry-fqdn.com')
 
 
 # ---------------------------------------------------------------------------
@@ -5238,7 +5217,7 @@ def test_suma_registry_conf_suma_instance_error_get_suma_content(
     _, mock_get_suma_registry_content
 ):
     mock_get_suma_registry_content.return_value = {}, 1
-    assert utils.__set_registry_fqdn_suma('foo.com') is False
+    assert utils.set_registry_fqdn_suma('foo.com') is False
 
 
 # ---------------------------------------------------------------------------
@@ -5256,7 +5235,7 @@ def test_suma_registry_conf_suma_instance_file_exists(
         mock_open.return_value = MagicMock(spec=io.IOBase)
         file_handle = mock_open.return_value.__enter__.return_value
         # mock_open.side_effect = IOError('oh no ! an error')
-        assert utils.__set_registry_fqdn_suma('foo.com')
+        assert utils.set_registry_fqdn_suma('foo.com')
         assert mock_open.call_args_list == [
             call('/etc/uyuni/uyuni-tools.yaml', 'r'),
             call('/etc/uyuni/uyuni-tools.yaml', 'w')
@@ -5285,7 +5264,7 @@ def test_suma_registry_conf_suma_instance_file_exists_different_fqdn(
     with patch('builtins.open', create=True) as mock_open:
         # mock_open.return_value = MagicMock(spec=io.IOBase)
         file_handle = mock_open.return_value.__enter__.return_value
-        assert utils.__set_registry_fqdn_suma('foo.com')
+        assert utils.set_registry_fqdn_suma('foo.com')
         assert mock_open.call_args_list == [
             call('/etc/uyuni/uyuni-tools.yaml', 'r'),
             call('/etc/uyuni/uyuni-tools.yaml', 'w')
@@ -5310,7 +5289,7 @@ def test_suma_registry_conf_suma_instance_file_exists_same_fqdn(
     mock_os_path_exists.return_value = True
     mock_yaml_safe_load.return_value = {'registry': 'foo.com'}
     with patch('builtins.open', create=True) as mock_open:
-        assert utils.__set_registry_fqdn_suma('foo.com')
+        assert utils.set_registry_fqdn_suma('foo.com')
         assert mock_open.call_args_list == [
             call('/etc/uyuni/uyuni-tools.yaml', 'r')
         ]

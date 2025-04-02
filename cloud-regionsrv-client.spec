@@ -58,10 +58,10 @@ Requires:       %{pythons}-toml
 # podman related config files gets pulled in. We modify
 # /etc/containers/registries.conf
 Requires:       libcontainers-common
-# Add requirement for docker to make sure all docker related
-# config files gets pulled in. We modify
+# Add recommendation for docker to make sure all docker related
+# config files get pulled in. If present we modify
 # /etc/docker/daemon.json
-Requires:       docker
+Recommends:     docker
 %endif
 Requires:       regionsrv-certs
 Requires:       sudo

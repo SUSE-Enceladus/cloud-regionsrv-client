@@ -145,7 +145,41 @@ def setup_registry(registration_target, clean='registry'):
         utils.get_credentials_file(registration_target)
     )
     registry_fqdn = registration_target.get_registry_FQDN()
+
+    with_docker = utils.is_docker_present()
+    if not with_docker:
+        logging.info(
+            'docker config file {} not found. '
+            'Registration for docker skipped. '
+            'Install docker to add docker support.'.format(
+                utils.DOCKER_CONFIG_PATH
+            )
+        )
+
     if utils.is_registry_registered(registry_fqdn):
+        if with_docker:
+            # Special handling for the docker case:
+            #
+            # When docker is present we perform the registry configuration
+            # for the docker container engine. This may cause calling the
+            # setup routine even though docker was setup before. However,
+            # the code will only effectively write a new registry setup
+            # if the required modifications are not included.
+            logging.info('Adding docker support')
+            docker_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
+
+            # docker_setup_ok will take a True/False value on a real
+            # action that happened. In any other case a None value is
+            # present which indicates no action was performed.
+            if docker_setup_ok is False:
+                print(
+                    'Registration failed(docker), see {0} for details'.format(
+                        LOG_FILE
+                    ), file=sys.stderr
+                )
+                sys.exit(1)
+            elif docker_setup_ok is True:
+                print('Successfully added docker to the registry setup')
         logging.info(
             'Instance is setup to access container registry, nothing to do'
         )
@@ -154,7 +188,16 @@ def setup_registry(registration_target, clean='registry'):
         'Adding registry setup to instance, all existing shell '
         'sessions must be restarted to use the registry.'
     )
-    if not utils.setup_registry(registry_fqdn, user, password):
+    registry_setup_ok = False
+    if utils.prepare_registry_setup(registry_fqdn, user, password):
+        logging.info('Adding podman support')
+        registry_setup_ok = utils.set_registries_conf_podman(registry_fqdn)
+        if with_docker:
+            logging.info('Adding docker support')
+            registry_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
+        if utils.is_suma_instance():
+            registry_setup_ok = utils.set_registry_fqdn_suma(registry_fqdn)
+    if not registry_setup_ok:
         if clean == 'all':
             cleanup()
         elif clean == 'registry':
