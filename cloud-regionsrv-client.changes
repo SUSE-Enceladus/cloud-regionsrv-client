@@ -5,7 +5,9 @@ NEXT version
   + Remove repositories when the package is being removed
     We do not want to leave repositories behind refering to the plugin that
     is being removed when the package gets removed (bsc#1240310, bsc#1240311)
-
+  + Turn docker into an optional setup
+    Change the Requires into a Recommends and adapt the code accordingly
+    
 -------------------------------------------------------------------
 Tue Dec  3 17:21:52 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
 
