@@ -121,16 +121,7 @@ def register_modules(
 # ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
-    try:
-        utils.clean_non_free_extensions()
-    except Exception as err:
-        print('Could not check the system product data: {}'.format(err))
-
-    utils.clean_registry_setup()
-    utils.remove_registration_data()
-    utils.clean_smt_cache()
-    utils.clear_new_registration_flag()
-    utils.clean_framework_identifier()
+    utils.clean_all()
 
 
 # ----------------------------------------------------------------------------

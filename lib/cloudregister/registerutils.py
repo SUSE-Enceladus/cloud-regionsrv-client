@@ -106,6 +106,21 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
+def clean_all():
+    """Clean up any registration artifacts"""
+    try:
+        clean_non_free_extensions()
+    except Exception as err:
+        logging.info('Could not check the system product data: {}'.format(err))
+
+    clean_registry_setup()
+    remove_registration_data()
+    clean_smt_cache()
+    clear_new_registration_flag()
+    clean_framework_identifier()
+
+
+# ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name):
     """Remove the smt server and registry entries from the /etc/hosts file"""
     if isinstance(domain_name, str):
