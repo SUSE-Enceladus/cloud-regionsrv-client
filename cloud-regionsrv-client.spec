@@ -22,6 +22,9 @@
 %endif
 %global _sitelibdir %{%{pythons}_sitelib}
 
+%define eflag /run/azuretimer-was-enabled
+%define aflag /run/azuretimer-was-running
+
 %define base_version 10.3.11
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
@@ -145,20 +148,6 @@ Requires:       python3-dnspython
 Guest registration plugin for images intended for Microsoft Azure providing
 information to get the appropriate data form the region server.
 
-%package addon-azure
-Version:	1.0.5
-Release:	0
-Summary:	Enable/Disable Guest Registration for Microsoft Azure
-Group:		Productivity/Networking/Web/Servers
-Requires:	cloud-regionsrv-client >= 9.0.0
-Requires:	cloud-regionsrv-client-plugin-azure
-
-BuildArch:      noarch
-
-%description addon-azure
-Enable/Disable Guest Registration for Microsoft Azure when changes in the
-instance status are detected for PAYG vs. BYOS
-
 %package license-watcher
 Version:	1.0.0
 Release:	0
@@ -166,6 +155,8 @@ Summary:	Enable/Disable Guest Registration for a running instance
 Group:		Productivity/Networking/Web/Servers
 Requires:	cloud-regionsrv-client >= 9.0.0
 Requires:       python-instance-billing-flavor-check >= 1.0.0
+Provides:       cloud-regionsrv-client-addon-azure = 1.0.6
+Obsoletes:      cloud-regionsrv-client-addon-azure <= 1.0.5
 
 BuildArch:      noarch
 
@@ -211,8 +202,6 @@ mkdir -p %{buildroot}/usr/lib/regionService/certs
 mkdir -p %{buildroot}/var/cache/cloudregister
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
-install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.service %{buildroot}%{_unitdir}
-install -m 644 usr/lib/systemd/system/regionsrv-enabler-azure.timer %{buildroot}%{_unitdir}
 install -m 440 etc/sudoers.d/cloudguestregistryauth %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
 %if 0%{?suse_version} == 1315
 rm -rf %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
@@ -223,11 +212,18 @@ gzip %{buildroot}/%{_mandir}/man1/*
 %pre
 %service_add_pre guestregister.service containerbuild-regionsrv.service
 
-%pre addon-azure
-%service_add_pre regionsrv-enabler-azure.timer
-
 %pre license-watcher
 %service_add_pre guestregister-lic-watcher.timer
+# Save the "enabled" and "active" state of the previously existing
+# addon-azure package which is being replaced by the license-watcher
+# package. If the old service was enabled and active we want to enable the
+# new service.
+if [ $1 -ge 1 ]; then \
+    if [ x$(systemctl is-enabled regionsrv-enabler-azure.timer 2>/dev/null ||:) = "xenabled" ]; then
+		touch %eflag
+	fi
+	systemctl is-active regionsrv-enabler-azure.timer &>/dev/null && touch %aflag ||:
+fi
 
 %preun
 %service_del_preun guestregister.service containerbuild-regionsrv.service
@@ -251,23 +247,25 @@ fi
 fi
 %service_add_post guestregister.service containerbuild-regionsrv.service
 
-%post addon-azure
-%service_add_post regionsrv-enabler.timer
-
 %post license-watcher
 %service_add_post guestregister-lic-watcher.timer
 
-%preun addon-azure
-%service_del_preun regionsrv-enabler-azure.timer
+%posttrans license-watcher
+if test -f %eflag; then
+    rm -f %eflag
+    systemctl enable guestregister-lic-watcher.timer
+fi
+
+if test -f %aflag; then
+    rm -f %aflag
+    systemctl start guestregister-lic-watcher.timer
+fi
 
 %preun license-watcher
 %service_del_preun guestregister-lic-watcher.timer
 
 %postun
 %service_del_postun guestregister.service containerbuild-regionsrv.service
-
-%postun addon-azure
-%service_del_postun regionsrv-enabler-azure.timer
 
 %postun license-watcher
 %service_del_postun guestregister-lic-watcher.timer
@@ -328,12 +326,6 @@ fi
 %files plugin-azure
 %defattr(-,root,root,-)
 %{_sitelibdir}/cloudregister/msft*
-
-%files addon-azure
-%defattr(-,root,root,-)
-%{_unitdir}/regionsrv-enabler-azure.service
-%{_unitdir}/regionsrv-enabler-azure.timer
-%attr(744, root, root) %{_sbindir}/regionsrv-enabler-azure
 
 %files license-watcher
 %defattr(-,root,root,-)
