@@ -1628,7 +1628,7 @@ def get_zypper_target_root():
     """
     zypper_cmd = get_zypper_command()
     target_root = ''
-    for root_arg in ('-R', '--root'):
+    for root_arg in ('-R ', '--root '):
         if zypper_cmd and root_arg in zypper_cmd:
             target_root = zypper_cmd.split(root_arg)[-1].split()[0].strip()
             break
