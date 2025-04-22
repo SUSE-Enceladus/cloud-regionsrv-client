@@ -10,7 +10,8 @@ NEXT version
   + Support flexible licenses in GCE (jsc#PCT-531)
   + Drop the azure-addon package it is geting replaced by the
     license-watcher package which has a generic implementation of the
-    same functionality. (bsc#1218345)
+    same functionality.
+  + Handle cache inconsistencies (bsc#1218345)
     
 -------------------------------------------------------------------
 Tue Dec  3 17:21:52 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
