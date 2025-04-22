@@ -10,10 +10,6 @@ jobs:
       matrix:
         python-version: ["3.11"]
         os: [ubuntu-latest]
-        include:
-          # Use ubuntu 20.04 for python 3.6 (dropped from later versions)
-          - python-version: 3.6
-            os: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v3
