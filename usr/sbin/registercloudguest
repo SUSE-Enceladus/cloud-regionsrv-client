@@ -278,6 +278,49 @@ def setup_ltss_registration(
 
 
 # ----------------------------------------------------------------------------
+def make_request(url, registration_target):
+    headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
+    user, password = utils.get_credentials(
+        utils.get_credentials_file(registration_target)
+    )
+    res = requests.get(
+        url,
+        auth=HTTPBasicAuth(user, password),
+        headers=headers
+    )
+    if res.status_code != 200:
+        err_msg = 'Unable to obtain product information from server "%s"\n'
+        err_msg += '\t%s\n\t%s\nUnable to register modules, exiting.'
+        ips = '%s,%s' % (
+            registration_target.get_ipv4(), registration_target.get_ipv6()
+        )
+        logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
+        sys.exit(1)
+
+    return res.json()
+
+
+# ----------------------------------------------------------------------------
+def get_system_products(registration_target):
+    base_product = utils.get_product_triplet(
+        utils.get_product_tree()
+    )
+    query_args = 'identifier=%s&version=%s&arch=%s' % (
+        base_product.name, base_product.version, base_product.arch
+    )
+    system_products_url = 'https://%s/connect/systems/products?%s' % (
+        registration_target.get_FQDN(), query_args
+    )
+    # request the system products
+    return make_request(system_products_url, registration_target)
+
+
+# ----------------------------------------------------------------------------
+def get_extensions(registration_target):
+    prod_data = get_system_products(registration_target)
+    return prod_data.get('extensions')
+
+
 def get_proxies():
     """Return the proxies set in the environment in a dictionary or None."""
     proxies = None
@@ -725,35 +768,7 @@ def main(args):
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
-    base_product = utils.get_product_triplet(
-        utils.get_product_tree()
-    )
-    headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
-    query_args = 'identifier=%s&version=%s&arch=%s' % (
-        base_product.name, base_product.version, base_product.arch
-    )
-    user, password = utils.get_credentials(
-        utils.get_credentials_file(registration_target)
-    )
-    auth_creds = HTTPBasicAuth(user, password)
-    res = requests.get(
-        'https://%s/connect/systems/products?%s' % (
-            registration_target.get_FQDN(), query_args
-        ),
-        auth=auth_creds,
-        headers=headers
-    )
-    if res.status_code != 200:
-        err_msg = 'Unable to obtain product information from server "%s"\n'
-        err_msg += '\t%s\n\t%s\nUnable to register modules, exiting.'
-        ips = '%s,%s' % (
-            registration_target.get_ipv4(), registration_target.get_ipv6()
-        )
-        logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
-        sys.exit(1)
-
-    prod_data = res.json()
-    extensions = prod_data.get('extensions')
+    extensions = get_extensions(registration_target)
     failed_extensions = []
     register_modules(
         extensions,
