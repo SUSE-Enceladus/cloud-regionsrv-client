@@ -278,6 +278,23 @@ def setup_ltss_registration(
 
 
 # ----------------------------------------------------------------------------
+def get_proxies():
+    """Return the proxies set in the environment in a dictionary or None."""
+    proxies = None
+    if utils.set_proxy():
+        http_proxy = os.environ.get('http_proxy')
+        https_proxy = os.environ.get('https_proxy')
+        no_proxy = os.environ.get('no_proxy')
+        proxies = {
+            'http_proxy': http_proxy,
+            'https_proxy': https_proxy,
+            'no_proxy': no_proxy
+        }
+        logging.info('Using proxy settings: %s' % proxies)
+
+    return proxies
+
+
 def get_region_smt_data(args, cfg, proxies):
     """Return the region SMT data."""
     if args.user_smt_ip:
@@ -482,16 +499,7 @@ def main(args):
         cached_smt_servers = []
 
     # Proxy setup
-    proxies = None
-    proxy = utils.set_proxy()
-    if proxy:
-        http_proxy = os.environ.get('http_proxy')
-        https_proxy = os.environ.get('https_proxy')
-        no_proxy = os.environ.get('no_proxy')
-        proxies = {'http_proxy': http_proxy,
-                   'https_proxy': https_proxy,
-                   'no_proxy': no_proxy}
-        logging.info('Using proxy settings: %s' % proxies)
+    proxies = get_proxies()
 
     region_smt_data = get_region_smt_data(args, cfg, proxies)
     registration_smt = utils.get_current_smt()
