@@ -35,7 +35,6 @@ import requests
 import sys
 import time
 import urllib.parse
-import urllib3
 import uuid
 
 import cloudregister.registerutils as utils
@@ -50,7 +49,9 @@ ZYPP_SERVICES = '/etc/zypp/services.d'
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
-urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings(
+    requests.packages.urllib3.exceptions.InsecureRequestWarning
+)
 registration_returncode = 0
 
 
@@ -120,16 +121,7 @@ def register_modules(
 # ----------------------------------------------------------------------------
 def cleanup():
     """Remove any registration artifacts"""
-    try:
-        utils.clean_non_free_extensions()
-    except Exception as err:
-        print('Could not check the system product data: {}'.format(err))
-
-    utils.clean_registry_setup()
-    utils.remove_registration_data()
-    utils.clean_smt_cache()
-    utils.clear_new_registration_flag()
-    utils.clean_framework_identifier()
+    utils.clean_all()
 
 
 # ----------------------------------------------------------------------------
@@ -144,7 +136,41 @@ def setup_registry(registration_target, clean='registry'):
         utils.get_credentials_file(registration_target)
     )
     registry_fqdn = registration_target.get_registry_FQDN()
+
+    with_docker = utils.is_docker_present()
+    if not with_docker:
+        logging.info(
+            'docker config file {} not found. '
+            'Registration for docker skipped. '
+            'Install docker to add docker support.'.format(
+                utils.DOCKER_CONFIG_PATH
+            )
+        )
+
     if utils.is_registry_registered(registry_fqdn):
+        if with_docker:
+            # Special handling for the docker case:
+            #
+            # When docker is present we perform the registry configuration
+            # for the docker container engine. This may cause calling the
+            # setup routine even though docker was setup before. However,
+            # the code will only effectively write a new registry setup
+            # if the required modifications are not included.
+            logging.info('Adding docker support')
+            docker_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
+
+            # docker_setup_ok will take a True/False value on a real
+            # action that happened. In any other case a None value is
+            # present which indicates no action was performed.
+            if docker_setup_ok is False:
+                print(
+                    'Registration failed(docker), see {0} for details'.format(
+                        LOG_FILE
+                    ), file=sys.stderr
+                )
+                sys.exit(1)
+            elif docker_setup_ok is True:
+                print('Successfully added docker to the registry setup')
         logging.info(
             'Instance is setup to access container registry, nothing to do'
         )
@@ -153,7 +179,16 @@ def setup_registry(registration_target, clean='registry'):
         'Adding registry setup to instance, all existing shell '
         'sessions must be restarted to use the registry.'
     )
-    if not utils.setup_registry(registry_fqdn, user, password):
+    registry_setup_ok = False
+    if utils.prepare_registry_setup(registry_fqdn, user, password):
+        logging.info('Adding podman support')
+        registry_setup_ok = utils.set_registries_conf_podman(registry_fqdn)
+        if with_docker:
+            logging.info('Adding docker support')
+            registry_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
+        if utils.is_suma_instance():
+            registry_setup_ok = utils.set_registry_fqdn_suma(registry_fqdn)
+    if not registry_setup_ok:
         if clean == 'all':
             cleanup()
         elif clean == 'registry':
@@ -304,6 +339,25 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
                 sys.exit(1)
 
     return registration_smt, target_found
+
+
+def get_update_servers(region_smt_data, cfg):
+    """Return available update servers in a list."""
+    region_smt_servers = []
+    https_only = utils.https_only(cfg)
+    for cnt, child in enumerate(region_smt_data, start=1):
+        smt_server = smt.SMT(child, https_only)
+        region_smt_servers.append(smt_server)
+        # Write the available servers to cache as well
+        utils.store_smt_data(
+            os.path.join(
+                utils.get_state_dir(),
+                utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+            ),
+            smt_server
+        )
+
+    return region_smt_servers
 
 
 # ----------------------------------------------------------------------------
@@ -527,19 +581,7 @@ def main(args):
         utils.write_framework_identifier(cfg)
 
     if not region_smt_servers:
-        cnt = 1
-        for child in region_smt_data:
-            smt_server = smt.SMT(child, utils.https_only(cfg))
-            region_smt_servers.append(smt_server)
-            # Write the available servers to cache as well
-            utils.store_smt_data(
-                os.path.join(
-                    utils.get_state_dir(),
-                    utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
-                ),
-                smt_server
-            )
-            cnt += 1
+        region_smt_servers = get_update_servers(region_smt_data, cfg)
 
     # Check if the target RMT for the registration is alive or if we can
     # find a server that is alive in this region
