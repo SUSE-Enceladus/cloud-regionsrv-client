@@ -341,6 +341,89 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
     return registration_smt, target_found
 
 
+# ----------------------------------------------------------------------------
+def make_request(url, registration_target):
+    headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
+    user, password = utils.get_credentials(
+        utils.get_credentials_file(registration_target)
+    )
+    res = requests.get(
+        url,
+        auth=HTTPBasicAuth(user, password),
+        headers=headers
+    )
+    if res.status_code != 200:
+        err_msg = 'Unable to obtain product information from server "%s"\n'
+        err_msg += '\t%s\n\t%s\nUnable to register modules, exiting.'
+        ips = '%s,%s' % (
+            registration_target.get_ipv4(), registration_target.get_ipv6()
+        )
+        logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
+        sys.exit(1)
+
+    return res.json()
+
+
+# ----------------------------------------------------------------------------
+def get_system_products(registration_target):
+    base_product = utils.get_product_triplet(
+        utils.get_product_tree()
+    )
+    query_args = 'identifier=%s&version=%s&arch=%s' % (
+        base_product.name, base_product.version, base_product.arch
+    )
+    system_products_url = 'https://%s/connect/systems/products?%s' % (
+        registration_target.get_FQDN(), query_args
+    )
+    # request the system products
+    return make_request(system_products_url, registration_target)
+
+
+# ----------------------------------------------------------------------------
+def get_extensions(registration_target):
+    prod_data = get_system_products(registration_target)
+    return prod_data.get('extensions')
+
+
+# ----------------------------------------------------------------------------
+def get_proxies():
+    """Return the proxies set in the environment in a dictionary or None."""
+    proxies = None
+    if utils.set_proxy():
+        http_proxy = os.environ.get('http_proxy')
+        https_proxy = os.environ.get('https_proxy')
+        no_proxy = os.environ.get('no_proxy')
+        proxies = {
+            'http_proxy': http_proxy,
+            'https_proxy': https_proxy,
+            'no_proxy': no_proxy
+        }
+        logging.info('Using proxy settings: %s' % proxies)
+
+    return proxies
+
+
+# ----------------------------------------------------------------------------
+def get_region_smt_data(args, cfg, proxies):
+    """Return the region SMT data."""
+    if args.user_smt_ip:
+        smt_xml = '<regionSMTdata><smtInfo '
+        smt_xml += 'fingerprint="%s" ' % args.user_smt_fp
+        smt_ip = ipaddress.ip_address(args.user_smt_ip)
+        if isinstance(smt_ip, ipaddress.IPv6Address):
+            smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
+        elif isinstance(smt_ip, ipaddress.IPv4Address):
+            smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
+        smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
+        registry_fqdn = 'registry-{}'.format(args.user_smt_fqdn.split('-')[1])
+        smt_xml += 'SMTregistryName="%s"' % registry_fqdn
+        smt_xml += '/></regionSMTdata>'
+        return etree.fromstring(smt_xml)
+    else:
+        return utils.fetch_smt_data(cfg, proxies)
+
+
+# ----------------------------------------------------------------------------
 def get_update_servers(region_smt_data, cfg):
     """Return available update servers in a list."""
     region_smt_servers = []
@@ -526,33 +609,9 @@ def main(args):
         cached_smt_servers = []
 
     # Proxy setup
-    proxies = None
-    proxy = utils.set_proxy()
-    if proxy:
-        http_proxy = os.environ.get('http_proxy')
-        https_proxy = os.environ.get('https_proxy')
-        no_proxy = os.environ.get('no_proxy')
-        proxies = {'http_proxy': http_proxy,
-                   'https_proxy': https_proxy,
-                   'no_proxy': no_proxy}
-        logging.info('Using proxy settings: %s' % proxies)
+    proxies = get_proxies()
 
-    if args.user_smt_ip:
-        smt_xml = '<regionSMTdata><smtInfo '
-        smt_xml += 'fingerprint="%s" ' % args.user_smt_fp
-        smt_ip = ipaddress.ip_address(args.user_smt_ip)
-        if isinstance(smt_ip, ipaddress.IPv6Address):
-            smt_xml += 'SMTserverIPv6="%s" ' % args.user_smt_ip
-        elif isinstance(smt_ip, ipaddress.IPv4Address):
-            smt_xml += 'SMTserverIP="%s" ' % args.user_smt_ip
-        smt_xml += 'SMTserverName="%s" ' % args.user_smt_fqdn
-        registry_fqdn = 'registry-{}'.format(args.user_smt_fqdn.split('-')[1])
-        smt_xml += 'SMTregistryName="%s"' % registry_fqdn
-        smt_xml += '/></regionSMTdata>'
-        region_smt_data = etree.fromstring(smt_xml)
-    else:
-        region_smt_data = utils.fetch_smt_data(cfg, proxies)
-
+    region_smt_data = get_region_smt_data(args, cfg, proxies)
     registration_smt = utils.get_current_smt()
 
     # Check if we are in the same region
@@ -722,35 +781,7 @@ def main(args):
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
-    base_product = utils.get_product_triplet(
-        utils.get_product_tree()
-    )
-    headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
-    query_args = 'identifier=%s&version=%s&arch=%s' % (
-        base_product.name, base_product.version, base_product.arch
-    )
-    user, password = utils.get_credentials(
-        utils.get_credentials_file(registration_target)
-    )
-    auth_creds = HTTPBasicAuth(user, password)
-    res = requests.get(
-        'https://%s/connect/systems/products?%s' % (
-            registration_target.get_FQDN(), query_args
-        ),
-        auth=auth_creds,
-        headers=headers
-    )
-    if res.status_code != 200:
-        err_msg = 'Unable to obtain product information from server "%s"\n'
-        err_msg += '\t%s\n\t%s\nUnable to register modules, exiting.'
-        ips = '%s,%s' % (
-            registration_target.get_ipv4(), registration_target.get_ipv6()
-        )
-        logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
-        sys.exit(1)
-
-    prod_data = res.json()
-    extensions = prod_data.get('extensions')
+    extensions = get_extensions(registration_target)
     failed_extensions = []
     register_modules(
         extensions,
