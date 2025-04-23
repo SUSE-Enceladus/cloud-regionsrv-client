@@ -346,6 +346,8 @@ def register_base_product(
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
+
+# ----------------------------------------------------------------------------
 def make_request(url, registration_target):
     headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
     user, password = utils.get_credentials(
