@@ -106,6 +106,21 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
+def clean_all():
+    """Clean up any registration artifacts"""
+    try:
+        clean_non_free_extensions()
+    except Exception as err:
+        logging.info('Could not check the system product data: {}'.format(err))
+
+    clean_registry_setup()
+    remove_registration_data()
+    clean_smt_cache()
+    clear_new_registration_flag()
+    clean_framework_identifier()
+
+
+# ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name):
     """Remove the smt server and registry entries from the /etc/hosts file"""
     if isinstance(domain_name, str):
@@ -734,14 +749,16 @@ def get_credentials(credentials_file):
 
 
 # ----------------------------------------------------------------------------
-def setup_registry(registry_fqdn, username, password):
-    """Set all the necessary parts for the registry,
-       returns True if the setup completed, False otherwise."""
+def prepare_registry_setup(registry_fqdn, username, password):
+    """
+    Setup registry auth token and environment file in preparation
+    for the individual container registry setup.
+    """
     os.makedirs(os.path.dirname(REGISTRY_CREDENTIALS_PATH), exist_ok=True)
 
     return (
         set_registry_auth_token(registry_fqdn, username, password) and
-        set_container_engines_env_vars() and set_registries_conf(registry_fqdn)
+        set_container_engines_env_vars()
     )
 
 
@@ -862,20 +879,6 @@ def set_container_engines_env_vars():
 
 
 # ----------------------------------------------------------------------------
-def set_registries_conf(registry_fqdn):
-    """Add the registry container engines search configuration."""
-    container_engines_conf_set = (
-        __set_registries_conf_podman(registry_fqdn) and
-        __set_registries_conf_docker(registry_fqdn)
-    )
-    suma_registry_conf_set = True
-    if is_suma_instance():
-        suma_registry_conf_set = __set_registry_fqdn_suma(registry_fqdn)
-
-    return container_engines_conf_set and suma_registry_conf_set
-
-
-# ----------------------------------------------------------------------------
 def get_registry_conf_file(container_path, container):
     registries_conf = {}
     try:
@@ -888,7 +891,7 @@ def get_registry_conf_file(container_path, container):
     except IOError as error:
         logging.info(str(error))
         action = 'open'
-    except json.decoder.JSONDecodeError:
+    except (json.decoder.JSONDecodeError, toml.decoder.TomlDecodeError):
         action = 'parse'
 
     logging.info(
@@ -1151,7 +1154,7 @@ def clean_registries_conf_podman(private_registry_fqdn):
 # ----------------------------------------------------------------------------
 def clean_registries_conf_docker(private_registry_fqdn):
     """Clean up the registry content from the DOCKER_CONFIG_PATH file."""
-    if not os.path.exists(DOCKER_CONFIG_PATH):
+    if not is_docker_present():
         return True
 
     docker_cfg_json, failed = get_registry_conf_file(
@@ -1209,6 +1212,7 @@ def write_registries_conf(registries_conf, container_path, container_name):
         action = 'write'
 
     logging.error('Could not %s %s' % (action, container_path))
+    return False
 
 
 # ----------------------------------------------------------------------------
@@ -1624,7 +1628,7 @@ def get_zypper_target_root():
     """
     zypper_cmd = get_zypper_command()
     target_root = ''
-    for root_arg in ('-R', '--root'):
+    for root_arg in ('-R ', '--root '):
         if zypper_cmd and root_arg in zypper_cmd:
             target_root = zypper_cmd.split(root_arg)[-1].split()[0].strip()
             break
@@ -1867,6 +1871,11 @@ def is_registry_registered(registry_server_name):
        and os.path.exists(registry_auth_file):
         return True
     return False
+
+
+# ----------------------------------------------------------------------------
+def is_docker_present():
+    return os.path.exists(DOCKER_CONFIG_PATH)
 
 
 # ----------------------------------------------------------------------------
@@ -2587,7 +2596,7 @@ def __mv_file_backup(filename):
 
 
 # ----------------------------------------------------------------------------
-def __set_registries_conf_podman(private_registry_fqdn):
+def set_registries_conf_podman(private_registry_fqdn):
     """Set the registry search order for Podman."""
     registries_conf = {}
     if os.path.exists(REGISTRIES_CONF_PATH):
@@ -2648,51 +2657,50 @@ def __set_registries_conf_podman(private_registry_fqdn):
 
 
 # ----------------------------------------------------------------------------
-def __set_registries_conf_docker(private_registry_fqdn):
+def set_registries_conf_docker(private_registry_fqdn):
     suse_registry_url = 'https://{0}'.format(SUSE_REGISTRY)
     private_registry_url = 'https://{0}'.format(private_registry_fqdn)
     docker_cfg_json = {}
     registry_mirrors = []
-    os.makedirs(os.path.dirname(DOCKER_CONFIG_PATH), exist_ok=True)
-    if os.path.exists(DOCKER_CONFIG_PATH):
+    if is_docker_present():
         docker_cfg_json, failed = get_registry_conf_file(
             DOCKER_CONFIG_PATH, 'docker'
         )
         if failed:
             return False
 
-    modified_by_us = False
-    # Setup registry-mirrors in docker daemon.json
-    registry_mirrors = docker_cfg_json.get('registry-mirrors', [])
-    if private_registry_url not in registry_mirrors:
-        # susecloud registry not added, always place it first
-        registry_mirrors.insert(0, private_registry_url)
-        modified_by_us = True
+        modified_by_us = False
+        # Setup registry-mirrors in docker daemon.json
+        registry_mirrors = docker_cfg_json.get('registry-mirrors', [])
+        if private_registry_url not in registry_mirrors:
+            # susecloud registry not added, always place it first
+            registry_mirrors.insert(0, private_registry_url)
+            modified_by_us = True
 
-    if suse_registry_url not in registry_mirrors:
-        # the suse registry search is provided by the libcontainers-common
-        # package. For the case when we cannot find any suse registry we
-        # append it after the susecloud registry
-        #
-        # Note: docker search is disabled for Docker server side !
-        private_registry_index = registry_mirrors.index(
-            private_registry_url
-        )
-        registry_mirrors.insert(
-            private_registry_index + 1, suse_registry_url
-        )
-        modified_by_us = True
+        if suse_registry_url not in registry_mirrors:
+            # the suse registry search is provided by the docker
+            # package. For the case when we cannot find any suse registry we
+            # append it after the susecloud registry
+            #
+            # Note: docker search is disabled for Docker server side !
+            private_registry_index = registry_mirrors.index(
+                private_registry_url
+            )
+            registry_mirrors.insert(
+                private_registry_index + 1, suse_registry_url
+            )
+            modified_by_us = True
 
-    # write registry setup if modified by us
-    if modified_by_us:
-        docker_cfg_json['registry-mirrors'] = registry_mirrors
-        return write_registries_conf(
-            docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
-        )
+        # write registry setup if modified by us
+        if modified_by_us:
+            docker_cfg_json['registry-mirrors'] = registry_mirrors
+            return write_registries_conf(
+                docker_cfg_json, DOCKER_CONFIG_PATH, 'docker'
+            )
 
 
 # ----------------------------------------------------------------------------
-def __set_registry_fqdn_suma(private_registry_fqdn):
+def set_registry_fqdn_suma(private_registry_fqdn):
     """Set the registry FQDN for SUMa SUMA_REGISTRY_CONF_PATH file."""
     suma_yaml_content = {}
     os.makedirs(os.path.dirname(SUMA_REGISTRY_CONF_PATH), exist_ok=True)

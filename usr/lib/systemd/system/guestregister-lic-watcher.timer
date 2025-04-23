@@ -1,12 +1,12 @@
 [Unit]
-Description=Enable/Disable Guest Registration for Microsoft Azure timer
+Description=Enable/Disable Guest Registration for running instances
 After=network-online.target
 Requires=network-online.target
 
 [Timer]
 OnCalendar=*:0/1
 AccuracySec=1
-Unit=regionsrv-enabler-azure.service
+Unit=guestregister-lic-watcher.service
 
 [Install]
 WantedBy=multi-user.target
