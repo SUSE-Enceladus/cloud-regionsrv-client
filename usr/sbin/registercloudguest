@@ -524,7 +524,6 @@ argparse.add_argument(
 
 
 def main(args):
-    global registration_returncode
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
             msg = '--smt-ip, --smt-fqdn, and --smt-fp must be used together'
