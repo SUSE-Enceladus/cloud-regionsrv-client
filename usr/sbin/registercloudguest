@@ -282,6 +282,7 @@ def register_base_product(
     registration_target, instance_data_filepath, args, region_smt_servers
 ):
     """Register the base product and return the RMT update server registered."""
+    global registration_returncode
     base_registered = False
     failed_smts = []
     while not base_registered:
@@ -527,6 +528,7 @@ argparse.add_argument(
 
 
 def main(args):
+    global registration_returncode  # noqa: F824
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
             msg = '--smt-ip, --smt-fqdn, and --smt-fp must be used together'
