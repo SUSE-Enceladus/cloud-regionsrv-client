@@ -278,6 +278,70 @@ def setup_ltss_registration(
 
 
 # ----------------------------------------------------------------------------
+def find_alive_registration_target(registration_smt, region_smt_servers):
+    target_found = False
+    if registration_smt:
+        registration_smt_cache_file_name = (
+            os.path.join(
+                utils.get_state_dir(),
+                utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
+            )
+        )
+
+        updated = utils.update_rmt_cert(registration_smt)
+        alive = registration_smt.is_responsive()
+        if alive:
+            msg = 'Instance is registered, and update server is reachable, '
+            msg += 'nothing to do'
+            # The cache data may have been cleared, write if necessary
+            if not os.path.exists(registration_smt_cache_file_name) or updated:
+                utils.store_smt_data(
+                    registration_smt_cache_file_name,
+                    registration_smt
+                )
+                if not utils.has_rmt_in_hosts(registration_smt):
+                    utils.clean_hosts_file(registration_smt.get_domain_name())
+                    utils.add_hosts_entry(registration_smt)
+            # The registry target may be missing, write if necessary
+            if not utils.has_registry_in_hosts(registration_smt):
+                utils.clean_hosts_file(registration_smt.get_domain_name())
+                utils.add_hosts_entry(registration_smt)
+            logging.info(msg)
+            target_found = True
+        else:
+            # The current target server is not resposive, lets check if we can
+            # find another server
+            for new_target in region_smt_servers:
+                if (
+                        not new_target.is_responsive() or
+                        not registration_smt.is_equivalent(new_target)
+                ):
+                    continue
+                smt_ip = new_target.get_ipv4()
+                if utils.has_rmt_ipv6_access(new_target):
+                    smt_ip = new_target.get_ipv6()
+                msg = 'Configured update server is unresponsive, switching '
+                msg += 'to equivalent update server with ip %s' % smt_ip
+                utils.replace_hosts_entry(registration_smt, new_target)
+                utils.store_smt_data(
+                    registration_smt_cache_file_name,
+                    new_target
+                )
+                utils.update_rmt_cert(new_target)
+                registration_smt = new_target
+                target_found = True
+                break
+            else:
+                msg = 'Configured update server is unresponsive. '
+                msg += 'Could not find a replacement update server '
+                msg += 'in this region. Possible network configuration issue'
+                logging.error(msg)
+                sys.exit(1)
+
+    return registration_smt, target_found
+
+
+# ----------------------------------------------------------------------------
 def make_request(url, registration_target):
     headers = {'Accept': 'application/vnd.scc.suse.com.v4+json'}
     user, password = utils.get_credentials(
@@ -321,6 +385,7 @@ def get_extensions(registration_target):
     return prod_data.get('extensions')
 
 
+# ----------------------------------------------------------------------------
 def get_proxies():
     """Return the proxies set in the environment in a dictionary or None."""
     proxies = None
@@ -338,6 +403,7 @@ def get_proxies():
     return proxies
 
 
+# ----------------------------------------------------------------------------
 def get_region_smt_data(args, cfg, proxies):
     """Return the region SMT data."""
     if args.user_smt_ip:
@@ -357,6 +423,7 @@ def get_region_smt_data(args, cfg, proxies):
         return utils.fetch_smt_data(cfg, proxies)
 
 
+# ----------------------------------------------------------------------------
 def get_update_servers(region_smt_data, cfg):
     """Return available update servers in a list."""
     region_smt_servers = []
@@ -577,63 +644,9 @@ def main(args):
 
     # Check if the target RMT for the registration is alive or if we can
     # find a server that is alive in this region
-    registration_target_found = False
-    if registration_smt:
-        registration_smt_cache_file_name = (
-            os.path.join(
-                utils.get_state_dir(),
-                utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
-            )
-        )
-        updated = utils.update_rmt_cert(registration_smt)
-        alive = registration_smt.is_responsive()
-        if alive:
-            msg = 'Instance is registered, and update server is reachable, '
-            msg += 'nothing to do'
-            # The cache data may have been cleared, write if necessary
-            if not os.path.exists(registration_smt_cache_file_name) or updated:
-                utils.store_smt_data(
-                    registration_smt_cache_file_name,
-                    registration_smt
-                )
-                if not utils.has_rmt_in_hosts(registration_smt):
-                    utils.clean_hosts_file(registration_smt.get_domain_name())
-                    utils.add_hosts_entry(registration_smt)
-            # The registry target may be missing, write if necessary
-            if not utils.has_registry_in_hosts(registration_smt):
-                utils.clean_hosts_file(registration_smt.get_domain_name())
-                utils.add_hosts_entry(registration_smt)
-            logging.info(msg)
-            registration_target_found = True
-        else:
-            # The current target server is not resposive, lets check if we can
-            # find another server
-            for new_target in region_smt_servers:
-                if (
-                        not new_target.is_responsive() or
-                        not registration_smt.is_equivalent(new_target)
-                ):
-                    continue
-                smt_ip = new_target.get_ipv4()
-                if utils.has_rmt_ipv6_access(new_target):
-                    smt_ip = new_target.get_ipv6()
-                msg = 'Configured update server is unresponsive, switching '
-                msg += 'to equivalent update server with ip %s' % smt_ip
-                utils.replace_hosts_entry(registration_smt, new_target)
-                utils.store_smt_data(
-                    registration_smt_cache_file_name,
-                    new_target
-                )
-                utils.update_rmt_cert(new_target)
-                registration_smt = new_target
-                registration_target_found = True
-                break
-            else:
-                msg = 'Configured update server is unresponsive. '
-                msg += 'Could not find a replacement update server '
-                msg += 'in this region. Possible network configuration issue'
-                logging.error(msg)
-                sys.exit(1)
+    registration_smt, registration_target_found = find_alive_registration_target(  # noqa: E501
+        registration_smt, region_smt_servers
+    )
 
     # Check if we need to send along any instance data
     instance_data_filepath = ''
