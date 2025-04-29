@@ -12,6 +12,7 @@ Tue Apr 29 12:31:05 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
     license-watcher package which has a generic implementation of the
     same functionality.
   + Handle cache inconsistencies (bsc#1218345)
+  + Properly handle the zypper root target argument (bsc#1240997)
     
 -------------------------------------------------------------------
 Tue Dec  3 17:21:52 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
