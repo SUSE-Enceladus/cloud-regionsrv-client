@@ -1,7 +1,7 @@
 -------------------------------------------------------------------
-NEXT version
+Tue Apr 29 12:31:05 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
 
-- Update version to
+- Update version to 10.4.0
   + Remove repositories when the package is being removed
     We do not want to leave repositories behind refering to the plugin that
     is being removed when the package gets removed (bsc#1240310, bsc#1240311)
