@@ -176,11 +176,12 @@ SLE 15
   + systemctl start docker.service
   + systemctl status docker.service
     - Service should be running
-  + docker pull suse/ltss/sle$VERSION/bci-base
-    - Should pull the container from registry-$FRAMEWORK.susecloud.net
-  + systemctl stop docker.service
   + zypper in podman
-  + podman pull suse/ltss/sle$VERSION/bci-base
+  + podman search --list-tags registry-ec2.susecloud.net/suse/ltss/sle$VERSION.SPNUMBER/sle15
+  + podman pull suse/ltss/sle$VERSION.SPNUMBER/sle15:TAGNUMBER
+    - Should pull the container from registry-$FRAMEWORK.susecloud.net
+  + docker pull suse/ltss/sle$VERSION/bci-base
+  + systemctl stop docker.service
 - zypper migration
   + Should fail because LTSS repos are active, and possibly other modules
   + Use the command presented to remove the product/modules
@@ -204,11 +205,13 @@ SLE 15
   + systemctl start docker.service
   + systemctl status docker.service
     - Service should be running
-  + docker pull suse/ltss/sle$VERSION/bci-base
+  + zypper in podman
+  + podman search --list-tags registry-ec2.susecloud.net/suse/ltss/sle$VERSION.SPNUMBER/sle15
+  + podman pull suse/ltss/sle$VERSION.SPNUMBER/sle15:TAGNUMBER
+    - Should pull the container from registry-$FRAMEWORK.susecloud.net
+  + docker pull suse/ltss/sle$VERSION.SPNUMBER/bci-base:TAGNUMBER
     - Should pull the container from registry-$FRAMEWORK.susecloud.net
   + systemctl stop docker.service
-  + zypper in podman
-  + podman pull suse/ltss/sle$VERSION/bci-base
 - zypper migration
   + Should fail because LTSS repos are active, and possibly other modules
   + Use the command presented to remove the product/modules
