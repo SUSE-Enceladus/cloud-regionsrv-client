@@ -303,4 +303,3 @@ class SMT:
                             ((cert_url + cert_name),
                              cert_res.status_code)
                         )
-
