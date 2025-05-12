@@ -291,14 +291,15 @@ class SMT:
                         else:
                             ip = self.get_ipv4()
                         logging.warning('Server %s is unreachable' % ip)
-                    if cert_res and cert_res.status_code == 200:
-                        logging.info(
-                            'Request to %s succeeded' % (cert_url + cert_name)
-                        )
-                        return cert_res
-
                     if cert_res:
-                        logging.warn(
+                        if cert_res.status_code == 200:
+                            logging.info(
+                                'Request to %s succeeded' %
+                                (cert_url + cert_name)
+                            )
+                            return cert_res
+
+                        logging.warning(
                             'Request to %s failed: %s' %
                             ((cert_url + cert_name),
                              cert_res.status_code)

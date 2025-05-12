@@ -210,8 +210,8 @@ def test_get_cert_not_found(
     mock_cert_pull.return_value = response
     smt = SMT(etree.fromstring(smt_data_ipv46))
     assert smt.get_cert() is None
-    assert mock_logging.warn.called
-    mock_logging.warn.assert_called_with(
+    assert mock_logging.warning.called
+    mock_logging.warning.assert_called_with(
         'Request to http://192.168.1.1/rmt.crt failed: 404'
     )
 
