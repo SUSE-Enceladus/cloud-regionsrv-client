@@ -278,8 +278,11 @@ class SMT:
                 for cert_url in self._check_urls.values():
                     try:
                         cert_res = requests.get(
-                                cert_url + cert_name, verify=False
-                            )
+                            cert_url + cert_name, verify=False
+                        )
+                        logging.info(
+                            'Request to %s succeeded' % (cert_url + cert_name)
+                        )
                     except Exception:
                         # No response from server
 
