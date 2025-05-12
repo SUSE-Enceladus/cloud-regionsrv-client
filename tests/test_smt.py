@@ -199,6 +199,27 @@ def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
 @patch('smt.logging')
 @patch.object(SMT, 'get_fingerprint')
 @patch('smt.requests.get')
+def test_get_cert_not_found(
+    mock_cert_pull,
+    mock_get_fingerprint,
+    mock_logging
+):
+    """Test get cert."""
+    response = Response()
+    response.status_code = '404'
+    mock_cert_pull.return_value = response
+    smt = SMT(etree.fromstring(smt_data_ipv46))
+    assert smt.get_cert() == None
+    assert mock_logging.warn.called
+    mock_logging.warn.assert_called_with(
+        'Request to http://192.168.1.1/rmt.crt failed: 404'
+    )
+
+
+# ----------------------------------------------------------------------------
+@patch('smt.logging')
+@patch.object(SMT, 'get_fingerprint')
+@patch('smt.requests.get')
 def test_get_cert(
     mock_cert_pull,
     mock_get_fingerprint,
