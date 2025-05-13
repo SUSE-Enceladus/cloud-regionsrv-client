@@ -278,8 +278,8 @@ class SMT:
                 for cert_url in self._check_urls.values():
                     try:
                         cert_res = requests.get(
-                                cert_url + cert_name, verify=False
-                            )
+                            cert_url + cert_name, verify=False
+                        )
                     except Exception:
                         # No response from server
 
@@ -291,5 +291,15 @@ class SMT:
                         else:
                             ip = self.get_ipv4()
                         logging.warning('Server %s is unreachable' % ip)
-                    if cert_res and cert_res.status_code == 200:
-                        return cert_res
+                    if cert_res:
+                        if cert_res.status_code == 200:
+                            logging.info(
+                                'Request to %s%s succeeded' %
+                                (cert_url, cert_name)
+                            )
+                            return cert_res
+
+                        logging.warning(
+                            'Request to %s%s failed: %s' %
+                            (cert_url, cert_name, cert_res.status_code)
+                        )
