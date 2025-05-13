@@ -294,13 +294,12 @@ class SMT:
                     if cert_res:
                         if cert_res.status_code == 200:
                             logging.info(
-                                'Request to %s succeeded' %
-                                (cert_url + cert_name)
+                                'Request to %s%s succeeded' %
+                                (cert_url, cert_name)
                             )
                             return cert_res
 
                         logging.warning(
-                            'Request to %s failed: %s' %
-                            ((cert_url + cert_name),
-                             cert_res.status_code)
+                            'Request to %s%s failed: %s' %
+                            (cert_url, cert_name, cert_res.status_code)
                         )
