@@ -2314,12 +2314,12 @@ def is_suma_instance():
         'manager-server.prod',
         'sle-micro.prod'
     ]
-    num_prod_matches = [
+    prod_matches = [
         suma_prod for product in products
-        for suma_prod in suma_prods if suma_prod in Path(product.lower()).name
+        for suma_prod in suma_prods if suma_prod in product.lower()
     ]
 
-    return len(num_prod_matches) == len(suma_prods)
+    return len(prod_matches) == len(suma_prods)
 
 
 # ----------------------------------------------------------------------------
