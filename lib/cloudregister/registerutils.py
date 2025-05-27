@@ -2313,9 +2313,9 @@ def is_suma_instance():
     num_matches = 0
     suma_prods = [
         '/etc/products.d/suse-manager-server.prod',
-        '/etc/products.d/multi-linux-manager-server.prod', # SUMA 5.1
+        '/etc/products.d/multi-linux-manager-server.prod',  # SUMA 5.1
         '/etc/products.d/sle-micro.prod',
-        '/etc/products.d/sl-micro.prod' # Micro 6.1 and 6.2
+        '/etc/products.d/sl-micro.prod'  # Micro 6.1 and 6.2
     ]
     for product in products:
         if product.lower() in suma_prods:
