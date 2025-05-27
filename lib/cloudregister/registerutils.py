@@ -2310,16 +2310,17 @@ def is_suma_instance():
     products = glob.glob('/etc/products.d/*.prod')
     # suse-manager-server changed to
     # multi-linux-manager-server, check both (bsc#1243437)
+    num_matches = 0
     suma_prods = [
-        'manager-server.prod',
-        'sle-micro.prod'
+        '/etc/products.d/suse-manager-server.prod',
+        '/etc/products.d/multi-linux-manager-server.prod',
+        '/etc/products.d/sle-micro.prod'
     ]
-    prod_matches = [
-        suma_prod for product in products
-        for suma_prod in suma_prods if suma_prod in product.lower()
-    ]
+    for product in products:
+        if product.lower() in suma_prods:
+            num_matches += 1
 
-    return len(prod_matches) == len(suma_prods)
+    return num_matches == len(suma_prods) - 1
 
 
 # ----------------------------------------------------------------------------
