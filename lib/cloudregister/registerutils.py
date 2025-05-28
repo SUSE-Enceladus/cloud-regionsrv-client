@@ -2308,13 +2308,13 @@ def is_suma_instance():
     """Return True if there is a match for SUMA and SLE-Micro products,
     otherwise False."""
     products = glob.glob('/etc/products.d/*.prod')
+    num_matches = 0
     # suse-manager-server changed to
     # multi-linux-manager-server, check both (bsc#1243437)
-    num_matches = 0
     suma_prods = [
-        '/etc/products.d/suse-manager-server.prod',
-        '/etc/products.d/multi-linux-manager-server.prod',  # SUMA 5.1
-        '/etc/products.d/sle-micro.prod',
+        '/etc/products.d/suse-manager-server.prod',  # SUMA 5.0
+        '/etc/products.d/multi-linux-manager-server.prod',  # SUMA 5.1 (MLM)
+        '/etc/products.d/sle-micro.prod',  # Micro < 6.1
         '/etc/products.d/sl-micro.prod'  # Micro 6.1 and 6.2
     ]
     for product in products:
