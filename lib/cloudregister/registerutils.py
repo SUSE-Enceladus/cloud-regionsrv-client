@@ -44,6 +44,7 @@ AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 FRAMEWORK_IDENTIFIER = 'framework_info'
 HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
+REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
 OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
@@ -118,6 +119,7 @@ def clean_all():
     clean_smt_cache()
     clear_new_registration_flag()
     clean_framework_identifier()
+    clear_registration_completed_flag()
 
 
 # ----------------------------------------------------------------------------
@@ -187,6 +189,15 @@ def clear_rmt_as_scc_proxy_flag():
     """Clear the marker that indicates that RMT is used as SCC proxy"""
     try:
         os.unlink(os.path.join(get_state_dir(), RMT_AS_SCC_PROXY_MARKER))
+    except FileNotFoundError:
+        pass
+
+
+# ----------------------------------------------------------------------------
+def clear_registration_completed_flag():
+    """Clear the registration completed marker"""
+    try:
+        os.unlink(os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER))
     except FileNotFoundError:
         pass
 
@@ -1889,6 +1900,16 @@ def is_new_registration():
 
 
 # ----------------------------------------------------------------------------
+def is_registration_completed():
+    """Indicate whether a registration is in process or completed based on the
+       marker file. Note it is the responsibility of the process to properly
+       manage the marker file"""
+    return os.path.exists(
+        os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER)
+    )
+
+
+# ----------------------------------------------------------------------------
 def is_registered(smt_server_name):
     """Check if the instance is already registered"""
     # For a "valid" registration we need to have credentials and a service
@@ -2057,6 +2078,12 @@ def set_new_registration_flag():
 def set_rmt_as_scc_proxy_flag():
     """Set a marker that the RMT registration is a proxy for SCC"""
     Path(get_state_dir(), RMT_AS_SCC_PROXY_MARKER).touch()
+
+
+# ----------------------------------------------------------------------------
+def set_registration_completed_flag():
+    """Set a marker that the registration process is completed"""
+    Path(get_state_dir() + REGISTRATION_COMPLETED_MARKER).touch()
 
 
 # ----------------------------------------------------------------------------
