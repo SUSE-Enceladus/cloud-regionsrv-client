@@ -2082,7 +2082,7 @@ def set_rmt_as_scc_proxy_flag():
 
 # ----------------------------------------------------------------------------
 def set_registration_completed_flag():
-    """Set a marker that the registration process is completed"""
+    """Set a marker that the registration process is successfully completed"""
     Path(get_state_dir() + REGISTRATION_COMPLETED_MARKER).touch()
 
 

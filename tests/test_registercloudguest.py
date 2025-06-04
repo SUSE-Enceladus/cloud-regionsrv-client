@@ -1527,6 +1527,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 6
 
+
 @patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.urllib.parse.urlparse')
