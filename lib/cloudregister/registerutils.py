@@ -44,6 +44,7 @@ AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 FRAMEWORK_IDENTIFIER = 'framework_info'
 HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
+REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
 OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister/'
 REGISTRATION_DATA_DIR = '/var/cache/cloudregister/'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
@@ -55,6 +56,7 @@ DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
 BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 SUSE_REGISTRY = 'registry.suse.com'
+REGSHARING_SYNC_TIME = 30
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -1483,11 +1485,16 @@ def get_smt(cache_refreshed=None):
                 # let's check if we can find an equivalent server.
                 # If this happens during initial registration we need to give
                 # the target server time to share its registration data, take
-                # another break. The registration sharing timer is set to
-                # ~3 seconds
+                # another break. The registration sharing timer is set to be
+                # triggered every ~30 seconds (REGSHARING_SYNC_TIME)
                 # We depend on a background process on the update servers
                 # to re-sync the databases.
-                time.sleep(5)
+                if not is_registration_completed():
+                    # we are in the middle of a registration
+                    # and fail over happened, to avoid failed registration
+                    # because of a race condition, we wait
+                    time.sleep(REGSHARING_SYNC_TIME + 10)
+
                 new_target = find_equivalent_smt_server(
                     current_smt,
                     available_servers
@@ -1506,8 +1513,10 @@ def get_smt(cache_refreshed=None):
                     credentials_file_path = get_credentials_file(new_target)
                     user, password = get_credentials(credentials_file_path)
                     if not has_smt_access(
-                            new_target.get_FQDN(), user, password
+                        new_target.get_FQDN(), user, password
                     ):
+                        # if we waited enough for regsharing to be sync'ed
+                        # and we are here, it means regsharing failed
                         original_smt_ips = str(
                             (current_smt.get_ipv4(), current_smt.get_ipv6())
                         )
@@ -1885,6 +1894,16 @@ def is_new_registration():
        manage the marker file"""
     return os.path.exists(
         os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER)
+    )
+
+
+# ----------------------------------------------------------------------------
+def is_registration_completed():
+    """Indicate whether a registration is in process or completed based on the
+       marker file. Note it is the responsibility of the process to properly
+       manage the marker file"""
+    return os.path.exists(
+        os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER)
     )
 
 
