@@ -3032,21 +3032,47 @@ def test_switch_services_to_plugin_unlink_service(
     ]
 
 
+@patch('cloudregister.registerutils.fetch_smt_data')
+@patch('cloudregister.registerutils.get_config')
+def test_foo(mock_get_config, mock_fetch_smt_data):
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    region_smt_data = etree.fromstring(smt_xml)
+    mock_fetch_smt_data.return_value = region_smt_data
+    assert utils.get_domain_name_from_region_server() == 'susecloud.net'
+
+
+@patch('cloudregister.registerutils.clean_hosts_file')
+@patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 def test_remove_registration_data_no_user(
     mock_get_registered_smt_file_path,
     mock_get_creds,
-    mock_logging
+    mock_logging,
+    mock_get_domain_name_from_region_server,
+    mock_clean_hosts_file
 ):
     mock_get_creds.return_value = None, None
+    mock_get_domain_name_from_region_server.return_value = 'foo'
     assert utils.remove_registration_data() is None
-    mock_logging.info.assert_called_once_with(
-        'No credentials, nothing to do server side'
-    )
+    mock_logging.info.info.call_args_list == [
+        call('No credentials, nothing to do server side'),
+        call('Cleaning up /etc/hosts for foo')
+    ]
+    mock_clean_hosts_file.assert_called_once_with('foo')
 
 
+@patch('cloudregister.registerutils.clean_hosts_file')
+@patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.is_scc_connected')
 @patch('cloudregister.registerutils.logging')
@@ -3058,14 +3084,19 @@ def test_remove_registration_data_no_registration(
     mock_logging,
     mock_is_scc_connected,
     mock_os_path_exists,
+    mock_get_domain_name_from_region_server,
+    mock_clean_hosts_file
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     mock_is_scc_connected.return_value = False
     mock_os_path_exists.return_value = False
+    mock_get_domain_name_from_region_server.return_value = 'foo'
     assert utils.remove_registration_data() is None
-    mock_logging.info.assert_called_once_with(
-        'No current registration server set.'
-    )
+    mock_logging.info.info.call_args_list == [
+        call('No current registration server set.'),
+        call('Cleaning up /etc/hosts for foo')
+    ]
+    mock_clean_hosts_file.assert_called_once_with('foo')
 
 
 @patch('cloudregister.registerutils.is_scc_connected')
