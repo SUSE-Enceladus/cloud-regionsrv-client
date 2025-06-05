@@ -2110,6 +2110,20 @@ def switch_services_to_plugin():
 
 
 # ----------------------------------------------------------------------------
+def get_domain_name_from_region_server():
+    cfg = get_config()
+    # pick the first region server from the list
+    region_rmt_server_data = fetch_smt_data(cfg, None)
+    region_rmt_server = None
+    for child in region_rmt_server_data:
+        region_rmt_server = smt.SMT(child, True)
+        break
+
+    if region_rmt_server:
+        return region_rmt_server.get_domain_name()
+
+
+# ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
     clear_rmt_as_scc_proxy_flag()
@@ -2118,7 +2132,12 @@ def remove_registration_data():
     if not user:
         if not is_new_registration():
             logging.info('No credentials, nothing to do server side')
+        domain_name = get_domain_name_from_region_server()
+        if domain_name:
+            logging.info('Cleaning up /etc/hosts for %s', domain_name)
+            clean_hosts_file(domain_name)
         return
+
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
@@ -2172,6 +2191,10 @@ def remove_registration_data():
         __remove_repo_artifacts('suse.com')
     else:
         logging.info('No current registration server set.')
+        domain_name = get_domain_name_from_region_server()
+        if domain_name:
+            logging.info('Cleaning up /etc/hosts for %s', domain_name)
+            clean_hosts_file(domain_name)
 
 
 # ----------------------------------------------------------------------------
