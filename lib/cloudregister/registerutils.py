@@ -1902,7 +1902,7 @@ def is_registration_completed():
     """Indicate whether a registration is in process or completed based on the
        marker file. Note it is the responsibility of the process to properly
        manage the marker file"""
-    return os.path.exists(
+    return os.path.isfile(
         os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER)
     )
 
