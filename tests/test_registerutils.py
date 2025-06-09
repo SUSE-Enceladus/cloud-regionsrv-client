@@ -3065,7 +3065,9 @@ def test_switch_services_to_plugin_unlink_service(
 
 @patch('cloudregister.registerutils.fetch_smt_data')
 @patch('cloudregister.registerutils.get_config')
-def test_foo(mock_get_config, mock_fetch_smt_data):
+def test_get_domain_name_from_region_server(
+    mock_get_config, mock_fetch_smt_data
+):
     smt_xml = dedent('''\
     <regionSMTdata>
       <smtInfo fingerprint="99:88:77:66"
