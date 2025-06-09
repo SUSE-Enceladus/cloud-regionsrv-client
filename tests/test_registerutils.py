@@ -582,6 +582,37 @@ def test_clean_host_file_some_empty_bottom_lines_only_FQDN_not_registry():
     assert m().write.mock_calls == expected_write_calls
 
 
+@patch('cloudregister.registerutils.get_domain_name_from_region_server')
+def test_clean_host_file_no_domain_name_param(
+    mock_get_domain_name_from_region_server
+):
+    hosts_content = """
+# simulates hosts file containing the ipv6 we are looking for in the test
+1.2.3.4   smt-foo.susecloud.net  smt-foo
+# Added by SMT, please, do NOT remove this line
+2.3.4.5   smt-entry.susecloud.net smt-entry
+4.3.2.1   another_entry.whatever.com another_entry
+"""
+    expected_cleaned_hosts = """
+# simulates hosts file containing the ipv6 we are looking for in the test
+1.2.3.4   smt-foo.susecloud.net  smt-foo
+4.3.2.1   another_entry.whatever.com another_entry
+"""
+    mock_get_domain_name_from_region_server.return_value = 'susecloud.net'
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+        utils.clean_hosts_file('susecloud.net'.encode())
+
+    expected_write_calls = []
+    expected_lines = expected_cleaned_hosts.split('\n')
+    for line in expected_lines[:-1]:
+        line = line + '\n'
+        expected_write_calls.append(call(line.encode()))
+    if expected_lines[-1] != '':
+        expected_write_calls.append(call(expected_lines[-1].encode()))
+    expected_write_calls.append(call(b'\n'))
+    assert m().write.mock_calls == expected_write_calls
+
+
 def test_clean_host_file_raised_exception():
     hosts_content = ""
     with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
@@ -3049,7 +3080,6 @@ def test_foo(mock_get_config, mock_fetch_smt_data):
     assert utils.get_domain_name_from_region_server() == 'susecloud.net'
 
 
-@patch('cloudregister.registerutils.clean_hosts_file')
 @patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_credentials')
@@ -3058,8 +3088,7 @@ def test_remove_registration_data_no_user(
     mock_get_registered_smt_file_path,
     mock_get_creds,
     mock_logging,
-    mock_get_domain_name_from_region_server,
-    mock_clean_hosts_file
+    mock_get_domain_name_from_region_server
 ):
     mock_get_creds.return_value = None, None
     mock_get_domain_name_from_region_server.return_value = 'foo'
@@ -3068,10 +3097,8 @@ def test_remove_registration_data_no_user(
         call('No credentials, nothing to do server side'),
         call('Cleaning up /etc/hosts for foo')
     ]
-    mock_clean_hosts_file.assert_called_once_with('foo')
 
 
-@patch('cloudregister.registerutils.clean_hosts_file')
 @patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.is_scc_connected')
@@ -3084,8 +3111,7 @@ def test_remove_registration_data_no_registration(
     mock_logging,
     mock_is_scc_connected,
     mock_os_path_exists,
-    mock_get_domain_name_from_region_server,
-    mock_clean_hosts_file
+    mock_get_domain_name_from_region_server
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     mock_is_scc_connected.return_value = False
@@ -3096,7 +3122,6 @@ def test_remove_registration_data_no_registration(
         call('No current registration server set.'),
         call('Cleaning up /etc/hosts for foo')
     ]
-    mock_clean_hosts_file.assert_called_once_with('foo')
 
 
 @patch('cloudregister.registerutils.is_scc_connected')

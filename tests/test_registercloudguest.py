@@ -87,6 +87,7 @@ def test_register_cloud_guest_no_regcode_email():
         assert register_cloud_guest.main(fake_args) is None
 
 
+@patch('cloudregister.registerutils.clean_hosts_file')
 @patch('cloudregister.registerutils.clean_non_free_extensions')
 @patch('register_cloud_guest.time.sleep')
 @patch('cloudregister.registerutils.get_config')
@@ -98,7 +99,7 @@ def test_register_cloud_guest_no_regcode_email():
 def test_register_cloud_guest_cleanup(
     mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
     mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
-    mock_clean_non_free_extensions
+    mock_clean_non_free_extensions, mock_clean_hosts_file
 ):
     fake_args = SimpleNamespace(
         clean_up=True,
