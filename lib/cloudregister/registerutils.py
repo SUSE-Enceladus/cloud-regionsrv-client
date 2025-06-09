@@ -2118,9 +2118,8 @@ def get_domain_name_from_region_server():
     cfg = get_config()
     region_rmt_server_data = fetch_smt_data(cfg, None)
     for child in region_rmt_server_data:
-        # use any region server from the list
-        # the domain name should be the same for all the region servers
-        # no need to loop over all of them
+        # use the domain name from the first child of the region server response
+        # no need to loop over all of the 3 entries/siblings
         return smt.SMT(child, True).get_domain_name()
 
 
