@@ -119,12 +119,16 @@ def clean_all():
     clean_smt_cache()
     clear_new_registration_flag()
     clean_framework_identifier()
+    clean_hosts_file()
     clear_registration_completed_flag()
 
 
 # ----------------------------------------------------------------------------
-def clean_hosts_file(domain_name):
+def clean_hosts_file(domain_name=None):
     """Remove the smt server and registry entries from the /etc/hosts file"""
+    if not domain_name:
+        domain_name = get_domain_name_from_region_server()
+
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
     new_hosts_content = []
@@ -2137,6 +2141,16 @@ def switch_services_to_plugin():
 
 
 # ----------------------------------------------------------------------------
+def get_domain_name_from_region_server():
+    cfg = get_config()
+    region_rmt_server_data = fetch_smt_data(cfg, None)
+    for child in region_rmt_server_data:
+        # use the domain name from the first child of the region server response
+        # no need to loop over all of the 3 entries/siblings
+        return smt.SMT(child, True).get_domain_name()
+
+
+# ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
     clear_rmt_as_scc_proxy_flag()
@@ -2146,13 +2160,13 @@ def remove_registration_data():
         if not is_new_registration():
             logging.info('No credentials, nothing to do server side')
         return
+
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
         smt_ips = (smt.get_ipv4(), smt.get_ipv6())
         logging.info('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
-        domain_name = smt.get_domain_name()
         try:
             response = requests.delete(
                 'https://%s/connect/systems' % server_name, auth=auth_creds
@@ -2169,7 +2183,6 @@ def remove_registration_data():
             logging.warning('Unable to remove client registration from server')
             logging.warning(e)
             logging.info('Continue with local artifact removal')
-        clean_hosts_file(domain_name)
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     if is_scc_connected():
@@ -2336,15 +2349,21 @@ def is_suma_instance():
     otherwise False."""
     products = glob.glob('/etc/products.d/*.prod')
     num_matches = 0
+    # suse-manager-server changed to
+    # multi-linux-manager-server, check both (bsc#1243437)
     suma_prods = [
-        '/etc/products.d/suse-manager-server.prod',
-        '/etc/products.d/sle-micro.prod'
+        '/etc/products.d/suse-manager-server.prod',  # SUMA 5.0
+        '/etc/products.d/multi-linux-manager-server.prod',  # SUMA 5.1 (MLM)
+        '/etc/products.d/sle-micro.prod',  # Micro < 6.1
+        '/etc/products.d/sl-micro.prod'  # Micro 6.1 and 6.2
     ]
     for product in products:
         if product.lower() in suma_prods:
             num_matches += 1
 
-    return num_matches == len(suma_prods)
+    # only one Micro + SUMA product possible at the same time for
+    # a SUMA instance
+    return num_matches == 2
 
 
 # ----------------------------------------------------------------------------

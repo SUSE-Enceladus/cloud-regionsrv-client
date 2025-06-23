@@ -582,6 +582,37 @@ def test_clean_host_file_some_empty_bottom_lines_only_FQDN_not_registry():
     assert m().write.mock_calls == expected_write_calls
 
 
+@patch('cloudregister.registerutils.get_domain_name_from_region_server')
+def test_clean_host_file_no_domain_name_param(
+    mock_get_domain_name_from_region_server
+):
+    hosts_content = """
+# simulates hosts file containing the ipv6 we are looking for in the test
+1.2.3.4   smt-foo.susecloud.net  smt-foo
+# Added by SMT, please, do NOT remove this line
+2.3.4.5   smt-entry.susecloud.net smt-entry
+4.3.2.1   another_entry.whatever.com another_entry
+"""
+    expected_cleaned_hosts = """
+# simulates hosts file containing the ipv6 we are looking for in the test
+1.2.3.4   smt-foo.susecloud.net  smt-foo
+4.3.2.1   another_entry.whatever.com another_entry
+"""
+    mock_get_domain_name_from_region_server.return_value = 'susecloud.net'
+    with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
+        utils.clean_hosts_file('susecloud.net'.encode())
+
+    expected_write_calls = []
+    expected_lines = expected_cleaned_hosts.split('\n')
+    for line in expected_lines[:-1]:
+        line = line + '\n'
+        expected_write_calls.append(call(line.encode()))
+    if expected_lines[-1] != '':
+        expected_write_calls.append(call(expected_lines[-1].encode()))
+    expected_write_calls.append(call(b'\n'))
+    assert m().write.mock_calls == expected_write_calls
+
+
 def test_clean_host_file_raised_exception():
     hosts_content = ""
     with patch('builtins.open', mock_open(read_data=hosts_content.encode())) as m:  # noqa: E501
@@ -3046,21 +3077,45 @@ def test_switch_services_to_plugin_unlink_service(
     ]
 
 
+@patch('cloudregister.registerutils.fetch_smt_data')
+@patch('cloudregister.registerutils.get_config')
+def test_get_domain_name_from_region_server(
+    mock_get_config, mock_fetch_smt_data
+):
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        SMTregistryName="registry-foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    region_smt_data = etree.fromstring(smt_xml)
+    mock_fetch_smt_data.return_value = region_smt_data
+    assert utils.get_domain_name_from_region_server() == 'susecloud.net'
+
+
+@patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.__get_registered_smt_file_path')
 def test_remove_registration_data_no_user(
     mock_get_registered_smt_file_path,
     mock_get_creds,
-    mock_logging
+    mock_logging,
+    mock_get_domain_name_from_region_server
 ):
     mock_get_creds.return_value = None, None
+    mock_get_domain_name_from_region_server.return_value = 'foo'
     assert utils.remove_registration_data() is None
-    mock_logging.info.assert_called_once_with(
-        'No credentials, nothing to do server side'
-    )
+    mock_logging.info.info.call_args_list == [
+        call('No credentials, nothing to do server side'),
+        call('Cleaning up /etc/hosts for foo')
+    ]
 
 
+@patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.is_scc_connected')
 @patch('cloudregister.registerutils.logging')
@@ -3072,14 +3127,17 @@ def test_remove_registration_data_no_registration(
     mock_logging,
     mock_is_scc_connected,
     mock_os_path_exists,
+    mock_get_domain_name_from_region_server
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     mock_is_scc_connected.return_value = False
     mock_os_path_exists.return_value = False
+    mock_get_domain_name_from_region_server.return_value = 'foo'
     assert utils.remove_registration_data() is None
-    mock_logging.info.assert_called_once_with(
-        'No current registration server set.'
-    )
+    mock_logging.info.info.call_args_list == [
+        call('No current registration server set.'),
+        call('Cleaning up /etc/hosts for foo')
+    ]
 
 
 @patch('cloudregister.registerutils.is_scc_connected')
