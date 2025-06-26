@@ -17,6 +17,7 @@ import io
 import json
 import os
 import pickle
+import pytest
 import requests
 import sys
 import tempfile
@@ -3843,16 +3844,58 @@ def test_remove_service(
     mock_logging.info.not_called()
 
 
+@pytest.mark.parametrize('module_name', ['amazonec2', 'googlece', 'msftazure'])
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_config')
 @patch('cloudregister.registerutils.has_network_access_by_ip_address')
-def test_has_ipv4_access(mock_has_network_access):
+def test_has_ipv4_access(
+    mock_has_network_access,
+    mock_get_config,
+    mock_get_framework_plugin,
+    module_name
+):
     mock_has_network_access.return_value = True
+    mod = __import__('cloudregister.%s' % module_name, fromlist=[''])
+    mock_get_framework_plugin.return_value = mod
+    cfg = get_test_config()
+    del cfg['server']['metadata_server']
+    cfg.set('instance', 'instanceArgs', module_name)
+    mock_get_config.return_value = cfg
+
     assert utils.has_ipv4_access()
+    if module_name == 'amazonec2':
+        mock_has_network_access.assert_called_once_with('169.254.169.253')
+    if module_name == 'googlece':
+        mock_has_network_access.assert_called_once_with('8.8.8.8')
+    if module_name == 'msftazure':
+        mock_has_network_access.assert_called_once_with('13.107.21.200')
 
 
+@pytest.mark.parametrize('module_name', ['amazonec2', 'googlece', 'msftazure'])
+@patch('cloudregister.registerutils.__get_framework_plugin')
+@patch('cloudregister.registerutils.get_config')
 @patch('cloudregister.registerutils.has_network_access_by_ip_address')
-def test_has_ipv6_access(mock_has_network_access):
+def test_has_ipv6_access(
+    mock_has_network_access,
+    mock_get_config,
+    mock_get_framework_plugin,
+    module_name
+):
     mock_has_network_access.return_value = True
+    mod = __import__('cloudregister.%s' % module_name, fromlist=[''])
+    mock_get_framework_plugin.return_value = mod
+    cfg = get_test_config()
+    del cfg['server']['metadata_server']
+    cfg.set('instance', 'instanceArgs', module_name)
+    mock_get_config.return_value = cfg
+
     assert utils.has_ipv6_access()
+    if module_name == 'amazonec2':
+        mock_has_network_access.assert_called_once_with('fd00:ec2::253')
+    if module_name == 'googlece':
+        mock_has_network_access.assert_called_once_with('2001:4860:4860::8888')
+    if module_name == 'msftazure':
+        mock_has_network_access.assert_called_once_with('2620:1ec:c11::200')
 
 
 @patch('cloudregister.registerutils.socket.create_connection')
