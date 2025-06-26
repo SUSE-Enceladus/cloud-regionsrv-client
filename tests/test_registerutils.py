@@ -3869,6 +3869,7 @@ def test_has_ipv4_access(
         mock_has_network_access.assert_called_once_with('8.8.8.8')
     if module_name == 'msftazure':
         mock_has_network_access.assert_called_once_with('13.107.21.200')
+    cfg.set('instance', 'instanceArgs', 'none')
 
 
 @pytest.mark.parametrize('module_name', ['amazonec2', 'googlece', 'msftazure'])
