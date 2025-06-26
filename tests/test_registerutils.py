@@ -2179,12 +2179,17 @@ def test_get_installed_products_no_zypper_lock(
     mock_logging,
     mock_time_sleep
 ):
-    # mock_is_zypper_running.side_effect = [True, False]
     mock_is_zypper_running.return_value = True
     assert utils.get_installed_products() == []
     mock_logging.error.assert_called_once_with(
         'Wait time expired could not acquire zypper lock file'
     )
+    assert mock_time_sleep.call_args_list == [
+        call(0),
+        call(5),
+        call(10),
+        call(15)
+    ]
 
 
 @patch('cloudregister.registerutils.subprocess.Popen')
@@ -2335,17 +2340,19 @@ def test_get_repo_url_no_repos(mock_glob):
     assert utils.get_repo_url('') == ''
 
 
+@patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
 @patch.object(SMT, 'is_responsive')
 @patch('cloudregister.registerutils.is_registered')
 @patch('cloudregister.registerutils.get_available_smt_servers')
 @patch('cloudregister.registerutils.get_current_smt')
 def test_get_smt_network_issue(
-        mock_get_current_smt,
-        mock_get_available_smt_servers,
-        mock_is_registered,
-        mock_smt_is_responsive,
-        mock_logging
+    mock_get_current_smt,
+    mock_get_available_smt_servers,
+    mock_is_registered,
+    mock_smt_is_responsive,
+    mock_logging,
+    mock_time_sleep
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="00:11:22:33"
@@ -2363,6 +2370,7 @@ def test_get_smt_network_issue(
         call('Waiting for current server to show up for 5 s'),
         call('No failover needed, system access recovered')
     ]
+    assert mock_time_sleep.call_args_list == [call(5)]
 
 
 @patch('cloudregister.registerutils.logging')
@@ -2394,6 +2402,7 @@ def test_get_smt_registered_no_network(
     )
 
 
+@patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('cloudregister.registerutils.replace_hosts_entry')
 @patch('cloudregister.registerutils.has_smt_access')
@@ -2418,7 +2427,8 @@ def test_get_smt_find_equivalent(
         mock_get_credentials,
         mock_has_smt_access,
         mock_replace_hosts_entry,
-        mock_set_as_current_smt
+        mock_set_as_current_smt,
+        mock_time_sleep
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="00:11:22:33"
@@ -2451,6 +2461,7 @@ def test_get_smt_find_equivalent(
     ]
 
 
+@patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.set_as_current_smt')
 @patch('cloudregister.registerutils.replace_hosts_entry')
 @patch('cloudregister.registerutils.has_smt_access')
@@ -2475,7 +2486,8 @@ def test_get_smt_equivalent_smt_no_access(
         mock_get_credentials,
         mock_has_smt_access,
         mock_replace_hosts_entry,
-        mock_set_as_current_smt
+        mock_set_as_current_smt,
+        mock_time_sleep
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="00:11:22:33"
@@ -3437,15 +3449,21 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
         ).write.assert_called_once_with(expected_content)
 
 
+@patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.exec_subprocess')
-def test_update_ca_chain(mock_exec_subprocess, mock_logging):
+def test_update_ca_chain(mock_exec_subprocess, mock_logging, mock_time_sleep):
     mock_exec_subprocess.return_value = 314
     utils.update_ca_chain(['cmd']) == 1
     assert mock_logging.error.call_args_list == [
         call('Certificate update failed attempt 1'),
         call('Certificate update failed attempt 2'),
         call('Certificate update failed attempt 3')
+    ]
+    assert mock_time_sleep.call_args_list == [
+        call(5),
+        call(5),
+        call(5)
     ]
 
 
@@ -3696,16 +3714,26 @@ def test_get_region_server_args_exception(
     )
 
 
+@patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.amazonec2.generateRegionSrvArgs')
 def test_get_region_server_args_not_region_srv_args(
     mock_amazon_generate_region_args,
-    mock_logging
+    mock_logging,
+    mock_time_sleep
 ):
     mock_amazon_generate_region_args.return_value = None
     mod = __import__('cloudregister.amazonec2', fromlist=[''])
     assert utils.__get_region_server_args(mod) is None
     mock_logging.assert_not_called
+    print(mock_time_sleep.call_args_list)
+    assert mock_time_sleep.call_args_list == [
+        call(1),
+        call(1),
+        call(1),
+        call(1),
+        call(1)
+    ]
 
 
 @patch('cloudregister.registerutils.os.path.basename')
