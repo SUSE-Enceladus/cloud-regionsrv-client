@@ -664,6 +664,7 @@ def main(args):
         # If we have an update server cache the system is registered in
         # some way shape or form
         utils.clear_new_registration_flag()
+        utils.set_registration_completed_flag()
     else:
         utils.write_framework_identifier(cfg)
 
@@ -817,6 +818,7 @@ def main(args):
     # Setup container registry
     setup_registry(registration_target)
 
+    utils.set_registration_completed_flag()
     print('Registration succeeded')
 
     if failed_extensions:
