@@ -14,9 +14,8 @@
 import logging
 import requests
 
-# https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html
-AWS_IPv4 = '169.254.169.253'
-AWS_IPv6 = 'fd00:ec2::253'
+AWS_IPv4 = '8.8.8.8'
+AWS_IPv6 = '2001:4860:4860::8888'
 
 
 def default_ipv4():
