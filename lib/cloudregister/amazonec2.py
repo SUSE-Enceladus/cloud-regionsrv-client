@@ -14,6 +14,18 @@
 import logging
 import requests
 
+# https://docs.aws.amazon.com/vpc/latest/userguide/AmazonDNS-concepts.html
+AWS_IPv4 = '169.254.169.253'
+AWS_IPv6 = 'fd00:ec2::253'
+
+def default_ipv4():
+    """Return the default IPv4 address."""
+    return AWS_IPv4
+
+def default_ipv6():
+    """Return the default IPv6 address."""
+    return AWS_IPv6
+
 
 def generateRegionSrvArgs():
     """

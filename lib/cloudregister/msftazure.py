@@ -28,6 +28,19 @@ locationRx = re.compile(
     r'.*<Location>(.*?)</Location>.*', re.S | re.M
 )
 
+# https://github.com/Azure/azure-sdk-tools/blob/main/tools/stress-cluster/chaos/README.md#running-the-example-test-with-a-network-fault
+# Azure Front Door and Bing IP addresses
+AWS_IPv4 = '13.107.21.200'
+AWS_IPv6 = '2620:1ec:c11::200'
+
+def default_ipv4():
+    """Return the default IPv4 address."""
+    return AWS_IPv4
+
+def default_ipv6():
+    """Return the default IPv6 address."""
+    return AWS_IPv6
+
 
 def generateRegionSrvArgs():
     """

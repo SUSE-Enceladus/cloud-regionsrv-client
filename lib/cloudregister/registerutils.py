@@ -514,7 +514,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 region_servers_ipv4.append(ip_addr)
         random.shuffle(region_servers_ipv4)
         random.shuffle(region_servers_ipv6)
-        if has_ipv6_access():
+        if has_ipv6_access(cfg):
             region_servers = region_servers_ipv6 + region_servers_ipv4
         else:
             region_servers = region_servers_ipv4
@@ -2292,15 +2292,29 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def has_ipv4_access():
+def has_ipv4_access(cfg=None):
     """Check if we have IPv4 network configuration"""
-    return has_network_access_by_ip_address('8.8.8.8')
+    if not cfg:
+        cfg = get_config()
+    plugin = __get_framework_plugin(cfg)
+    ipv4_address = '8.8.8.8'
+    if plugin:
+        ipv4_address = plugin.default_ipv4()
+
+    return has_network_access_by_ip_address(ipv4_address)
 
 
 # ----------------------------------------------------------------------------
-def has_ipv6_access():
+def has_ipv6_access(cfg=None):
     """Check if we have IPv6 network configuration"""
-    return has_network_access_by_ip_address('2001:4860:4860::8888')
+    if not cfg:
+        cfg = get_config()
+    plugin = __get_framework_plugin(cfg)
+    ipv6_address = '2001:4860:4860::8888'
+    if plugin:
+        ipv6_address = plugin.default_ipv6()
+
+    return has_network_access_by_ip_address(ipv6_address)
 
 
 # ----------------------------------------------------------------------------
