@@ -18,9 +18,11 @@ import requests
 AWS_IPv4 = '8.8.8.8'
 AWS_IPv6 = '2001:4860:4860::8888'
 
+
 def default_ipv4():
     """Return the default IPv4 address."""
     return AWS_IPv4
+
 
 def default_ipv6():
     """Return the default IPv6 address."""

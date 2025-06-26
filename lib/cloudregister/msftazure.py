@@ -33,9 +33,11 @@ locationRx = re.compile(
 AWS_IPv4 = '13.107.21.200'
 AWS_IPv6 = '2620:1ec:c11::200'
 
+
 def default_ipv4():
     """Return the default IPv4 address."""
     return AWS_IPv4
+
 
 def default_ipv6():
     """Return the default IPv6 address."""
