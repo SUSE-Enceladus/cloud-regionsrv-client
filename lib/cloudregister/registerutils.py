@@ -196,6 +196,12 @@ def clear_rmt_as_scc_proxy_flag():
 
 
 # ----------------------------------------------------------------------------
+def is_product_removable(triplet):
+    """Return True if the product represented by the triplet can be removed."""
+    return not ('-manager-' in triplet.lower() and is_suma_instance())
+
+
+# ----------------------------------------------------------------------------
 def clean_non_free_extensions():
     """Remove/uninstall non free extensions from the system."""
     extensions = get_extensions()
@@ -212,7 +218,7 @@ def clean_non_free_extensions():
                 version=triplet.version,
                 arch=triplet.arch
             )
-            if triplet in installed_products:
+            if triplet in installed_products and is_product_removable(triplet):
                 reg_prod = register_product(
                     registration_target=get_current_smt(),
                     product=triplet,
