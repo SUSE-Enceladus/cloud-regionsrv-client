@@ -2367,7 +2367,7 @@ def get_suma_registry_content():
 # ----------------------------------------------------------------------------
 def _check_ip_access(ips_addresses):
     if not ips_addresses:
-        logging.info('No region server address available')
+        logging.info('No IP addresses available')
         return False
 
     for ip_address in ips_addresses:
