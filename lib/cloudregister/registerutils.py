@@ -2377,17 +2377,11 @@ def _check_ip_access(ips_addresses):
 
 
 # ----------------------------------------------------------------------------
-def _get_region_server_ips(api=None, cfg=None):
-    if not cfg or not api:
+def _get_region_server_ips(cfg=None):
+    if not cfg:
         cfg = get_config()
-        # Get the API to use
-        api = cfg.get('server', 'api')
-        logging.info('Using API: %s' % api)
 
-    # Add regionserver arguments
-    api = add_region_server_args_to_URL(api, cfg)
     region_servers = cfg.get('server', 'regionsrv').split(',')
-    print(region_servers)
     # sort into ipv4 & ipv6 buckets
     region_servers_ipv4 = []
     region_servers_ipv6 = []
