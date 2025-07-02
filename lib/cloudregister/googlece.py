@@ -14,20 +14,6 @@
 import logging
 import requests
 
-# https://developers.google.com/speed/public-dns/docs/using
-GCE_IPv4 = '8.8.8.8'
-GCE_IPv6 = '2001:4860:4860::8888'
-
-
-def default_ipv4():
-    """Return the default IPv4 address."""
-    return GCE_IPv4
-
-
-def default_ipv6():
-    """Return the default IPv6 address."""
-    return GCE_IPv6
-
 
 def generateRegionSrvArgs():
     """
