@@ -2318,6 +2318,7 @@ def has_ipv4_access():
 
     return False
 
+
 # ----------------------------------------------------------------------------
 def has_ipv6_access():
     """Check if we have IPv6 network configuration"""
@@ -2332,7 +2333,6 @@ def has_ipv6_access():
             return True
 
     return False
-
 
 
 # ----------------------------------------------------------------------------
