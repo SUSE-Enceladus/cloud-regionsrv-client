@@ -2308,15 +2308,7 @@ def write_framework_identifier(cfg):
 def has_ipv4_access():
     """Check if we have IPv4 network configuration"""
     region_servers_ipv4, _, _ = _get_region_server_ips()
-    if not region_servers_ipv4:
-        logging.info('No region server IPv4 address available')
-        return False
-
-    for region_server_ipv4 in region_servers_ipv4:
-        if has_network_access_by_ip_address(region_server_ipv4):
-            return True
-
-    return False
+    return _check_ip_access(region_servers_ipv4)
 
 
 # ----------------------------------------------------------------------------
@@ -2324,15 +2316,7 @@ def has_ipv6_access():
     """Check if we have IPv6 network configuration"""
     # return True
     _, region_servers_ipv6, _ = _get_region_server_ips()
-    if not region_servers_ipv6:
-        logging.info('No region server IPv6 address available')
-        return False
-
-    for region_server_ipv6 in region_servers_ipv6:
-        if has_network_access_by_ip_address(region_server_ipv6):
-            return True
-
-    return False
+    return _check_ip_access(region_servers_ipv6)
 
 
 # ----------------------------------------------------------------------------
@@ -2380,6 +2364,20 @@ def get_suma_registry_content():
 
 
 # Private
+# ----------------------------------------------------------------------------
+def _check_ip_access(ips_addresses):
+    if not ips_addresses:
+        logging.info('No region server address available')
+        return False
+
+    for ip_address in ips_addresses:
+        if has_network_access_by_ip_address(ip_address):
+            return True
+
+    return False
+
+
+
 # ----------------------------------------------------------------------------
 def _get_region_server_ips(api=None, cfg=None):
     if not cfg or not api:
