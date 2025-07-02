@@ -2307,17 +2307,27 @@ def write_framework_identifier(cfg):
 # ----------------------------------------------------------------------------
 def has_ipv4_access(ipv4_addresses=[]):
     """Check if we have IPv4 network configuration"""
-    if not ipv4_addresses:
-        ipv4_addresses, _, _ = _get_region_server_ips()
-    return _check_ip_access(ipv4_addresses)
+    return has_ip_access('ipv4', ipv4_addresses)
 
 
 # ----------------------------------------------------------------------------
 def has_ipv6_access(ipv6_addresses=[]):
     """Check if we have IPv6 network configuration"""
-    if not ipv6_addresses:
-        _, ipv6_addresses, _ = _get_region_server_ips()
-    return _check_ip_access(ipv6_addresses)
+    return has_ip_access('ipv6', ipv6_addresses)
+
+
+# ----------------------------------------------------------------------------
+def has_ip_access(ip_type, ip_addresses=[]):
+    """Check if we can connect to the IP address provided."""
+    if not ip_addresses:
+        ipv4_addresses, ipv6_addresses, _ = _get_region_server_ips()
+
+        if ip_type == 'ipv4':
+            ip_addresses = ipv4_addresses
+        else:
+            ip_addresses = ipv6_addresses
+
+    return _check_ip_access(ip_addresses)
 
 
 # ----------------------------------------------------------------------------
