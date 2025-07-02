@@ -2312,8 +2312,11 @@ def has_ipv4_access():
         logging.info('No region server IPv4 address available')
         return False
 
-    return has_network_access_by_ip_address(region_servers_ipv4[0])
+    for region_server_ipv4 in region_servers_ipv4:
+        if has_network_access_by_ip_address(region_server_ipv4):
+            return True
 
+    return False
 
 # ----------------------------------------------------------------------------
 def has_ipv6_access():
@@ -2324,7 +2327,12 @@ def has_ipv6_access():
         logging.info('No region server IPv6 address available')
         return False
 
-    return has_network_access_by_ip_address(region_servers_ipv6[0])
+    for region_server_ipv6 in region_servers_ipv6:
+        if has_network_access_by_ip_address(region_server_ipv6):
+            return True
+
+    return False
+
 
 
 # ----------------------------------------------------------------------------
