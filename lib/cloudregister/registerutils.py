@@ -2366,13 +2366,12 @@ def get_suma_registry_content():
 # Private
 # ----------------------------------------------------------------------------
 def _check_ip_access(ips_addresses):
-    if not ips_addresses:
-        logging.info('No IP addresses available')
-        return False
-
     for ip_address in ips_addresses:
         if has_network_access_by_ip_address(ip_address):
             return True
+
+    if not ips_addresses:
+        logging.info('No IP addresses available')
 
     return False
 
