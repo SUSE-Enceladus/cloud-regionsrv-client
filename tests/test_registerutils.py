@@ -17,7 +17,6 @@ import io
 import json
 import os
 import pickle
-import pytest
 import requests
 import sys
 import tempfile
@@ -3965,7 +3964,7 @@ def test_has_ipv6_access(
 
 @patch('cloudregister.registerutils._get_region_server_ips')
 def test_has_no_ipv4_ipv6_access(mock_get_region_server_ips):
-    mock_get_region_server_ips.return_value = [],[],[]
+    mock_get_region_server_ips.return_value = [], [], []
     assert utils.has_ipv4_access() is False
     assert utils.has_ipv6_access() is False
 
@@ -3987,6 +3986,7 @@ def test_ger_region_server_ips(
             [IPv6Address('fc11::2')],
             ['foo']
         )
+
 
 @patch('cloudregister.registerutils.socket.create_connection')
 def test_has_network_access_by_ip_address(mock_socket_create_connection):
