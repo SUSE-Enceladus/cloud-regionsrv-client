@@ -2377,7 +2377,6 @@ def _check_ip_access(ips_addresses):
     return False
 
 
-
 # ----------------------------------------------------------------------------
 def _get_region_server_ips(api=None, cfg=None):
     if not cfg or not api:
