@@ -1203,7 +1203,6 @@ def test_register_product_no_transactional_de_register_missing_product(
             de_register=True
         )
     assert sys_exit.value.code == 1
-    print(mock_logging.error.call_args_list)
     assert mock_logging.error.call_args_list == [
         call('De-register the system is not allowed for SUSEConnect')
     ]
@@ -1660,7 +1659,6 @@ def test_fetch_smt_data_api_error_response(
     mock_has_ipv6_access.return_value = False
     with raises(SystemExit):
         utils.fetch_smt_data(cfg, None)
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
@@ -3184,7 +3182,6 @@ def test_remove_registration_data(
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() is None
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call('System successfully removed from update infrastructure'),
@@ -3234,7 +3231,6 @@ def test_remove_registration_data_request_not_OK(
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() is None
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call(
@@ -3293,7 +3289,6 @@ def test_remove_registration_data_request_exception(
     mock_request_delete.side_effect = exception
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() is None
-    print(mock_logging.error.call_args_list)
     assert mock_logging.warning.call_args_list == [
         call('Unable to remove client registration from server'),
         call(exception),
@@ -3731,7 +3726,6 @@ def test_get_region_server_args_not_region_srv_args(
     mod = __import__('cloudregister.amazonec2', fromlist=[''])
     assert utils.__get_region_server_args(mod) is None
     mock_logging.assert_not_called
-    print(mock_time_sleep.call_args_list)
     assert mock_time_sleep.call_args_list == [
         call(1),
         call(1),
@@ -5154,7 +5148,6 @@ def test_clean_registries_conf_docker_file_clean_content_no_smt(
             call('/etc/docker/daemon.json', 'r'),
             call('/etc/docker/daemon.json', 'w')
         ]
-        print(mock_logging.info.call_args_list)
         assert mock_logging.info.call_args_list == [
             call(
                 'SUSE registry information has been removed '
