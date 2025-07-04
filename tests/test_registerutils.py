@@ -890,6 +890,133 @@ def test_clean_non_free_extensions(
     ]
 
 
+@patch('cloudregister.registerutils.is_suma_instance')
+@patch('cloudregister.registerutils.register_product')
+@patch('cloudregister.registerutils.get_installed_products')
+@patch('cloudregister.registerutils.logging')
+@patch('cloudregister.registerutils.get_credentials')
+@patch('cloudregister.registerutils.get_product_tree')
+@patch('cloudregister.registerutils.get_current_smt')
+@patch('cloudregister.registerutils.requests.get')
+def test_clean_non_free_extensions_should_not_be_removed(
+    mock_requests_get,
+    mock_get_current_smt,
+    mock_get_product_tree,
+    mock_get_creds,
+    mock_logging,
+    mock_get_installed_products,
+    mock_register_product,
+    mock_is_suma_instance
+):
+    mock_get_installed_products.return_value = [
+        'Multi-Linux-Manager-Server/5.1/x86_64',
+        'SLES-LTSS/15.4/x86_64'
+    ]
+    response = Response()
+    response.status_code = requests.codes.ok
+    json_mock = Mock()
+    json_mock.return_value = {
+        'id': 2001,
+        'name': 'SUSE Linux Enterprise Server',
+        'identifier': 'SLES',
+        'former_identifier': 'SLES',
+        'version': '15.4',
+        'release_type': None,
+        'release_stage': 'released',
+        'arch': 'x86_64',
+        'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
+        'product_class': '30',
+        'extensions': [
+            {
+                'id': 23,
+                'name': 'Multi-Linux-Manager-Server',
+                'identifier': 'Multi-Linux-Manager-Server',
+                'former_identifier': 'Multi-Linux-Manager-Server',
+                'version': '5.1',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name':
+                'Multi Linux Manager Server 5.1 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True
+            },
+            {
+                'id': 42,
+                'name': 'SUSE Linux Enterprise Server LTSS',
+                'identifier': 'SLES-LTSS',
+                'former_identifier': 'SLES-LTSS',
+                'version': '15.4',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name':
+                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True
+            }
+        ]
+    }
+    response.json = json_mock
+    mock_requests_get.return_value = response
+    smt_data_ipv46 = dedent('''\
+        <smtInfo fingerprint="00:11:22:33"
+         SMTserverIP="192.168.1.1"
+         SMTserverIPv6="fc00::1"
+         SMTserverName="fantasy.example.com"
+         SMTregistryName=""
+         region="antarctica-1"/>''')
+    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    mock_get_current_smt.return_value = smt_server
+    mock_get_creds.return_value = 'SCC_foo', 'bar'
+    base_product = dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <product schemeversion="0">
+          <vendor>SUSE</vendor>
+          <name>SL-Micro</name>
+          <version>6.0</version>
+          <baseversion>6</baseversion>
+          <patchlevel>0</patchlevel>
+          <release>0</release>
+          <endoflife></endoflife>
+          <arch>x86_64</arch></product>''')
+    mock_get_product_tree.return_value = etree.fromstring(
+        base_product[base_product.index('<product'):]
+    )
+    prod_reg_type = namedtuple(
+        'prod_reg_type', ['returncode', 'output', 'error']
+    )
+    mock_register_product.return_value = prod_reg_type(
+        returncode=0,
+        output='all OK',
+        error='stderr'
+    )
+    mock_is_suma_instance.return_value = True
+    utils.clean_non_free_extensions()
+    assert mock_register_product.call_args_list == [
+        call(
+            registration_target=smt_server,
+            product='SLES-LTSS/15.4/x86_64',
+            de_register=True
+        )
+    ]
+    assert mock_logging.info.call_args_list == [
+        call('No credentials entry for "*fantasy_example_com"'),
+        call('No credentials entry for "SCC*"'),
+        call('Non free extension SLES-LTSS/15.4/x86_64 removed')
+    ]
+
+
 @patch('cloudregister.registerutils.register_product')
 @patch('cloudregister.registerutils.get_installed_products')
 @patch('cloudregister.registerutils.logging')
