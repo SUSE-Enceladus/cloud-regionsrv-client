@@ -524,7 +524,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 region_servers_ipv4.append(ip_addr)
         random.shuffle(region_servers_ipv4)
         random.shuffle(region_servers_ipv6)
-        if has_ipv6_access():
+        if has_ipv6_access(region_servers_ipv6):
             region_servers = region_servers_ipv6 + region_servers_ipv4
         else:
             region_servers = region_servers_ipv4
@@ -2311,15 +2311,29 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def has_ipv4_access():
+def has_ipv4_access(ipv4_addresses=[]):
     """Check if we have IPv4 network configuration"""
-    return has_network_access_by_ip_address('8.8.8.8')
+    return has_ip_access('ipv4', ipv4_addresses)
 
 
 # ----------------------------------------------------------------------------
-def has_ipv6_access():
+def has_ipv6_access(ipv6_addresses=[]):
     """Check if we have IPv6 network configuration"""
-    return has_network_access_by_ip_address('2001:4860:4860::8888')
+    return has_ip_access('ipv6', ipv6_addresses)
+
+
+# ----------------------------------------------------------------------------
+def has_ip_access(ip_type, ip_addresses=[]):
+    """Check if we can connect to the IP address provided."""
+    if not ip_addresses:
+        ipv4_addresses, ipv6_addresses, _ = _get_region_server_ips()
+
+        if ip_type == 'ipv4':
+            ip_addresses = ipv4_addresses
+        else:
+            ip_addresses = ipv6_addresses
+
+    return _check_ip_access(ip_addresses)
 
 
 # ----------------------------------------------------------------------------
@@ -2367,6 +2381,43 @@ def get_suma_registry_content():
 
 
 # Private
+# ----------------------------------------------------------------------------
+def _check_ip_access(ips_addresses):
+    for ip_address in ips_addresses:
+        if has_network_access_by_ip_address(ip_address):
+            return True
+
+    if not ips_addresses:
+        logging.info('No IP addresses available')
+
+    return False
+
+
+# ----------------------------------------------------------------------------
+def _get_region_server_ips(cfg=None):
+    if not cfg:
+        cfg = get_config()
+
+    region_servers = cfg.get('server', 'regionsrv').split(',')
+    # sort into ipv4 & ipv6 buckets
+    region_servers_ipv4 = []
+    region_servers_ipv6 = []
+    region_servers_dns = []
+    for srv in region_servers:
+        srv_id = srv.strip()
+        try:
+            ip_addr = ipaddress.ip_address(srv_id)
+        except ValueError:
+            region_servers_dns.append(srv_id)
+            continue
+        if isinstance(ip_addr, ipaddress.IPv6Address):
+            region_servers_ipv6.append(ip_addr)
+        else:
+            region_servers_ipv4.append(ip_addr)
+
+    return region_servers_ipv4, region_servers_ipv6, region_servers_dns
+
+
 # ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):
     """Return the configured framework specific plugin module"""

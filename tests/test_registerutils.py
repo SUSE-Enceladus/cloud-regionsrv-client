@@ -23,6 +23,7 @@ import tempfile
 import toml
 import yaml
 from collections import namedtuple
+from ipaddress import IPv4Address, IPv6Address
 from pytest import raises
 from textwrap import dedent
 
@@ -1329,7 +1330,6 @@ def test_register_product_no_transactional_de_register_missing_product(
             de_register=True
         )
     assert sys_exit.value.code == 1
-    print(mock_logging.error.call_args_list)
     assert mock_logging.error.call_args_list == [
         call('De-register the system is not allowed for SUSEConnect')
     ]
@@ -1645,20 +1645,20 @@ def test_fetch_smt_data_metadata_server(
         etree.tostring(smt_server, encoding='utf-8')
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ip_address')
+@patch('cloudregister.registerutils.has_ipv6_access')
 @patch('cloudregister.registerutils.time.sleep')
 @patch('cloudregister.registerutils.logging')
 def test_fetch_smt_data_api_no_answer(
     mock_logging,
     mock_time_sleep,
-    mock_has_network_access
+    mock_has_ipv6_access
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
     cfg.set('server', 'regionsrv', '1.1.1.1')
+    mock_has_ipv6_access.return_value = True
     with raises(SystemExit):
         utils.fetch_smt_data(cfg, None)
-    mock_has_network_access.return_value = False
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
@@ -1689,7 +1689,7 @@ def test_fetch_smt_data_api_no_answer(
     ]
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ip_address')
+@patch('cloudregister.registerutils.has_ipv6_access')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -1699,7 +1699,7 @@ def test_fetch_smt_data_api_answered(
     mock_time_sleep,
     mock_os_path_isfile,
     mock_request_get,
-    mock_has_network_access
+    mock_has_ipv6_access
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
@@ -1717,7 +1717,7 @@ def test_fetch_smt_data_api_answered(
     </regionSMTdata>''')
     response.text = smt_xml
     mock_request_get.return_value = response
-    mock_has_network_access.return_value = False
+    mock_has_ipv6_access.return_value = False
     utils.fetch_smt_data(cfg, None)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
@@ -1726,6 +1726,7 @@ def test_fetch_smt_data_api_answered(
     ]
 
 
+@patch('cloudregister.registerutils._get_region_server_ips')
 @patch('socket.create_connection')
 @patch('cloudregister.registerutils.ipaddress.ip_address')
 @patch('cloudregister.registerutils.requests.get')
@@ -1738,7 +1739,8 @@ def test_fetch_smt_data_api_no_valid_ip(
     mock_os_path_isfile,
     mock_request_get,
     mock_ipaddress_ip_address,
-    mock_socket_create_connection
+    mock_socket_create_connection,
+    mock_get_region_server_ips
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
@@ -1755,11 +1757,13 @@ def test_fetch_smt_data_api_no_valid_ip(
     mock_request_get.side_effect = [response, response]
     mock_ipaddress_ip_address.side_effect = [ValueError, ValueError]
     mock_socket_create_connection.side_effect = OSError
+    mock_get_region_server_ips.return_value = \
+        ['1.1.1.1'], ['fc11::2'], ['foo']
     smt_data = utils.fetch_smt_data(cfg, None)
     assert etree.tostring(smt_data, encoding='utf-8') == smt_xml.encode()
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ip_address')
+@patch('cloudregister.registerutils.has_ipv6_access')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -1769,7 +1773,7 @@ def test_fetch_smt_data_api_error_response(
     mock_time_sleep,
     mock_os_path_isfile,
     mock_request_get,
-    mock_has_network_access
+    mock_has_ipv6_access
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
@@ -1779,10 +1783,9 @@ def test_fetch_smt_data_api_error_response(
     response.status_code = 422
     response.reason = 'well, you shall not pass'
     mock_request_get.return_value = response
-    mock_has_network_access.return_value = False
+    mock_has_ipv6_access.return_value = False
     with raises(SystemExit):
         utils.fetch_smt_data(cfg, None)
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call('Using API: regionInfo'),
         call('Getting update server information, attempt 1'),
@@ -1815,7 +1818,7 @@ def test_fetch_smt_data_api_error_response(
     ]
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ip_address')
+@patch('cloudregister.registerutils.has_ipv6_access')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -1825,7 +1828,7 @@ def test_fetch_smt_data_api_exception(
     mock_time_sleep,
     mock_os_path_isfile,
     mock_request_get,
-    mock_has_network_access
+    mock_has_ipv6_access
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
@@ -1835,7 +1838,7 @@ def test_fetch_smt_data_api_exception(
     response.status_code = 422
     response.reason = 'well, you shall not pass'
     mock_request_get.side_effect = requests.exceptions.RequestException('foo')
-    mock_has_network_access.return_value = True
+    mock_has_ipv6_access.return_value = True
     with raises(SystemExit):
         utils.fetch_smt_data(cfg, None)
     assert mock_logging.info.call_args_list == [
@@ -1864,7 +1867,7 @@ def test_fetch_smt_data_api_exception(
     ]
 
 
-@patch('cloudregister.registerutils.has_network_access_by_ip_address')
+@patch('cloudregister.registerutils.has_ipv6_access')
 @patch('cloudregister.registerutils.requests.get')
 @patch('cloudregister.registerutils.os.path.isfile')
 @patch('cloudregister.registerutils.time.sleep')
@@ -1874,7 +1877,7 @@ def test_fetch_smt_data_api_exception_quiet(
     mock_time_sleep,
     mock_os_path_isfile,
     mock_request_get,
-    mock_has_network_access
+    mock_has_ipv6_access
 ):
     cfg = get_test_config()
     del cfg['server']['metadata_server']
@@ -1884,7 +1887,7 @@ def test_fetch_smt_data_api_exception_quiet(
     response.status_code = 422
     response.reason = 'well, you shall not pass'
     mock_request_get.side_effect = requests.exceptions.RequestException('foo')
-    mock_has_network_access.return_value = True
+    mock_has_ipv6_access.return_value = True
     with raises(SystemExit):
         utils.fetch_smt_data(cfg, 'foo', quiet=True)
     assert mock_logging.info.call_args_list == [
@@ -3306,7 +3309,6 @@ def test_remove_registration_data(
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() is None
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call('System successfully removed from update infrastructure'),
@@ -3356,7 +3358,6 @@ def test_remove_registration_data_request_not_OK(
     mock_request_delete.return_value = response
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() is None
-    print(mock_logging.info.call_args_list)
     assert mock_logging.info.call_args_list == [
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call(
@@ -3415,7 +3416,6 @@ def test_remove_registration_data_request_exception(
     mock_request_delete.side_effect = exception
     mock_is_scc_connected.return_value = True
     assert utils.remove_registration_data() is None
-    print(mock_logging.error.call_args_list)
     assert mock_logging.warning.call_args_list == [
         call('Unable to remove client registration from server'),
         call(exception),
@@ -3853,7 +3853,6 @@ def test_get_region_server_args_not_region_srv_args(
     mod = __import__('cloudregister.amazonec2', fromlist=[''])
     assert utils.__get_region_server_args(mod) is None
     mock_logging.assert_not_called
-    print(mock_time_sleep.call_args_list)
     assert mock_time_sleep.call_args_list == [
         call(1),
         call(1),
@@ -4056,16 +4055,70 @@ def test_remove_service(
     mock_logging.info.not_called()
 
 
+@patch('cloudregister.registerutils._get_region_server_ips')
 @patch('cloudregister.registerutils.has_network_access_by_ip_address')
-def test_has_ipv4_access(mock_has_network_access):
+def test_has_ipv4_access(
+    mock_has_network_access,
+    mock_get_region_server_ips,
+):
     mock_has_network_access.return_value = True
+    mock_get_region_server_ips.return_value = \
+        ['1.1.1.1'], ['fc11::2'], ['foo']
+
     assert utils.has_ipv4_access()
+    mock_has_network_access.assert_called_once_with('1.1.1.1')
+
+
+@patch('cloudregister.registerutils._get_region_server_ips')
+@patch('cloudregister.registerutils.has_network_access_by_ip_address')
+def test_has_ipv6_access(
+    mock_has_network_access,
+    mock_get_region_server_ips
+):
+    mock_has_network_access.return_value = True
+    mock_get_region_server_ips.return_value = \
+        ['1.1.1.1'], ['fc11::2'], ['foo']
+
+    assert utils.has_ipv6_access()
+    mock_has_network_access.assert_called_once_with('fc11::2')
+
+
+@patch('cloudregister.registerutils._get_region_server_ips')
+def test_has_no_ipv4_ipv6_servers(mock_get_region_server_ips):
+    mock_get_region_server_ips.return_value = [], [], []
+    assert utils.has_ipv4_access() is False
+    assert utils.has_ipv6_access() is False
 
 
 @patch('cloudregister.registerutils.has_network_access_by_ip_address')
-def test_has_ipv6_access(mock_has_network_access):
-    mock_has_network_access.return_value = True
-    assert utils.has_ipv6_access()
+@patch('cloudregister.registerutils._get_region_server_ips')
+def test_has_no_ipv4_ipv6_access(
+    mock_get_region_server_ips,
+    mock_has_network_access_by_ip_address
+):
+    mock_get_region_server_ips.return_value = ['foo'], ['bar'], []
+    mock_has_network_access_by_ip_address.return_value = False
+    assert utils.has_ipv4_access() is False
+    assert utils.has_ipv6_access() is False
+
+
+@patch('cloudregister.registerutils.add_region_server_args_to_URL')
+@patch('cloudregister.registerutils.get_config')
+def test_ger_region_server_ips(
+    mock_get_config,
+    mock_add_region_server_args_to_URL
+):
+    cfg = configparser.RawConfigParser()
+    cfg.read(data_path + '/regionserverclnt.cfg')
+    cfg.set('server', 'api', 'bar')
+    cfg.set('server', 'regionsrv', '1.1.1.1,2.2.2.2,fc11::2,foo')
+    mock_get_config.return_value = cfg
+    assert utils._get_region_server_ips() == \
+        (
+            [IPv4Address('1.1.1.1'), IPv4Address('2.2.2.2')],
+            [IPv6Address('fc11::2')],
+            ['foo']
+        )
 
 
 @patch('cloudregister.registerutils.socket.create_connection')
@@ -5222,7 +5275,6 @@ def test_clean_registries_conf_docker_file_clean_content_no_smt(
             call('/etc/docker/daemon.json', 'r'),
             call('/etc/docker/daemon.json', 'w')
         ]
-        print(mock_logging.info.call_args_list)
         assert mock_logging.info.call_args_list == [
             call(
                 'SUSE registry information has been removed '
