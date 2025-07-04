@@ -3023,6 +3023,12 @@ def test_is_registration_supported_exception():
     assert utils.is_registration_supported(cfg_template) is False
 
 
+@patch('cloudregister.registerutils.get_state_dir')
+def test_registration_completed(mock_state_dir):
+    mock_state_dir.return_value = data_path
+    assert utils.is_registration_completed() is False
+
+
 def test_is_registration_supported():
     cfg_template = get_test_config()
     assert utils.is_registration_supported(cfg_template) is True
@@ -3133,6 +3139,14 @@ def test_rmt_as_scc_proxy_flag(mock_path):
     mock_path.assert_called_once_with(
         '/var/cache/cloudregister/',
         'rmt_is_scc_proxy'
+    )
+
+
+@patch('cloudregister.registerutils.Path')
+def test_registration_completed_flag(mock_path):
+    utils.set_registration_completed_flag()
+    mock_path.assert_called_once_with(
+        '/var/cache/cloudregister/registrationcompleted'
     )
 
 
