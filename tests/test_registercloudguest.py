@@ -147,6 +147,7 @@ def test_register_cloud_guest_cleanup_exception(
     mock_clean_reg_setup.assert_called_once()
 
 
+@patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('cloudregister.registerutils.set_new_registration_flag')
 @patch('cloudregister.registerutils.has_network_access_by_ip_address')
 @patch('cloudregister.registerutils.is_zypper_running')
@@ -158,13 +159,13 @@ def test_register_cloud_guest_cleanup_exception(
 @patch('cloudregister.registerutils.get_state_dir')
 @patch('cloudregister.registerutils.get_config')
 @patch('register_cloud_guest.cleanup')
-def test_register_cloud_guest_force_reg_zypper_runnning(
+def test_register_cloud_guest_force_reg_zypper_running(
     mock_cleanup, mock_get_config,
     mock_get_state_dir, mock_time_sleep,
     mock_os_path_isdir, mock_os_makedirs,
     mock_get_available_smt_servers, mock_clear_reg_flag,
     mock_is_zypper_running, mock_has_network_access,
-    mock_set_new_registration_flag
+    mock_set_new_registration_flag, mock_set_registration_completed_flag
 ):
     fake_args = SimpleNamespace(
         clean_up=False,
@@ -1088,6 +1089,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('cloudregister.registerutils.set_proxy')
 @patch.object(SMT, 'is_equivalent')
 @patch('cloudregister.registerutils.is_registration_supported')
@@ -1143,7 +1145,8 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
     mock_import_smt_cert, mock_register_product, mock_remove_reg_data,
     mock_fetch_smt_data, mock_get_responding_update_server,
-    mock_is_reg_supported, mock_is_equivalent, mock_set_proxy
+    mock_is_reg_supported, mock_is_equivalent, mock_set_proxy,
+    mock_set_registration_completed_flag
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1526,6 +1529,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     assert sys_exit.value.code == 6
 
 
+@patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.urllib.parse.urlparse')
 @patch('cloudregister.registerutils.enable_repository')
@@ -1592,7 +1596,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse, mock_set_proxy
+    mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1728,6 +1732,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     ]
 
 
+@patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.urllib.parse.urlparse')
 @patch('cloudregister.registerutils.enable_repository')
@@ -1794,7 +1799,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse, mock_set_proxy
+    mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1929,6 +1934,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     ]
 
 
+@patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('register_cloud_guest.os.system')
 @patch('cloudregister.registerutils.set_proxy')
 @patch('register_cloud_guest.urllib.parse.urlparse')
@@ -1996,7 +2002,8 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     mock_requests_get, mock_get_product_tree, mock_get_creds,
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-    mock_urlparse, mock_set_proxy, mock_os_system
+    mock_urlparse, mock_set_proxy, mock_os_system,
+    mock_set_registration_completed_flag
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
