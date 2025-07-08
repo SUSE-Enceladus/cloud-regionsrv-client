@@ -120,11 +120,16 @@ def clean_all():
     clean_smt_cache()
     clear_new_registration_flag()
     clean_framework_identifier()
+    clean_hosts_file()
+    clear_registration_completed_flag()
 
 
 # ----------------------------------------------------------------------------
-def clean_hosts_file(domain_name):
+def clean_hosts_file(domain_name=None):
     """Remove the smt server and registry entries from the /etc/hosts file"""
+    if not domain_name:
+        domain_name = get_domain_name_from_region_server()
+
     if isinstance(domain_name, str):
         domain_name = domain_name.encode()
     new_hosts_content = []
@@ -194,6 +199,21 @@ def clear_rmt_as_scc_proxy_flag():
 
 
 # ----------------------------------------------------------------------------
+def clear_registration_completed_flag():
+    """Clear the registration completed marker"""
+    try:
+        os.unlink(os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER))
+    except FileNotFoundError:
+        pass
+
+
+# ----------------------------------------------------------------------------
+def is_product_removable(triplet):
+    """Return True if the product represented by the triplet can be removed."""
+    return not ('-manager-' in triplet.lower() and is_suma_instance())
+
+
+# ----------------------------------------------------------------------------
 def clean_non_free_extensions():
     """Remove/uninstall non free extensions from the system."""
     extensions = get_extensions()
@@ -210,7 +230,7 @@ def clean_non_free_extensions():
                 version=triplet.version,
                 arch=triplet.arch
             )
-            if triplet in installed_products:
+            if triplet in installed_products and is_product_removable(triplet):
                 reg_prod = register_product(
                     registration_target=get_current_smt(),
                     product=triplet,
@@ -516,7 +536,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 region_servers_ipv4.append(ip_addr)
         random.shuffle(region_servers_ipv4)
         random.shuffle(region_servers_ipv6)
-        if has_ipv6_access():
+        if has_ipv6_access(region_servers_ipv6):
             region_servers = region_servers_ipv6 + region_servers_ipv4
         else:
             region_servers = region_servers_ipv4
@@ -1902,7 +1922,7 @@ def is_registration_completed():
     """Indicate whether a registration is in process or completed based on the
        marker file. Note it is the responsibility of the process to properly
        manage the marker file"""
-    return os.path.isfile(
+    return os.path.exists(
         os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER)
     )
 
@@ -2079,6 +2099,12 @@ def set_rmt_as_scc_proxy_flag():
 
 
 # ----------------------------------------------------------------------------
+def set_registration_completed_flag():
+    """Set a marker that the registration process is successfully completed"""
+    Path(get_state_dir() + REGISTRATION_COMPLETED_MARKER).touch()
+
+
+# ----------------------------------------------------------------------------
 def switch_services_to_plugin():
     """Switches a .service based RIS service that points to the update
        infrastructure to the service plugin"""
@@ -2129,6 +2155,16 @@ def switch_services_to_plugin():
 
 
 # ----------------------------------------------------------------------------
+def get_domain_name_from_region_server():
+    cfg = get_config()
+    region_rmt_server_data = fetch_smt_data(cfg, None)
+    for child in region_rmt_server_data:
+        # use the domain name from the first child of the region server response
+        # no need to loop over all of the 3 entries/siblings
+        return smt.SMT(child, True).get_domain_name()
+
+
+# ----------------------------------------------------------------------------
 def remove_registration_data():
     """Reset the instance to an unregistered state"""
     clear_rmt_as_scc_proxy_flag()
@@ -2138,13 +2174,13 @@ def remove_registration_data():
         if not is_new_registration():
             logging.info('No credentials, nothing to do server side')
         return
+
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
         smt_ips = (smt.get_ipv4(), smt.get_ipv6())
         logging.info('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
-        domain_name = smt.get_domain_name()
         try:
             response = requests.delete(
                 'https://%s/connect/systems' % server_name, auth=auth_creds
@@ -2161,7 +2197,6 @@ def remove_registration_data():
             logging.warning('Unable to remove client registration from server')
             logging.warning(e)
             logging.info('Continue with local artifact removal')
-        clean_hosts_file(domain_name)
         __remove_repo_artifacts(server_name)
         os.unlink(smt_data_file)
     if is_scc_connected():
@@ -2311,15 +2346,29 @@ def write_framework_identifier(cfg):
 
 
 # ----------------------------------------------------------------------------
-def has_ipv4_access():
+def has_ipv4_access(ipv4_addresses=[]):
     """Check if we have IPv4 network configuration"""
-    return has_network_access_by_ip_address('8.8.8.8')
+    return has_ip_access('ipv4', ipv4_addresses)
 
 
 # ----------------------------------------------------------------------------
-def has_ipv6_access():
+def has_ipv6_access(ipv6_addresses=[]):
     """Check if we have IPv6 network configuration"""
-    return has_network_access_by_ip_address('2001:4860:4860::8888')
+    return has_ip_access('ipv6', ipv6_addresses)
+
+
+# ----------------------------------------------------------------------------
+def has_ip_access(ip_type, ip_addresses=[]):
+    """Check if we can connect to the IP address provided."""
+    if not ip_addresses:
+        ipv4_addresses, ipv6_addresses, _ = _get_region_server_ips()
+
+        if ip_type == 'ipv4':
+            ip_addresses = ipv4_addresses
+        else:
+            ip_addresses = ipv6_addresses
+
+    return _check_ip_access(ip_addresses)
 
 
 # ----------------------------------------------------------------------------
@@ -2328,15 +2377,21 @@ def is_suma_instance():
     otherwise False."""
     products = glob.glob('/etc/products.d/*.prod')
     num_matches = 0
+    # suse-manager-server changed to
+    # multi-linux-manager-server, check both (bsc#1243437)
     suma_prods = [
-        '/etc/products.d/suse-manager-server.prod',
-        '/etc/products.d/sle-micro.prod'
+        '/etc/products.d/suse-manager-server.prod',  # SUMA 5.0
+        '/etc/products.d/multi-linux-manager-server.prod',  # SUMA 5.1 (MLM)
+        '/etc/products.d/sle-micro.prod',  # Micro < 6.1
+        '/etc/products.d/sl-micro.prod'  # Micro 6.1 and 6.2
     ]
     for product in products:
         if product.lower() in suma_prods:
             num_matches += 1
 
-    return num_matches == len(suma_prods)
+    # only one Micro + SUMA product possible at the same time for
+    # a SUMA instance
+    return num_matches == 2
 
 
 # ----------------------------------------------------------------------------
@@ -2361,6 +2416,43 @@ def get_suma_registry_content():
 
 
 # Private
+# ----------------------------------------------------------------------------
+def _check_ip_access(ips_addresses):
+    for ip_address in ips_addresses:
+        if has_network_access_by_ip_address(ip_address):
+            return True
+
+    if not ips_addresses:
+        logging.info('No IP addresses available')
+
+    return False
+
+
+# ----------------------------------------------------------------------------
+def _get_region_server_ips(cfg=None):
+    if not cfg:
+        cfg = get_config()
+
+    region_servers = cfg.get('server', 'regionsrv').split(',')
+    # sort into ipv4 & ipv6 buckets
+    region_servers_ipv4 = []
+    region_servers_ipv6 = []
+    region_servers_dns = []
+    for srv in region_servers:
+        srv_id = srv.strip()
+        try:
+            ip_addr = ipaddress.ip_address(srv_id)
+        except ValueError:
+            region_servers_dns.append(srv_id)
+            continue
+        if isinstance(ip_addr, ipaddress.IPv6Address):
+            region_servers_ipv6.append(ip_addr)
+        else:
+            region_servers_ipv4.append(ip_addr)
+
+    return region_servers_ipv4, region_servers_ipv6, region_servers_dns
+
+
 # ----------------------------------------------------------------------------
 def __get_framework_plugin(cfg):
     """Return the configured framework specific plugin module"""
