@@ -56,6 +56,7 @@ DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
 BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 SUSE_REGISTRY = 'registry.suse.com'
+REGSHARING_SYNC_TIME = 30
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -1504,11 +1505,16 @@ def get_smt(cache_refreshed=None):
                 # let's check if we can find an equivalent server.
                 # If this happens during initial registration we need to give
                 # the target server time to share its registration data, take
-                # another break. The registration sharing timer is set to
-                # ~3 seconds
+                # another break. The registration sharing timer is set to be
+                # triggered every ~30 seconds (REGSHARING_SYNC_TIME)
                 # We depend on a background process on the update servers
                 # to re-sync the databases.
-                time.sleep(5)
+                if not is_registration_completed():
+                    # we are in the middle of a registration
+                    # and fail over happened, to avoid failed registration
+                    # because of a race condition, we wait
+                    time.sleep(REGSHARING_SYNC_TIME + 10)
+
                 new_target = find_equivalent_smt_server(
                     current_smt,
                     available_servers
@@ -1527,8 +1533,10 @@ def get_smt(cache_refreshed=None):
                     credentials_file_path = get_credentials_file(new_target)
                     user, password = get_credentials(credentials_file_path)
                     if not has_smt_access(
-                            new_target.get_FQDN(), user, password
+                        new_target.get_FQDN(), user, password
                     ):
+                        # if we waited enough for regsharing to be sync'ed
+                        # and we are here, it means regsharing failed
                         original_smt_ips = str(
                             (current_smt.get_ipv4(), current_smt.get_ipv6())
                         )
