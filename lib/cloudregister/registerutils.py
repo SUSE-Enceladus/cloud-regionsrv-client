@@ -531,9 +531,9 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 region_servers_dns.append(srv_id)
                 continue
             if isinstance(ip_addr, ipaddress.IPv6Address):
-                region_servers_ipv6.append(ip_addr)
+                region_servers_ipv6.append(srv_id)
             else:
-                region_servers_ipv4.append(ip_addr)
+                region_servers_ipv4.append(srv_id)
         random.shuffle(region_servers_ipv4)
         random.shuffle(region_servers_ipv6)
         if has_ipv6_access(region_servers_ipv6):
@@ -1688,7 +1688,8 @@ def has_network_access_by_ip_address(server_ip):
 def has_rmt_ipv6_access(smt):
     """IPv6 access is possible if we have an SMT server that has an IPv6
        address and it can be accessed over IPv6"""
-    if not has_ipv6_access() or not smt.get_ipv6():
+    smt_ipv6 = smt.get_ipv6()
+    if not smt_ipv6 or not has_ipv6_access([smt_ipv6]):
         return False
     logging.info('Attempt to access update server over IPv6')
     protocol = 'http'  # Default for backward compatibility
