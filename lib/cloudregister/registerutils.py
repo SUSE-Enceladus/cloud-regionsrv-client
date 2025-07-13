@@ -578,6 +578,13 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 )
             for srv in region_servers:
                 srvName = str(srv)
+                try:
+                    # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+                    if ipaddress.IPv6Address(srv):
+                        srvName = '[%s]' % srvName
+                except ipaddress.AddressValueError:
+                    pass
+
                 if not quiet:
                     logging.info('\tUsing region server: %s' % srvName)
                 certFile = os.path.join(cert_dir, srvName + '.pem')
@@ -588,9 +595,6 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                     continue
                 try:
                     url = 'https://%s/%s' % (srvName, api)
-                    # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-                    if isinstance(srv, ipaddress.IPv6Address):
-                        url = 'https://[%s]/%s' % (srvName, api)
                     response = requests.get(
                         url,
                         verify=certFile,

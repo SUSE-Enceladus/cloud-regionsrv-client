@@ -1855,13 +1855,13 @@ def test_fetch_smt_data_api_exception(
     assert mock_logging.error.call_args_list == [
         call('\tNo response from: fc00::11'),
         call('\tNone of the servers responded'),
-        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call("\tAttempted: ['fc00::11']"),
         call('\tNo response from: fc00::11'),
         call('\tNone of the servers responded'),
-        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call("\tAttempted: ['fc00::11']"),
         call('\tNo response from: fc00::11'),
         call('\tNone of the servers responded'),
-        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call("\tAttempted: ['fc00::11']"),
         call('Request not answered by any server after 3 attempts'),
         call('Exiting without registration')
     ]
