@@ -1755,7 +1755,9 @@ def test_fetch_smt_data_api_no_valid_ip(
     )
     response.text = smt_xml
     mock_request_get.side_effect = [response, response]
-    mock_ipaddress_ip_address.side_effect = [ValueError, ValueError]
+    mock_ipaddress_ip_address.side_effect = [
+        ValueError, ValueError, IPv6Address
+    ]
     mock_socket_create_connection.side_effect = OSError
     mock_get_region_server_ips.return_value = \
         ['1.1.1.1'], ['fc11::2'], ['foo']
@@ -1855,13 +1857,13 @@ def test_fetch_smt_data_api_exception(
     assert mock_logging.error.call_args_list == [
         call('\tNo response from: fc00::11'),
         call('\tNone of the servers responded'),
-        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call("\tAttempted: ['fc00::11']"),
         call('\tNo response from: fc00::11'),
         call('\tNone of the servers responded'),
-        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call("\tAttempted: ['fc00::11']"),
         call('\tNo response from: fc00::11'),
         call('\tNone of the servers responded'),
-        call("\tAttempted: [IPv6Address('fc00::11')]"),
+        call("\tAttempted: ['fc00::11']"),
         call('Request not answered by any server after 3 attempts'),
         call('Exiting without registration')
     ]
