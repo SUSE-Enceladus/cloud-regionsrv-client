@@ -589,7 +589,8 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 try:
                     url = 'https://%s/%s' % (srvName, api)
                     # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-                    if isinstance(srv, ipaddress.IPv6Address):
+                    ip_addr = ipaddress.ip_address(srv)
+                    if isinstance(ip_addr, ipaddress.IPv6Address):
                         url = 'https://[%s]/%s' % (srvName, api)
                     response = requests.get(
                         url,
