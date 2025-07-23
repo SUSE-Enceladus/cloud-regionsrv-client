@@ -771,20 +771,26 @@ def test_clean_smt_cache(mock_os_unlink, mock_glob):
     mock_os_unlink.assert_called_once_with('currentSMTInfo.obj')
 
 
-@patch('cloudregister.registerutils.os.unlink')
-def test_clear_new_reg_flag(mock_os_unlink):
-    mock_os_unlink.side_effect = FileNotFoundError
+@patch('cloudregister.registerutils.__remove_state_file')
+def test_clear_new_reg_flag(mock_remove_state):
     utils.clear_new_registration_flag()
-    mock_os_unlink.assert_called_once_with(
+    mock_remove_state.assert_called_once_with(
         '/var/cache/cloudregister/newregistration'
     )
 
 
-@patch('cloudregister.registerutils.os.unlink')
-def test_clear_rmt_as_scc_proxy_flag(mock_os_unlink):
-    mock_os_unlink.side_effect = FileNotFoundError
+@patch('cloudregister.registerutils.__remove_state_file')
+def test_clear_reg_complete_flag(mock_remove_state):
+    utils.clear_registration_completed_flag()
+    mock_remove_state.assert_called_once_with(
+        '/var/cache/cloudregister/registrationcompleted'
+    )
+
+
+@patch('cloudregister.registerutils.__remove_state_file')
+def test_clear_rmt_as_scc_proxy_flag(mock_remove_state):
     utils.clear_rmt_as_scc_proxy_flag()
-    mock_os_unlink.assert_called_once_with(
+    mock_remove_state.assert_called_once_with(
         '/var/cache/cloudregister/rmt_is_scc_proxy'
     )
 
@@ -1403,6 +1409,15 @@ def test_register_product_no_exists(
     assert mock_logging.error.call_args_list == [
         call('No registration executable found')
     ]
+
+
+@patch('cloudregister.registerutils.os.path.exists')
+@patch('cloudregister.registerutils.os.unlink')
+def test_remove_state_flag(mock_os_unlink, mock_file_exist):
+    mock_os_unlink.side_effect = FileNotFoundError
+    mock_file_exist.return_value = True
+    utils.__remove_state_file('foo')
+    mock_os_unlink.assert_called_once_with('foo')
 
 
 @patch('cloudregister.registerutils.logging')
@@ -3127,29 +3142,34 @@ def test_proxy_not_enable(mock_os_path_exists):
         assert utils.set_proxy() is False
 
 
-@patch('cloudregister.registerutils.Path')
-def test_new_registration_flag(mock_path):
+@patch('cloudregister.registerutils.__set_state_file')
+def test_new_registration_flag(mock_set_flag):
     utils.set_new_registration_flag()
-    mock_path.assert_called_once_with(
+    mock_set_flag.assert_called_once_with(
         '/var/cache/cloudregister/newregistration'
     )
 
 
-@patch('cloudregister.registerutils.Path')
-def test_rmt_as_scc_proxy_flag(mock_path):
+@patch('cloudregister.registerutils.__set_state_file')
+def test_rmt_as_scc_proxy_flag(mock_set_flag):
     utils.set_rmt_as_scc_proxy_flag()
-    mock_path.assert_called_once_with(
-        '/var/cache/cloudregister/',
-        'rmt_is_scc_proxy'
+    mock_set_flag.assert_called_once_with(
+        '/var/cache/cloudregister/rmt_is_scc_proxy'
     )
 
 
-@patch('cloudregister.registerutils.Path')
-def test_registration_completed_flag(mock_path):
+@patch('cloudregister.registerutils.__set_state_file')
+def test_registration_completed_flag(mock_set_flag):
     utils.set_registration_completed_flag()
-    mock_path.assert_called_once_with(
+    mock_set_flag.assert_called_once_with(
         '/var/cache/cloudregister/registrationcompleted'
     )
+
+
+@patch('cloudregister.registerutils.Path')
+def test_set_flag(mock_path):
+    utils.__set_state_file('foo')
+    mock_path.assert_called_once_with('foo')
 
 
 @patch('cloudregister.registerutils.get_available_smt_servers')

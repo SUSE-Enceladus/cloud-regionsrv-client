@@ -174,7 +174,6 @@ def clean_framework_identifier():
 # ----------------------------------------------------------------------------
 def clean_smt_cache():
     """Clean the disk cache for SMT data"""
-
     smt_data = glob.glob(os.path.join(get_state_dir(), '*SMTInfo*'))
     for cache_entry in smt_data:
         os.unlink(cache_entry)
@@ -183,28 +182,22 @@ def clean_smt_cache():
 # ----------------------------------------------------------------------------
 def clear_new_registration_flag():
     """Clear the new registration marker"""
-    try:
-        os.unlink(os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER))
-    except FileNotFoundError:
-        pass
+    flag_path = os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER)
+    return __remove_state_file(flag_path)
 
 
 # ----------------------------------------------------------------------------
 def clear_rmt_as_scc_proxy_flag():
     """Clear the marker that indicates that RMT is used as SCC proxy"""
-    try:
-        os.unlink(os.path.join(get_state_dir(), RMT_AS_SCC_PROXY_MARKER))
-    except FileNotFoundError:
-        pass
+    flag_path = os.path.join(get_state_dir(), RMT_AS_SCC_PROXY_MARKER)
+    return __remove_state_file(flag_path)
 
 
 # ----------------------------------------------------------------------------
 def clear_registration_completed_flag():
     """Clear the registration completed marker"""
-    try:
-        os.unlink(os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER))
-    except FileNotFoundError:
-        pass
+    flag_path = os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER)
+    return __remove_state_file(flag_path)
 
 
 # ----------------------------------------------------------------------------
@@ -2091,19 +2084,21 @@ def set_proxy():
 # ----------------------------------------------------------------------------
 def set_new_registration_flag():
     """Set a marker that this is the beginning of the registration process"""
-    Path(get_state_dir() + NEW_REGISTRATION_MARKER).touch()
+    __set_state_file(os.path.join(get_state_dir(), NEW_REGISTRATION_MARKER))
 
 
 # ----------------------------------------------------------------------------
 def set_rmt_as_scc_proxy_flag():
     """Set a marker that the RMT registration is a proxy for SCC"""
-    Path(get_state_dir(), RMT_AS_SCC_PROXY_MARKER).touch()
+    __set_state_file(os.path.join(get_state_dir(), RMT_AS_SCC_PROXY_MARKER))
 
 
 # ----------------------------------------------------------------------------
 def set_registration_completed_flag():
     """Set a marker that the registration process is successfully completed"""
-    Path(get_state_dir() + REGISTRATION_COMPLETED_MARKER).touch()
+    __set_state_file(
+        os.path.join(get_state_dir(), REGISTRATION_COMPLETED_MARKER)
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -2669,6 +2664,22 @@ def __remove_service(smt_server_name):
 
 
 # ----------------------------------------------------------------------------
+def __remove_state_file(filepath):
+    """Remove the given file if it does not exist"""
+    status = True
+    if os.path.exists(filepath):
+        status = False
+        try:
+            os.unlink(filepath)
+            status = True
+        except Exception as error:
+            logging.error(
+                'State cleanup for {0} failed with {1}'.format(filepath, error)
+            )
+    return status
+
+
+# ----------------------------------------------------------------------------
 def __replace_url_target(config_files, new_smt):
     """Switch the url of the current SMT server for the given SMT server"""
     current_smt = get_current_smt()
@@ -2830,6 +2841,12 @@ def set_registry_fqdn_suma(private_registry_fqdn):
 
     # the registry value inside the file has the update server registry FQDN
     return True
+
+
+# ----------------------------------------------------------------------------
+def __set_state_file(filepath):
+    """Create a file with the given path if it does not exist"""
+    Path(filepath).touch(exist_ok=True)
 
 
 # ----------------------------------------------------------------------------

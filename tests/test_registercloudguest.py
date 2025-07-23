@@ -1089,6 +1089,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.__remove_state_file')
 @patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('cloudregister.registerutils.set_proxy')
 @patch.object(SMT, 'is_equivalent')
@@ -1146,7 +1147,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_import_smt_cert, mock_register_product, mock_remove_reg_data,
     mock_fetch_smt_data, mock_get_responding_update_server,
     mock_is_reg_supported, mock_is_equivalent, mock_set_proxy,
-    mock_set_registration_completed_flag
+    mock_set_registration_completed_flag, mock_remove_state_file
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1201,6 +1202,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
+    mock_remove_state_file.return_value = True
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1224,6 +1226,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     assert sys_exit.value.code == 1
 
 
+@patch('cloudregister.registerutils.__remove_state_file')
 @patch('cloudregister.registerutils.set_proxy')
 @patch('cloudregister.registerutils.get_credentials_file')
 @patch('cloudregister.registerutils.get_credentials')
@@ -1279,7 +1282,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_set_as_current_smt, mock_logging, mock_get_installed_products,
     mock_import_smt_cert, mock_register_product, mock_set_rmt_as_scc_proxy_flag,
     mock_requests_get, mock_get_product_tree, mock_get_creds,
-    mock_get_creds_file, mock_set_proxy
+    mock_get_creds_file, mock_set_proxy, mock_remove_state_file
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1318,6 +1321,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
+    mock_remove_state_file.return_value = True
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1934,6 +1938,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     ]
 
 
+@patch('cloudregister.registerutils.__remove_state_file')
 @patch('cloudregister.registerutils.set_registration_completed_flag')
 @patch('register_cloud_guest.os.system')
 @patch('cloudregister.registerutils.set_proxy')
@@ -2003,7 +2008,7 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
     mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
     mock_urlparse, mock_set_proxy, mock_os_system,
-    mock_set_registration_completed_flag
+    mock_set_registration_completed_flag, mock_remove_state_file
 ):
     smt_data_ipv46 = dedent('''\
         <smtInfo fingerprint="AA:BB:CC:DD"
@@ -2041,6 +2046,7 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     mock_get_installed_products.return_value = 'SLES-LTSS-FOO/15.4/x86_64'
     mock_import_smt_cert.return_value = True
     mock_os_path_join.return_value = ''
+    mock_remove_state_file.return_value = True
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
