@@ -1,6 +1,7 @@
 -------------------------------------------------------------------
+Wed Jul 23 19:38:28 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
 
-- Update version to $NEXT
+- Update version to 10.5.0
   + Use region server IP addresses to determine Internet access rather
     than a generic address. Region server IP addresses may not be blocked
     in the network construct. (bsc#1245305)
