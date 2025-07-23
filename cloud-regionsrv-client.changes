@@ -420,7 +420,6 @@ Fri Dec 13 10:55:08 UTC 2019 - Ivan Kapelyukhin <ikapelyukhin@suse.com>
   + Properly handle IPv6 addresses in URLs
 
 -------------------------------------------------------------------
-
 Fri Dec 13 10:55:07 UTC 2019 - Ivan Kapelyukhin <ikapelyukhin@suse.com>
 - Update to version 9.0.7
   + Fix crash with a stack trace if no current_smt is
