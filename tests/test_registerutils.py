@@ -1741,6 +1741,43 @@ def test_fetch_smt_data_api_answered(
     ]
 
 
+@patch('cloudregister.registerutils.has_ipv6_access')
+@patch('cloudregister.registerutils.requests.get')
+@patch('cloudregister.registerutils.os.path.isfile')
+@patch('cloudregister.registerutils.time.sleep')
+@patch('cloudregister.registerutils.logging')
+def test_fetch_smt_data_api_answered_from_server_with_name(
+    mock_logging,
+    mock_time_sleep,
+    mock_os_path_isfile,
+    mock_request_get,
+    mock_has_ipv6_access
+):
+    cfg = get_test_config()
+    del cfg['server']['metadata_server']
+    cfg.set('server', 'regionsrv', 'localhost:1234')
+    mock_os_path_isfile.return_value = True
+    response = Response()
+    response.status_code = 200
+    smt_xml = dedent('''\
+    <regionSMTdata>
+      <smtInfo fingerprint="99:88:77:66"
+        SMTserverIP="1.2.3.4"
+        SMTserverIPv6="fc11::2"
+        SMTserverName="foo.susecloud.net"
+        />
+    </regionSMTdata>''')
+    response.text = smt_xml
+    mock_request_get.return_value = response
+    mock_has_ipv6_access.return_value = False
+    utils.fetch_smt_data(cfg, None)
+    assert mock_logging.info.call_args_list == [
+        call('Using API: regionInfo'),
+        call('Getting update server information, attempt 1'),
+        call('\tUsing region server: localhost:1234'),
+    ]
+
+
 @patch('cloudregister.registerutils._get_region_server_ips')
 @patch('socket.create_connection')
 @patch('cloudregister.registerutils.ipaddress.ip_address')
