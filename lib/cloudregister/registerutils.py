@@ -581,10 +581,16 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                     continue
                 try:
                     url = 'https://%s/%s' % (srvName, api)
-                    # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-                    ip_addr = ipaddress.ip_address(srv)
-                    if isinstance(ip_addr, ipaddress.IPv6Address):
-                        url = 'https://[%s]/%s' % (srvName, api)
+                    try:
+                        ip_addr = ipaddress.ip_address(srv)
+                        # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+                        if isinstance(ip_addr, ipaddress.IPv6Address):
+                            url = 'https://[%s]/%s' % (srvName, api)
+                    except ValueError:
+                        # move on with the url created in the first place
+                        # The given region_server is not an IP but a name
+                        # for which the following request is expected to work
+                        pass
                     response = requests.get(
                         url,
                         verify=certFile,
