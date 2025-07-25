@@ -1,4 +1,13 @@
 -------------------------------------------------------------------
+Fri Jul 25 11:06:58 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
+
+- Update version to 10.5.1
+  + Fix issue with picking up configured server names from the
+    regionsrv config file. Previously only IP addresses were collected
+  + Update scriptlet for package uninstall to avoid issues in the
+    build service
+
+-------------------------------------------------------------------
 Wed Jul 23 19:38:28 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
 
 - Update version to 10.5.0

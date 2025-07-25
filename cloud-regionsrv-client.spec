@@ -233,6 +233,17 @@ fi
 if [ "$1" -eq 0 ] && [ -e "%{_sysconfdir}/regionserverclnt.cfg" ]; then
     %{_sbindir}/registercloudguest --clean
 fi
+# Avoid unpredictable errors in the build service. The build service check
+# that removes packages does not guarantee that the generic config package
+# gets removed during install/remove testing prior to removing the
+# cloud-regionsrv-client package. The generic example configuration
+# triggers errors during the clean operation. Therefore we force the exit
+# code to be 0 during build. If a user installs this package on a system with
+# and invalid config they have to uninstall the package with the "--noscripts"
+# option.
+if [ -e "/.buildenv" ]; then
+    exit 0
+fi
 
 %post
 # Scripts need access to the update infrastructure, do not execute them
