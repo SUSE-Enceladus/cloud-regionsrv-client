@@ -2178,6 +2178,7 @@ def remove_registration_data():
             logging.info('No credentials, nothing to do server side')
         return
 
+    server_names = []
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
@@ -2200,7 +2201,7 @@ def remove_registration_data():
             logging.warning('Unable to remove client registration from server')
             logging.warning(e)
             logging.info('Continue with local artifact removal')
-        __remove_repo_artifacts(server_name)
+        server_names.append(server_name)
         os.unlink(smt_data_file)
     if is_scc_connected():
         logging.info('Removing system from SCC')
@@ -2226,9 +2227,13 @@ def remove_registration_data():
             scc_except_msg += 'artifacts removed locally.'
             logging.error(scc_except_msg % user)
             logging.warning(e)
-        __remove_repo_artifacts('suse.com')
+
+        server_names.append('suse.com')
     else:
         logging.info('No current registration server set.')
+
+    logging.info('Removing repository artifacts')
+    __remove_repo_artifacts(server_names)
 
 
 # ----------------------------------------------------------------------------
@@ -2476,23 +2481,24 @@ def __get_framework_plugin(cfg):
 
 
 # ----------------------------------------------------------------------------
-def __get_referenced_credentials(smt_server_name):
+def __get_referenced_credentials(smt_server_names):
     """Return a list of credential names referenced by repositories"""
     repo_files = glob.glob('/etc/zypp/repos.d/*.repo')
     referenced_credentials = []
-    for repo_file in repo_files:
-        repo_cfg = get_config(repo_file)
-        for section in repo_cfg.sections():
-            url = repo_cfg.get(section, 'baseurl')
-            if url:
-                if (
-                        smt_server_name in url or
-                        'plugin:/susecloud' in url or
-                        'plugin:susecloud' in url
-                ):
-                    credentials_name = repo_cfg.get(section, 'service')
-                    if credentials_name not in referenced_credentials:
-                        referenced_credentials.append(credentials_name)
+    for smt_server_name in smt_server_names:
+        for repo_file in repo_files:
+            repo_cfg = get_config(repo_file)
+            for section in repo_cfg.sections():
+                url = repo_cfg.get(section, 'baseurl')
+                if url:
+                    if (
+                            smt_server_name in url or
+                            'plugin:/susecloud' in url or
+                            'plugin:susecloud' in url
+                    ):
+                        credentials_name = repo_cfg.get(section, 'service')
+                        if credentials_name not in referenced_credentials:
+                            referenced_credentials.append(credentials_name)
 
     return referenced_credentials
 
@@ -2557,7 +2563,7 @@ def __get_system_mfg():
 # ----------------------------------------------------------------------------
 def __has_credentials(smt_server_name):
     """Check if a credentials file exists."""
-    referenced_credentials = __get_referenced_credentials(smt_server_name)
+    referenced_credentials = __get_referenced_credentials([smt_server_name])
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
     for system_credential in system_credentials:
         if os.path.basename(system_credential) == 'SCCcredentials':
@@ -2595,9 +2601,10 @@ def __populate_srv_cache():
 
 
 # ----------------------------------------------------------------------------
-def __remove_credentials(smt_server_name):
+def __remove_credentials(smt_server_names):
     """Remove the server generated credentials"""
-    referenced_credentials = __get_referenced_credentials(smt_server_name)
+    logging.info('Deleting locally stored credentials')
+    referenced_credentials = __get_referenced_credentials(smt_server_names)
     # Special files that may exist but may not be referenced
     referenced_credentials += ['SCCcredentials', 'NCCcredentials']
     system_credentials = glob.glob('/etc/zypp/credentials.d/*')
@@ -2610,57 +2617,58 @@ def __remove_credentials(smt_server_name):
 
 
 # ----------------------------------------------------------------------------
-def __remove_repo_artifacts(repo_server_name):
+def __remove_repo_artifacts(repo_server_names):
     """Remove the artifacts related to repository handling for a registration
     """
-
-    __remove_credentials(repo_server_name)
-    __remove_repos(repo_server_name)
-    __remove_service(repo_server_name)
+    __remove_credentials(repo_server_names)
+    __remove_repos(repo_server_names)
+    __remove_service(repo_server_names)
 
     if os.path.exists('/etc/SUSEConnect'):
         os.unlink('/etc/SUSEConnect')
 
 
 # ----------------------------------------------------------------------------
-def __remove_repos(smt_server_name):
+def __remove_repos(smt_server_names):
     """Remove the repositories for the given server"""
     repo_files = glob.glob('/etc/zypp/repos.d/*')
-    for repo_file in repo_files:
-        repo_cfg = get_config(repo_file)
-        for section in repo_cfg.sections():
-            url = repo_cfg.get(section, 'baseurl')
-            if url:
-                if (
-                        smt_server_name in url or
-                        'plugin:/susecloud' in url or
-                        'plugin:susecloud' in url
-                ):
-                    logging.info(
-                        'Removing repo: %s' % os.path.basename(repo_file)
-                    )
-                    os.unlink(repo_file)
+    for smt_server_name in smt_server_names:
+        for repo_file in repo_files:
+            repo_cfg = get_config(repo_file)
+            for section in repo_cfg.sections():
+                url = repo_cfg.get(section, 'baseurl')
+                if url:
+                    if (
+                            smt_server_name in url or
+                            'plugin:/susecloud' in url or
+                            'plugin:susecloud' in url
+                    ):
+                        logging.info(
+                            'Removing repo: %s' % os.path.basename(repo_file)
+                        )
+                        os.unlink(repo_file)
 
     return 1
 
 
 # ----------------------------------------------------------------------------
-def __remove_service(smt_server_name):
+def __remove_service(smt_server_names):
     """Remove the services pointing to the update infrastructure"""
     service_files = glob.glob('/etc/zypp/services.d/*')
-    for service_file in service_files:
-        service_cfg = get_config(service_file)
-        for section in service_cfg.sections():
-            url = service_cfg.get(section, 'url')
-            if url:
-                if (
-                        smt_server_name in url or
-                        'plugin:/susecloud' in url or
-                        'plugin:susecloud' in url
-                ):
-                    logging.info('Removing service: %s'
-                                 % os.path.basename(service_file))
-                    os.unlink(service_file)
+    for smt_server_name in smt_server_names:
+        for service_file in service_files:
+            service_cfg = get_config(service_file)
+            for section in service_cfg.sections():
+                url = service_cfg.get(section, 'url')
+                if url:
+                    if (
+                            smt_server_name in url or
+                            'plugin:/susecloud' in url or
+                            'plugin:susecloud' in url
+                    ):
+                        logging.info('Removing service: %s'
+                                     % os.path.basename(service_file))
+                        os.unlink(service_file)
 
     service_plugins = __get_service_plugins()
     for service_plugin in service_plugins:
