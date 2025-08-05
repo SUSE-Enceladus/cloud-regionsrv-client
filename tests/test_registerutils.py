@@ -23,7 +23,7 @@ import tempfile
 import toml
 import yaml
 from collections import namedtuple
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv6Address
 from pytest import raises
 from textwrap import dedent
 
