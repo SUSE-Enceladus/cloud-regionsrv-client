@@ -2449,9 +2449,9 @@ def _get_region_server_ips(cfg=None):
             region_servers_dns.append(srv_id)
             continue
         if isinstance(ip_addr, ipaddress.IPv6Address):
-            region_servers_ipv6.append(ip_addr)
+            region_servers_ipv6.append(format(ip_addr))
         else:
-            region_servers_ipv4.append(ip_addr)
+            region_servers_ipv4.append(format(ip_addr))
 
     return region_servers_ipv4, region_servers_ipv6, region_servers_dns
 
