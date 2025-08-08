@@ -3316,6 +3316,7 @@ def test_remove_registration_data_no_user(
     ]
 
 
+@patch('cloudregister.registerutils.__remove_credentials')
 @patch('cloudregister.registerutils.get_domain_name_from_region_server')
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.is_scc_connected')
@@ -3328,7 +3329,8 @@ def test_remove_registration_data_no_registration(
     mock_logging,
     mock_is_scc_connected,
     mock_os_path_exists,
-    mock_get_domain_name_from_region_server
+    mock_get_domain_name_from_region_server,
+    mock_remove_credentials
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     mock_is_scc_connected.return_value = False
@@ -3339,8 +3341,10 @@ def test_remove_registration_data_no_registration(
         call('No current registration server set.'),
         call('Cleaning up /etc/hosts for foo')
     ]
+    mock_remove_credentials.assert_called_once_with([])
 
 
+@patch('cloudregister.registerutils.__remove_credentials')
 @patch('cloudregister.registerutils.is_scc_connected')
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.__remove_repo_artifacts')
@@ -3363,7 +3367,8 @@ def test_remove_registration_data(
     mock_clean_hosts_file,
     mock_remove_repo_artifacts,
     mock_os_unlink,
-    mock_is_scc_connected
+    mock_is_scc_connected,
+    mock_remove_credentials
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     smt_data_ipv46 = dedent('''\
@@ -3386,10 +3391,12 @@ def test_remove_registration_data(
         call("Clean current registration server: ('192.168.1.1', 'fc00::1')"),
         call('System successfully removed from update infrastructure'),
         call('Removing system from SCC'),
-        call('System successfully removed from SCC')
+        call('System successfully removed from SCC'),
+        call('Removing repository artifacts')
     ]
 
 
+@patch('cloudregister.registerutils.__remove_credentials')
 @patch('cloudregister.registerutils.is_scc_connected')
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.__remove_repo_artifacts')
@@ -3412,7 +3419,8 @@ def test_remove_registration_data_request_not_OK(
     mock_clean_hosts_file,
     mock_remove_repo_artifacts,
     mock_os_unlink,
-    mock_is_scc_connected
+    mock_is_scc_connected,
+    mock_remove_credentials
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     smt_data_ipv46 = dedent('''\
@@ -3443,10 +3451,12 @@ def test_remove_registration_data_request_not_OK(
             'against your subscription. It is recommended to investigate '
             'the issue. System user name: "foo". '
             'Local registration artifacts removed.'
-        )
+        ),
+        call('Removing repository artifacts')
     ]
 
 
+@patch('cloudregister.registerutils.__remove_credentials')
 @patch('cloudregister.registerutils.is_scc_connected')
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.__remove_repo_artifacts')
@@ -3469,7 +3479,8 @@ def test_remove_registration_data_request_exception(
     mock_clean_hosts_file,
     mock_remove_repo_artifacts,
     mock_os_unlink,
-    mock_is_scc_connected
+    mock_is_scc_connected,
+    mock_remove_credentials
 ):
     mock_get_creds.return_value = 'foo', 'bar'
     smt_data_ipv46 = dedent('''\
@@ -4025,9 +4036,10 @@ def test_remove_credentials(
     mock_glob.return_value = ['/etc/zypp/credentials.d/SCCcredentials']
     mock_get_referenced_creds.return_value = ['SCCcredentials']
     assert utils.__remove_credentials('foo') == 1
-    mock_logging.info.assert_called_once_with(
-        'Removing credentials: /etc/zypp/credentials.d/SCCcredentials'
-    )
+    assert mock_logging.info.call_args_list == [
+        call('Deleting locally stored credentials'),
+        call('Removing credentials: /etc/zypp/credentials.d/SCCcredentials')
+    ]
     mock_os_unlink.assert_called_once_with(
         '/etc/zypp/credentials.d/SCCcredentials'
     )
@@ -4037,40 +4049,30 @@ def test_remove_credentials(
 @patch('cloudregister.registerutils.os.path.exists')
 @patch('cloudregister.registerutils.__remove_service')
 @patch('cloudregister.registerutils.__remove_repos')
-@patch('cloudregister.registerutils.__remove_credentials')
 def test_remove_artifacts(
-    mock_remove_creds,
     mock_remove_repos,
     mock_remove_service,
     mock_os_path_exists,
     mock_os_unlink
 ):
     mock_os_path_exists.return_value = True
-    assert utils.__remove_repo_artifacts('foo') is None
-    mock_remove_creds.assert_called_once_with('foo')
-    mock_remove_repos.assert_called_once_with('foo')
-    mock_remove_service.assert_called_once_with('foo')
+    assert utils.__remove_repo_artifacts(['foo']) is None
+    mock_remove_repos.assert_called_once_with(['foo'])
+    mock_remove_service.assert_called_once_with(['foo'])
     mock_os_path_exists.assert_called_once_with('/etc/SUSEConnect')
-    mock_os_unlink.assert_called_once_with('/etc/SUSEConnect')
 
 
+@patch('cloudregister.registerutils.glob.glob')
+@patch('cloudregister.registerutils.__get_referenced_credentials')
 @patch('cloudregister.registerutils.os.unlink')
-@patch('cloudregister.registerutils.os.path.exists')
-@patch('cloudregister.registerutils.__remove_service')
-@patch('cloudregister.registerutils.__remove_repos')
-@patch('cloudregister.registerutils.__remove_credentials')
-def test_remove_artifacts_no_remove_etc_scccreds(
-    mock_remove_creds,
-    mock_remove_repos,
-    mock_remove_service,
-    mock_os_path_exists,
-    mock_os_unlink
+def test_remove_credentials_no_remove_etc_scccreds(
+    mock_os_unlink,
+    mock_get_referenced_creds,
+    mock_glob
 ):
-    assert utils.__remove_repo_artifacts('foo') is None
-    mock_remove_creds.assert_called_once_with('foo')
-    mock_remove_repos.assert_called_once_with('foo')
-    mock_remove_service.assert_called_once_with('foo')
-    mock_os_path_exists.assert_called_once_with('/etc/SUSEConnect')
+    mock_glob.return_value = ['foo']
+    mock_get_referenced_creds.return_value = []
+    assert utils.__remove_credentials('') == 1
     mock_os_unlink.assert_not_called
 
 
@@ -4079,7 +4081,7 @@ def test_remove_artifacts_no_remove_etc_scccreds(
 @patch('cloudregister.registerutils.os.unlink')
 def test_remove_repos(mock_os_unlink, mock_logging, mock_glob):
     mock_glob.return_value = ['tests/data/repo_foo.repo']
-    assert utils.__remove_repos('foo') == 1
+    assert utils.__remove_repos(['foo']) == 1
     mock_os_unlink.assert_called_once_with('tests/data/repo_foo.repo')
     mock_logging.info.called_once_with('Removing repo: repo_foo.repo')
 
@@ -4106,7 +4108,7 @@ def test_remove_service_not_plugins(
 ):
     mock_glob.return_value = ['tests/data/service.service']
     mock_get_service_plugin.return_value = []
-    assert utils.__remove_service('192') == 1
+    assert utils.__remove_service(['192']) == 1
     mock_os_unlink.assert_called_once_with('tests/data/service.service')
     mock_logging.info.called_once_with('Removing repo: service.service')
 
