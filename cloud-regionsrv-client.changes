@@ -1,7 +1,7 @@
 -------------------------------------------------------------------
-Fri Aug  8 14:46:13 UTC 2025 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
+$RELEASE_DATE
 
-- Update version to 10.5.2
+- Update version to NEXT
   + Fix the case where an instance can not get verified
     in any of the siblings, leaving credential files present
     under /etc/zypp/credentials.d
