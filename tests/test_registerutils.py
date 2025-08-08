@@ -23,7 +23,7 @@ import tempfile
 import toml
 import yaml
 from collections import namedtuple
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv6Address
 from pytest import raises
 from textwrap import dedent
 
@@ -4179,7 +4179,7 @@ def test_has_no_ipv4_ipv6_access(
 
 @patch('cloudregister.registerutils.add_region_server_args_to_URL')
 @patch('cloudregister.registerutils.get_config')
-def test_ger_region_server_ips(
+def test_get_region_server_ips(
     mock_get_config,
     mock_add_region_server_args_to_URL
 ):
@@ -4190,8 +4190,8 @@ def test_ger_region_server_ips(
     mock_get_config.return_value = cfg
     assert utils._get_region_server_ips() == \
         (
-            [IPv4Address('1.1.1.1'), IPv4Address('2.2.2.2')],
-            [IPv6Address('fc11::2')],
+            ['1.1.1.1', '2.2.2.2'],
+            ['fc11::2'],
             ['foo']
         )
 
