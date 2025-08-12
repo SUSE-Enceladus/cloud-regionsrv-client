@@ -4041,6 +4041,12 @@ def test_remove_credentials(
     mock_get_referenced_creds.return_value = ['Basesystem_Module_x86_64']
     assert utils.__remove_credentials('foo') == 1
     message = 'Removing credentials: /etc/zypp/credentials.d/%s'
+    assert mock_logging.info.call_args_list == [
+        call('Deleting locally stored credentials'),
+        call(message % 'Basesystem_Module_x86_64'),
+        call(message % 'Unreferenced_credentials'),
+        call(message % 'SCCcredentials')
+    ]
     assert mock_os_unlink.call_args_list == [
         call('/etc/zypp/credentials.d/Basesystem_Module_x86_64'),
         call('/etc/zypp/credentials.d/Unreferenced_credentials'),

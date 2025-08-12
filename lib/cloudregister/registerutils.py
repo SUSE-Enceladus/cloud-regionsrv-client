@@ -2612,7 +2612,9 @@ def __remove_credentials(smt_server_names):
     referenced_credentials += ['NCCcredentials']
     # Special files that may exist but may not be referenced
     system_credentials = glob.glob(os.path.join(ZYPP_CREDENTIALS_PATH, '*'))
-    base_credentials_path = os.path.join(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME)
+    base_credentials_path = os.path.join(
+        ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME
+    )
     base_credentials = [base_credentials_path]
     for system_credential in system_credentials:
         if system_credential in base_credentials:
