@@ -2609,8 +2609,8 @@ def __remove_credentials(smt_server_names):
     """Remove the server generated credentials"""
     logging.info('Deleting locally stored credentials')
     referenced_credentials = __get_referenced_credentials(smt_server_names)
-    referenced_credentials += ['NCCcredentials']
     # Special files that may exist but may not be referenced
+    referenced_credentials += ['NCCcredentials']
     system_credentials = glob.glob(os.path.join(ZYPP_CREDENTIALS_PATH, '*'))
     base_credentials_path = os.path.join(
         ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME
