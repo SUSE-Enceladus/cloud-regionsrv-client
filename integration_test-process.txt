@@ -1,6 +1,6 @@
 Test matrix cloud-regionsrv-client
 
-Test one SLE 15 based and one SLE 12 based instance
+Test one SLE 15, SLE 16 and one SLE 12 based instance
 
 on-demand
 After installing the test package with "zypper in"
@@ -17,12 +17,12 @@ After installing the test package with "zypper in"
   + zypper lr has repos
   + SUSEConnect -s shows the registration status
   + SUSEConnect -l shows a list of modules/extensions available or installed
-  On SLE 15
+  + instance-flavor-check return PAYG/BYOS accordingly
+  On SLE 15 and later
   + grep REGISTRY_AUTH_FILE /etc/profile.local has value
   + grep DOCKER_CONFIG /etc/profile.local has value
   + grep susecloud /etc/docker/daemon.json has value
   + grep susecloud /etc/containers/registries.conf has value
-  + instance-flavor-check return PAYG/BYOS accordingly
 - registercloudguest --clean
   + no error no message
   + zypper lr has no repos
@@ -30,19 +30,20 @@ After installing the test package with "zypper in"
   + ls /etc/zypp/services.d/ returns empty
   + ls /var/cache/cloudregister/*.pkl returns empty or dir does not exist
   + grep susecloud /etc/hosts returns empty
+  + instance-flavor-check return PAYG/BYOS accordingly
+  On SLE 15 and later
   + grep REGISTRY_AUTH_FILE /etc/profile.local returns empty
   + grep DOCKER_CONFIG /etc/profile.local returns empty
   + cat /etc/docker/daemon.json
     - does not exists or has no reference to susecloud
   + cat /etc/containers/registries.conf
     - does not exists or has no reference to susecloud
-  + instance-flavor-check return BYOS
 - registercloudguest
   + no error
   + success message on stdout
   + $? is 0
   + zypper lr has repos
-  On SLE 15
+  On SLE 15 and later
   + cat /etc/docker/daemon.json
     - Should have registry for the update infrastructure and registry.suse.com
   + cat /etc/containers/registries.conf
@@ -65,11 +66,10 @@ After installing the test package with "zypper in"
   + systemctl start containerbuild-regionsrv.service
   + systemctl status containerbuild-regionsrv.service
   + podman run --network host -it bci/bci-base
-  + zypper lr should have SLES repos
-  + instance-flavor-check return PAYG/BYOS accordingly
+  + zypper lr should have SLES repos; exit the container
 - registercloudguest --clean
   + zypper lr has no repos
-  On SLE 15
+  On SLE 15 and later
   + cat /etc/docker/daemon.json
     - File does not exist or
     - No reference to registry on update infrastructure and registry.suse.com
@@ -86,7 +86,7 @@ After installing the test package with "zypper in"
   + success message on stdout
   + $? is 0
   + zypper lr has repos
-  On SLE 15
+  On SLE 15 and later
   + cat /etc/docker/daemon.json
     - Should have registry for the update infrastructure and registry.suse.com
   + cat /etc/containers/registries.conf
