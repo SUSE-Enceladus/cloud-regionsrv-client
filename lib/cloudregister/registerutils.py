@@ -2609,13 +2609,26 @@ def __remove_credentials(smt_server_names):
     """Remove the server generated credentials"""
     logging.info('Deleting locally stored credentials')
     referenced_credentials = __get_referenced_credentials(smt_server_names)
+    referenced_credentials += ['NCCcredentials']
     # Special files that may exist but may not be referenced
-    referenced_credentials += [BASE_CREDENTIALS_NAME, 'NCCcredentials']
     system_credentials = glob.glob(os.path.join(ZYPP_CREDENTIALS_PATH, '*'))
+    base_credentials_path = os.path.join(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME)
+    base_credentials = [base_credentials_path]
     for system_credential in system_credentials:
-        if os.path.basename(system_credential) in referenced_credentials:
+        if system_credential in base_credentials:
+            # we need the BASE_CREDENTIALS_NAME file
+            # to compare if the files in system_credentials
+            # are equals to it
+            continue
+        if (
+            os.path.basename(system_credential) in referenced_credentials or
+            credentials_files_are_equal(system_credential)
+        ):
             logging.info('Removing credentials: %s' % system_credential)
             os.unlink(system_credential)
+
+    logging.info('Removing credentials: %s' % base_credentials_path)
+    os.unlink(base_credentials_path)
 
     return 1
 
