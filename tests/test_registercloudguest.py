@@ -2,6 +2,7 @@ import inspect
 import json
 import os
 import requests
+import tempfile
 
 from io import StringIO
 from collections import namedtuple
@@ -182,6 +183,8 @@ def test_register_cloud_guest_force_reg_zypper_running(
     mock_is_zypper_running.return_value = True
     mock_get_available_smt_servers.return_value = ['some', 'smt', 'servers']
     mock_has_network_access.return_value = True
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 1
@@ -221,6 +224,8 @@ def test_register_cloud_guest_force_reg_zypper_runnning_write_config(
     mock_is_zypper_running.return_value = True
     mock_get_available_smt_servers.return_value = []
     mock_has_network_access.return_value = True
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 1
@@ -231,7 +236,6 @@ def test_register_cloud_guest_force_reg_zypper_runnning_write_config(
 @patch.object(SMT, 'is_responsive')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -245,14 +249,18 @@ def test_register_cloud_guest_force_reg_zypper_runnning_write_config(
 @patch('cloudregister.registerutils.get_state_dir')
 @patch('cloudregister.registerutils.get_config')
 @patch('register_cloud_guest.cleanup')
+@patch('register_cloud_guest.get_update_servers')
+@patch('cloudregister.registerutils.fetch_smt_data')
 def test_register_cloud_guest_force_reg_zypper_not_running_region_changed(
+    mock_utils_fetch_smt_data,
+    mock_get_update_servers,
     mock_cleanup, mock_get_config,
     mock_get_state_dir, mock_time_sleep,
     mock_os_path_isdir, mock_os_makedirs,
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_smt_is_responsive, mock_smt_is_equivalent, mock_logging
 ):
@@ -285,6 +293,10 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_changed(
     mock_uses_rmt_as_scc_proxy.return_value = True
     mock_smt_is_responsive.side_effect = [False, True]
     mock_smt_is_equivalent.return_value = False
+    mock_get_update_servers.return_value = [smt_server]
+    mock_utils_fetch_smt_data.return_value = [smt_server]
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 1
@@ -310,7 +322,6 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_changed(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -331,7 +342,7 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -371,6 +382,8 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
@@ -389,7 +402,6 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -410,7 +422,7 @@ def test_register_cloud_guest_region_not_changed_proxy_ok(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -451,6 +463,8 @@ def test_register_cloud_guest_region_not_changed_proxy_ok(
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
@@ -472,7 +486,6 @@ def test_register_cloud_guest_region_not_changed_proxy_ok(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -493,7 +506,7 @@ def test_register_cloud_guest_region_not_responsive_proxy_ok(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -537,6 +550,8 @@ def test_register_cloud_guest_region_not_responsive_proxy_ok(
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
     mock_has_ipv6_access.return_value = True
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
@@ -555,7 +570,6 @@ def test_register_cloud_guest_region_not_responsive_proxy_ok(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -576,7 +590,7 @@ def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -616,6 +630,8 @@ def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
     mock_update_rmt_cert.return_value = True
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
@@ -638,7 +654,6 @@ def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -659,7 +674,7 @@ def test_register_cloud_guest_force_reg_no_executable_found(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -701,6 +716,8 @@ def test_register_cloud_guest_force_reg_no_executable_found(
     mock_has_rmt_in_hosts.return_value = False
     mock_has_registry_in_hosts.return_value = False
     mock_os_access.return_value = False
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
         assert mock_logging.error.call_args_list == [
@@ -726,7 +743,6 @@ def test_register_cloud_guest_force_reg_no_executable_found(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -747,7 +763,7 @@ def test_register_cloud_guest_force_registration_not_supported(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -791,6 +807,8 @@ def test_register_cloud_guest_force_registration_not_supported(
     mock_has_registry_in_hosts.return_value = False
     mock_os_access.return_value = False
     mock_is_registration_supported.return_value = False
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 0
@@ -814,7 +832,6 @@ def test_register_cloud_guest_force_registration_not_supported(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -835,7 +852,7 @@ def test_register_cloud_guest_force_reg_no_products_installed(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -880,7 +897,8 @@ def test_register_cloud_guest_force_reg_no_products_installed(
     mock_has_registry_in_hosts.return_value = False
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = None
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert mock_logging.error.call_args_list == [
@@ -908,7 +926,6 @@ def test_register_cloud_guest_force_reg_no_products_installed(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -929,7 +946,7 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -975,7 +992,8 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = False
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
         register_cloud_guest.main(fake_args)
     assert sys_exit.value.code == 1
@@ -1004,7 +1022,6 @@ def test_register_cloud_guest_force_reg_cert_import_failed(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1025,7 +1042,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -1071,7 +1088,8 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1116,7 +1134,6 @@ def test_register_cloud_guest_force_baseprod_registration_failed(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1137,7 +1154,7 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -1201,8 +1218,9 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
     mock_remove_state_file.return_value = True
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1252,7 +1270,6 @@ def test_register_cloud_guest_force_baseprod_registration_failed_connection(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1273,7 +1290,7 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -1320,8 +1337,9 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'foo'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
     mock_remove_state_file.return_value = True
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1388,7 +1406,6 @@ def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1409,7 +1426,7 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -1457,7 +1474,8 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1567,7 +1585,6 @@ def test_register_cloud_guest_force_baseprod_extensions_raise(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1588,7 +1605,7 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -1638,7 +1655,8 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1770,7 +1788,6 @@ def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1791,7 +1808,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -1840,7 +1857,8 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -1974,7 +1992,6 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -1995,7 +2012,7 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -2045,8 +2062,9 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'SLES-LTSS-FOO/15.4/x86_64'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
     mock_remove_state_file.return_value = True
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
@@ -2181,7 +2199,6 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
 @patch('cloudregister.registerutils.get_instance_data')
 @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
 @patch('cloudregister.registerutils.has_region_changed')
-@patch('cloudregister.registerutils.os.path.join')
 @patch('cloudregister.registerutils.store_smt_data')
 @patch('cloudregister.registerutils.get_current_smt')
 @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -2202,7 +2219,7 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
     mock_get_available_smt_servers, mock_write_framework_id,
     mock_is_zypper_running, mock_has_network_access,
     mock_set_new_registration_flag, mock_get_current_smt,
-    mock_store_smt_data, mock_os_path_join,
+    mock_store_smt_data,
     mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
     mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
     mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
@@ -2255,7 +2272,8 @@ def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
     mock_os_access.return_value = True
     mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
     mock_import_smt_cert.return_value = True
-    mock_os_path_join.return_value = ''
+    with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+        mock_get_state_dir.return_value = tdir
     prod_reg_type = namedtuple(
         'prod_reg_type', ['returncode', 'output', 'error']
     )
