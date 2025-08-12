@@ -41,6 +41,7 @@ from requests.auth import HTTPBasicAuth
 from cloudregister import smt
 
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
+BASE_CREDENTIALS_NAME = 'SCCcredentials'
 FRAMEWORK_IDENTIFIER = 'framework_info'
 HOSTSFILE_PATH = '/etc/hosts'
 NEW_REGISTRATION_MARKER = 'newregistration'
@@ -57,6 +58,7 @@ SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
 BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 SUSE_REGISTRY = 'registry.suse.com'
 REGSHARING_SYNC_TIME = 30
+ZYPP_CREDENTIALS_PATH = '/etc/zypp/credentials.d/'
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -313,18 +315,18 @@ def get_product_data(registration_target=None):
 
 
 # ----------------------------------------------------------------------------
-def credentials_files_are_equal(repo_credentials):
-    """Compare the base credentials files the the repo header and make
-       sure they have the same values."""
+def credentials_files_are_equal(repo_credentials, target_root='/'):
+    """Compare the base credentials file to the given file credentials file
+       for user name and password to check if they are equal."""
 
     if not repo_credentials or not isinstance(repo_credentials, str):
         return False
 
-    base_credentials_location = '/etc/zypp/credentials.d/'
-    target_root = get_zypper_target_root()
-    credentials_location = target_root + base_credentials_location
-    credentials_base = os.path.join(credentials_location, 'SCCcredentials')
-    credentials_header = os.path.join(credentials_location, repo_credentials)
+    credentials_location = os.path.join(target_root, ZYPP_CREDENTIALS_PATH)
+    credentials_base = os.path.join(credentials_location, BASE_CREDENTIALS_NAME)
+    credentials_header = os.path.join(
+        credentials_location, os.path.basename(repo_credentials)
+    )
     ref_user, ref_pass = get_credentials(credentials_base)
     repo_user, repo_pass = get_credentials(credentials_header)
     if (ref_user != repo_user) or (ref_pass != repo_pass):
@@ -1250,7 +1252,7 @@ def get_credentials_file(update_server, service_name=None):
     credentials_file = ''
 
     target_root = get_zypper_target_root()
-    credentials_loc = target_root + '/etc/zypp/credentials.d/'
+    credentials_loc = os.path.join(target_root, ZYPP_CREDENTIALS_PATH)
     credential_names = [
         '*' + update_server.get_FQDN().replace('.', '_'),
         'SCC*'
@@ -2172,7 +2174,9 @@ def remove_registration_data():
     """Reset the instance to an unregistered state"""
     clear_rmt_as_scc_proxy_flag()
     smt_data_file = __get_registered_smt_file_path()
-    user, password = get_credentials('/etc/zypp/credentials.d/SCCcredentials')
+    user, password = get_credentials(
+        os.path.join(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME)
+    )
     if not user:
         if not is_new_registration():
             logging.info('No credentials, nothing to do server side')
@@ -2564,9 +2568,9 @@ def __get_system_mfg():
 def __has_credentials(smt_server_name):
     """Check if a credentials file exists."""
     referenced_credentials = __get_referenced_credentials([smt_server_name])
-    system_credentials = glob.glob('/etc/zypp/credentials.d/*')
+    system_credentials = glob.glob(os.path.join(ZYPP_CREDENTIALS_PATH, '*'))
     for system_credential in system_credentials:
-        if os.path.basename(system_credential) == 'SCCcredentials':
+        if os.path.basename(system_credential) == BASE_CREDENTIALS_NAME:
             return True
         if os.path.basename(system_credential) in referenced_credentials:
             return True
@@ -2606,8 +2610,8 @@ def __remove_credentials(smt_server_names):
     logging.info('Deleting locally stored credentials')
     referenced_credentials = __get_referenced_credentials(smt_server_names)
     # Special files that may exist but may not be referenced
-    referenced_credentials += ['SCCcredentials', 'NCCcredentials']
-    system_credentials = glob.glob('/etc/zypp/credentials.d/*')
+    referenced_credentials += [BASE_CREDENTIALS_NAME, 'NCCcredentials']
+    system_credentials = glob.glob(os.path.join(ZYPP_CREDENTIALS_PATH, '*'))
     for system_credential in system_credentials:
         if os.path.basename(system_credential) in referenced_credentials:
             logging.info('Removing credentials: %s' % system_credential)
@@ -2713,7 +2717,7 @@ def __replace_url_target(config_files, new_smt):
 def __generate_registry_auth_token(username=None, password=None):
     if not (username and password):
         username, password = get_credentials(
-            '/etc/zypp/credentials.d/SCCcredentials'
+            os.path.join(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME)
         )
 
     return base64.b64encode('{username}:{password}'.format(

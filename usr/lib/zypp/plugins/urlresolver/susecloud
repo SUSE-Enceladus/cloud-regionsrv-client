@@ -39,10 +39,13 @@ class SUSECloudPlugin(Plugin):
         repo_credentials = headers.get('credentials')
         if zypper_pid != prev_zypper_pid:
             verify_credentials = True
+            zypper_root = utils.get_zypper_target_root()
         # Note this logic breaks when FATE#320882/PM-1251 gets implemented
         if (
                 verify_credentials and not
-                utils.credentials_files_are_equal(repo_credentials)
+                utils.credentials_files_are_equal(
+                    repo_credentials, zypper_root
+                )
         ):
             self.error(
                 {'CREDENTIAL_ERROR': 'INCONSISTENT'},
