@@ -22,6 +22,7 @@ After installing the test package with "zypper in"
   + grep DOCKER_CONFIG /etc/profile.local has value
   + grep susecloud /etc/docker/daemon.json has value
   + grep susecloud /etc/containers/registries.conf has value
+  + instance-flavor-check return PAYG/BYOS accordingly
 - registercloudguest --clean
   + no error no message
   + zypper lr has no repos
@@ -35,6 +36,7 @@ After installing the test package with "zypper in"
     - does not exists or has no reference to susecloud
   + cat /etc/containers/registries.conf
     - does not exists or has no reference to susecloud
+  + instance-flavor-check return BYOS
 - registercloudguest
   + no error
   + success message on stdout
@@ -64,6 +66,7 @@ After installing the test package with "zypper in"
   + systemctl status containerbuild-regionsrv.service
   + podman run --network host -it bci/bci-base
   + zypper lr should have SLES repos
+  + instance-flavor-check return PAYG/BYOS accordingly
 - registercloudguest --clean
   + zypper lr has no repos
   On SLE 15
