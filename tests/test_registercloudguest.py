@@ -272,7 +272,10 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_changed(
          SMTregistryName="registry-ec2.susecloud.net"
          region="antarctica-1"/>''')
 
-    smt_server = SMT(etree.fromstring(smt_data_ipv46))
+    child = etree.fromstring(smt_data_ipv46)
+
+    smt_server = SMT(child)
+
     mock_get_current_smt.return_value = smt_server
     fake_args = SimpleNamespace(
         clean_up=False,
@@ -294,7 +297,7 @@ def test_register_cloud_guest_force_reg_zypper_not_running_region_changed(
     mock_smt_is_responsive.side_effect = [False, True]
     mock_smt_is_equivalent.return_value = False
     mock_get_update_servers.return_value = [smt_server]
-    mock_utils_fetch_smt_data.return_value = [smt_server]
+    mock_utils_fetch_smt_data.return_value = [child]
     with tempfile.TemporaryDirectory(suffix='foo') as tdir:
         mock_get_state_dir.return_value = tdir
     with raises(SystemExit) as sys_exit:
