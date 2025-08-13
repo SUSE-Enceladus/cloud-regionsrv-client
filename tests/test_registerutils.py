@@ -103,7 +103,7 @@ def test_get_credentials():
 
 def test_get_state_dir():
     state_dir = utils.get_state_dir()
-    assert state_dir == '/var/cache/cloudregister/'
+    assert state_dir == '/var/cache/cloudregister'
 
 
 @patch('cloudregister.registerutils.get_state_dir')
