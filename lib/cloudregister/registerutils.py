@@ -2183,12 +2183,14 @@ def remove_registration_data():
         return
 
     server_names = []
+    listed_extensions = []
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
         smt_ips = (smt.get_ipv4(), smt.get_ipv6())
         logging.info('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
+        listed_extensions = __get_listed_extensions()
         try:
             response = requests.delete(
                 'https://%s/connect/systems' % server_name, auth=auth_creds
@@ -2237,7 +2239,7 @@ def remove_registration_data():
         logging.info('No current registration server set.')
 
     logging.info('Removing repository artifacts')
-    __remove_repo_artifacts(server_names)
+    __remove_repo_artifacts(server_names, listed_extensions)
 
 
 # ----------------------------------------------------------------------------
@@ -2694,6 +2696,20 @@ def __remove_service(smt_server_names):
         os.unlink(service_plugin)
 
     return 1
+
+
++# ----------------------------------------------------------------------------
+def __get_listed_extensions():
+    suse_connect_cmd = [get_register_cmd(), '-l', '--json']
+    output, error, _ = exec_subprocess(suse_connect_cmd, return_output=True)
+    extensions = []
+    if not error and output != -1:
+        try:
+            extensions = json.loads(output.decode())
+        except json.decoder.JSONDecodeError:
+            logging.info('Could not parse the output of %s: %s' % (suse_connect_cmd, output))
+    else:
+        logging.info('Could not list the extensions of %s: %s' % (suse_connect_cmd, error))
 
 
 # ----------------------------------------------------------------------------
