@@ -2627,11 +2627,11 @@ def __remove_credentials(smt_server_names, extensions):
                 removed_all_ref_credentials = True
 
     if not removed_all_ref_credentials:
-        # if we reach here, we have access to the update infrastructure and
-        # not all credentials that may be removed were removed
+        # if we reach here then we had access to the update infrastructure and
+        # not all credentials that _may_ be removed were removed
         # there are credentials under ZYPP_CREDENTIALS_PATH
-        # that were no referenced, thus not cleaned up
-        # the list of extensions for the system with SUSEConnect -l --json
+        # that were no referenced, thus possibly not cleaned up
+        # when they may should be removed
         version = extensions[0].get('version').split('.')[0]
         __remove_activated__ext_credentials(extensions, version)
 
