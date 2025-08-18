@@ -237,3 +237,14 @@ Extended testing
   + instance has repos
   + cat /etc/hosts server point to an update server in the region
   + zypper up has no errors
+
+Orphaned credentials
+On SLE 15 PAYG
+- registercloudguest
+  + check all repos are there
+  + configure the instance/env so it can't access or verify on any sibling on the update infrastructure
+    + possible best approach is:
+      pointing the instance to test infra and edit test infra for this test
+  + rm /etc/products.d/$SOME_PRODUCT
+  + run registercloudguest --clean
+  + no files under /etc/zypp/credentials.d/

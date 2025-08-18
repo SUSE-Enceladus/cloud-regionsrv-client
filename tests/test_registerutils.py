@@ -4033,16 +4033,25 @@ def test_remove_credentials(
     mock_logging,
     mock_os_unlink
 ):
-    mock_glob.return_value = ['/etc/zypp/credentials.d/SCCcredentials']
-    mock_get_referenced_creds.return_value = ['SCCcredentials']
+    mock_glob.return_value = [
+        '/etc/zypp/credentials.d/Basesystem_Module_x86_64',
+        '/etc/zypp/credentials.d/SCCcredentials',
+        '/etc/zypp/credentials.d/Unreferenced_credentials'
+    ]
+    mock_get_referenced_creds.return_value = ['Basesystem_Module_x86_64']
     assert utils.__remove_credentials('foo') == 1
+    message = 'Removing credentials: /etc/zypp/credentials.d/%s'
     assert mock_logging.info.call_args_list == [
         call('Deleting locally stored credentials'),
-        call('Removing credentials: /etc/zypp/credentials.d/SCCcredentials')
+        call(message % 'Basesystem_Module_x86_64'),
+        call(message % 'Unreferenced_credentials'),
+        call(message % 'SCCcredentials')
     ]
-    mock_os_unlink.assert_called_once_with(
-        '/etc/zypp/credentials.d/SCCcredentials'
-    )
+    assert mock_os_unlink.call_args_list == [
+        call('/etc/zypp/credentials.d/Basesystem_Module_x86_64'),
+        call('/etc/zypp/credentials.d/Unreferenced_credentials'),
+        call('/etc/zypp/credentials.d/SCCcredentials')
+    ]
 
 
 @patch('cloudregister.registerutils.os.unlink')

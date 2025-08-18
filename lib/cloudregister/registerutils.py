@@ -2183,12 +2183,14 @@ def remove_registration_data():
         return
 
     server_names = []
+    listed_extensions = []
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
         smt_ips = (smt.get_ipv4(), smt.get_ipv6())
         logging.info('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
+        listed_extensions = __get_listed_extensions()
         try:
             response = requests.delete(
                 'https://%s/connect/systems' % server_name, auth=auth_creds
@@ -2237,7 +2239,7 @@ def remove_registration_data():
         logging.info('No current registration server set.')
 
     logging.info('Removing repository artifacts')
-    __remove_repo_artifacts(server_names)
+    __remove_repo_artifacts(server_names, listed_extensions)
 
 
 # ----------------------------------------------------------------------------
@@ -2603,28 +2605,95 @@ def __populate_srv_cache():
         )
         cnt += 1
 
-
 # ----------------------------------------------------------------------------
-def __remove_credentials(smt_server_names):
+def __remove_credentials(smt_server_names, extensions):
     """Remove the server generated credentials"""
     logging.info('Deleting locally stored credentials')
     referenced_credentials = __get_referenced_credentials(smt_server_names)
     # Special files that may exist but may not be referenced
     referenced_credentials += [BASE_CREDENTIALS_NAME, 'NCCcredentials']
-    system_credentials = glob.glob(os.path.join(ZYPP_CREDENTIALS_PATH, '*'))
-    for system_credential in system_credentials:
+    system_credentials = glob.glob(
+        os.path.normpath(
+            os.sep.join([ZYPP_CREDENTIALS_PATH, '*'])
+        )
+    )
+    n_credentials = system_credentials
+    removed_all_ref_credentials = not smt_server_names
+    for counter, system_credential in enumerate(system_credentials, start=1):
         if os.path.basename(system_credential) in referenced_credentials:
             logging.info('Removing credentials: %s' % system_credential)
             os.unlink(system_credential)
+            if smt_server_names and counter == n_credentials:
+                removed_all_ref_credentials = True
 
-    return 1
+    if not removed_all_ref_credentials:
+        # if we reach here then we had access to the update infrastructure and
+        # not all credentials that _may_ be removed were removed
+        # there are credentials under ZYPP_CREDENTIALS_PATH
+        # that were no referenced, thus possibly not cleaned up
+        # when they may should be removed
+        version = extensions[0].get('version').split('.')[0]
+        __remove_activated__ext_credentials(extensions, version)
+
+
+        return 1
+
+# ----------------------------------------------------------------------------
+def __get_listed_extensions():
+    suse_connect_cmd = [get_register_cmd(), '-l', '--json']
+    output, error, _ = exec_subprocess(suse_connect_cmd, return_output=True)
+    extensions = []
+    if not error and output != -1:
+        try:
+            extensions = json.loads(output.decode())
+        except json.decoder.JSONDecodeError:
+            logging.info('Could not parse the output of %s: %s' % (suse_connect_cmd, output))
+    else:
+        logging.info('Could not list the extensions of %s: %s' % (suse_connect_cmd, error))
+
+    return extensions
 
 
 # ----------------------------------------------------------------------------
-def __remove_repo_artifacts(repo_server_names):
+def __remove_activated__ext_credentials(extensions, version):
+    for extension in extensions:
+        if extension.get('activated'):
+            __remove_activated__ext_credentials(extension.get('extensions'), version)
+
+            ext_name = extension.get('name')
+            # get the name of the extension before the version
+            # i.e. for ext SUSE Linux Enterprise Server for SAP Applications 15 SP7 x86_64
+            # get SUSE Linux Enterprise Server for SAP Applications
+            version = version.strip()
+            version_index = ext_name.index(version)
+            credential_name = ext_name[:version_index].strip()
+            # remove 'X SPYZ' from the name
+            # i.e. for ext SUSE Linux Enterprise Server for SAP Applications 15 SP7 x86_64
+            # rest_name should be anything remaining after 15 SP7
+            version_index += len(version)
+            rest_name = ext_name[version_index:].strip()
+            if rest_name.startswith('SP'):
+                rest_name = '_'.join(rest_name.split()[1:]).strip()
+                rest_name = '_' + rest_name
+
+            credential_name += rest_name
+            credential_name = '_'.join(credential_name.split())
+            # we have $MODULENAME_$ARCH
+            # let's check if /etc/zypp/credentials.d/$MODULENAME_$ARCH exists
+            # then it should be removed
+            cred_path = os.path.normpath(
+                os.sep.join([ZYPP_CREDENTIALS_PATH, credential_name])
+            )
+            if os.path.exists(cred_path):
+                logging.info('Removing credentials: %s' % cred_path)
+                os.unlink(cred_path)
+
+
+# ----------------------------------------------------------------------------
+def __remove_repo_artifacts(repo_server_names, extensions):
     """Remove the artifacts related to repository handling for a registration
     """
-    __remove_credentials(repo_server_names)
+    __remove_credentials(repo_server_names, extensions)
     __remove_repos(repo_server_names)
     __remove_service(repo_server_names)
 
