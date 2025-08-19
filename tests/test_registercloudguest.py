@@ -2124,7 +2124,14 @@ def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
     )
     findmnt_return = b'{"filesystems": [{"target": "/","source": ' + \
         b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
-    mock_exec_subprocess.return_value = findmnt_return, b'', 0
+    subprocess_type = namedtuple(
+        'subprocess_type', ['returncode', 'output', 'error']
+    )
+    mock_exec_subprocess.return_value = subprocess_type(
+        output=findmnt_return,
+        error=b'',
+        returncode=0
+    )
     mock_os_path_exists.reset_mock()
     mock_os_path_exists.return_value = True
     mock_urlparse.return_value = ParseResult(

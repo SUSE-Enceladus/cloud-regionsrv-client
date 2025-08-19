@@ -360,7 +360,14 @@ def exec_subprocess(cmd, return_output=False):
         )
         out, err = proc.communicate()
         if return_output:
-            return (out, err, proc.returncode)
+            subprocess_type = namedtuple(
+                'subprocess_type', ['returncode', 'output', 'error']
+            )
+            return subprocess_type(
+                returncode=proc.returncode,
+                output=out.decode(),
+                error=err.decode()
+            )
         return proc.returncode
     except OSError:
         return -1
@@ -451,20 +458,7 @@ def register_product(
         log_information = log_information.replace(regcode, 'XXXX')
 
     logging.info('Registration: {0}'.format(log_information))
-    call = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    output, error = call.communicate()
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
-    return suseconnect_type(
-        returncode=call.returncode,
-        output=output.decode(),
-        error=error.decode()
-    )
+    return exec_subprocess(cmd, return_output=True)
 
 
 # ----------------------------------------------------------------------------
@@ -1881,9 +1875,9 @@ def get_profile_env_var(varname, profile_file):
             profile_file, varname
         )
     ]
-    variable_content, error, returncode = exec_subprocess(shell_command, True)
-    if not error:
-        return variable_content.decode().strip()
+    result = exec_subprocess(shell_command, True)
+    if result != 1 and not result.error:
+        return result.output.strip()
 
 
 # ----------------------------------------------------------------------------
@@ -1993,14 +1987,14 @@ def is_transactional_system():
     can be found.
     """
     # Figure out if we are on RO transactional-update system
-    output, error, returncode = exec_subprocess(
+    subprocess_result = exec_subprocess(
         ['findmnt', '--noheadings', '--json', '/'], return_output=True
     )
-    if returncode != 0:
+    if subprocess_result == 1 or subprocess_result.returncode != 0:
         logging.warning('Unable to find filesystem information for "/"')
         return False
     else:
-        fsinfo = json.loads(output.decode())
+        fsinfo = json.loads(subprocess_result.output)
         fsdata = fsinfo.get('filesystems')
         if fsdata:
             fsoptions = fsdata[0].get('options')

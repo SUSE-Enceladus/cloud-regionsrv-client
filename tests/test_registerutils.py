@@ -1594,8 +1594,13 @@ def test_exec_subprocess(mock_popen):
     )
     mock_process.returncode = 1
     mock_popen.return_value = mock_process
-    assert utils.exec_subprocess(['foo'], True) == (
-        'stdout'.encode(), 'stderr'.encode(), 1
+    subprocess_type = namedtuple(
+        'subprocess_type', ['returncode', 'output', 'error']
+    )
+    assert utils.exec_subprocess(['foo'], True) == subprocess_type(
+        returncode=1,
+        output='stdout',
+        error='stderr'
     )
     assert utils.exec_subprocess(['foo']) == 1
 
