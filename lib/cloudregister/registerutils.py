@@ -355,6 +355,8 @@ def exec_subprocess(cmd, pipe=True, return_output=False):
     std_pipe = subprocess.PIPE
     if not pipe:
         std_pipe = subprocess.DEVNULL
+
+    proc = ''
     try:
         proc = subprocess.Popen(
             cmd,
@@ -362,18 +364,19 @@ def exec_subprocess(cmd, pipe=True, return_output=False):
             stderr=std_pipe
         )
         out, err = proc.communicate()
-        if return_output:
-            subprocess_type = namedtuple(
-                'subprocess_type', ['returncode', 'output', 'error']
-            )
-            return subprocess_type(
-                returncode=proc.returncode,
-                output=out.decode(),
-                error=err.decode()
-            )
-        return proc.returncode
-    except OSError:
+    except (OSError, TypeError):
         return -1
+
+    if return_output:
+        subprocess_type = namedtuple(
+            'subprocess_type', ['returncode', 'output', 'error']
+        )
+        return subprocess_type(
+            returncode=proc.returncode,
+            output=out.decode(),
+            error=err.decode()
+        )
+    return proc.returncode
 
 
 # ----------------------------------------------------------------------------
@@ -1362,7 +1365,7 @@ def get_framework_identifier_path():
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
-    instance_data = b''
+    instance_data = ''
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -1376,13 +1379,15 @@ def get_instance_data(config):
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                instance_data, errors, returncode = exec_subprocess(
+                result = exec_subprocess(
                     instance_data_cmd.split(), return_output=True
                 )
-                if errors:
+                if result.error:
                     errMsg = 'Data collected from stderr for instance '
-                    errMsg += 'data collection "%s"' % errors.decode()
+                    errMsg += 'data collection "%s"' % result.error
                     logging.error(errMsg)
+
+                instance_data = result.output
                 if not instance_data:
                     warn_msg = 'Possible issue accessing the metadata '
                     warn_msg += 'service. Metadata is empty, may result '
@@ -1391,9 +1396,7 @@ def get_instance_data(config):
 
     # Marker for the server to not return https:// formatted
     # service and repo information
-    inst_data = instance_data.decode()
-
-    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
+    return instance_data + '<repoformat>plugin:susecloud</repoformat>\n'
 
 
 # ----------------------------------------------------------------------------
@@ -1629,7 +1632,11 @@ def get_zypper_pid():
     for executable_name in ['zypper', 'Zypp-main']:
         zypp_pid_cmd = ['ps', '-C', executable_name, '-o', 'pid=']
         zypp_pid_result = exec_subprocess(zypp_pid_cmd, return_output=True)
-        if zypp_pid_result == -1 or zypp_pid_result.returncode != 0:
+        if (
+            zypp_pid_result == -1 or
+            zypp_pid_result.returncode != 0 or
+            zypp_pid_result.error
+        ):
             logging.info('Error running %s' % zypp_pid_cmd)
             continue
 
@@ -2554,14 +2561,17 @@ def __get_service_plugins():
 # ----------------------------------------------------------------------------
 def __get_system_mfg():
     """Returns the system manufacturer information"""
-    try:
-        vendor, error, returncode = exec_subprocess(
-            ['dmidecode', '-s', 'system-manufacturer'], return_output=True
-        )
-    except TypeError:
-        vendor = b'unknown'
+    vendor = ''
 
-    return vendor.decode().strip()
+    result = exec_subprocess(
+        ['dmidecode', '-s', 'system-manufacturer'], return_output=True
+    )
+    if result == -1 or result.returncode != 0 or result.error:
+        vendor = 'unknown'
+    else:
+        vendor = result.output.strip()
+
+    return vendor
 
 
 # ----------------------------------------------------------------------------

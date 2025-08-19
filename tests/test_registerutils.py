@@ -160,12 +160,17 @@ def test_get_zypper_target_root_set_root_long(zypp_cmd):
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')
-@patch('cloudregister.registerutils.exec_subprocess')
-def test_has_region_changed_no_change(subproc, id_path, plugin, srvargs):
-    subproc.return_value = (b'Google', b'', 0)
-    id_path.return_value = data_path + 'framework_info'
-    plugin.return_value = True
-    srvargs.return_value = 'regionHint=us-central1-d'
+@patch('cloudregister.registerutils.__get_system_mfg')
+def test_has_region_changed_no_change(
+    mock_get_sys_mfg,
+    mock_id_path,
+    mock_plugin,
+    mock_srvargs
+):
+    mock_get_sys_mfg.return_value = 'Google'
+    mock_id_path.return_value = data_path + 'framework_info'
+    mock_plugin.return_value = True
+    mock_srvargs.return_value = 'regionHint=us-central1-d'
     cfg = get_test_config()
     assert utils.has_region_changed(cfg) is False
 
@@ -191,27 +196,32 @@ def test_has_region_changed_no_plugin(plugin, mfg):
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')
-@patch('cloudregister.registerutils.exec_subprocess')
-def test_has_region_changed_provider_change(subproc, id_path, plugin, srvargs):
+@patch('cloudregister.registerutils.__get_system_mfg')
+def test_has_region_changed_provider_change(
+    mock_get_sys_mfg,
+    mock_id_path,
+    mock_plugin,
+    mock_srvargs
+):
     cfg = get_test_config()
-    subproc.return_value = (b'Amazon EC2', b'', 0)
-    id_path.return_value = data_path + 'framework_info'
-    plugin.return_value = True
-    srvargs.return_value = 'regionHint=us-central1-d'
+    mock_get_sys_mfg.return_value = 'Amazon EC2'
+    mock_id_path.return_value = data_path + 'framework_info'
+    mock_plugin.return_value = True
+    mock_srvargs.return_value = 'regionHint=us-central1-d'
     assert utils.has_region_changed(cfg) is True
 
 
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.__get_system_mfg')
 def test_has_region_changed_provider_and_region_change(
-        subproc, id_path, plugin, srvargs
+    mock_get_sys_mfg, mock_id_path, mock_plugin, mock_srvargs
 ):
-    subproc.return_value = (b'Amazon EC2', b'', 0)
-    id_path.return_value = data_path + 'framework_info'
-    plugin.return_value = True
-    srvargs.return_value = 'regionHint=us-east-1'
+    mock_get_sys_mfg.return_value = 'Amazon EC2'
+    mock_id_path.return_value = data_path + 'framework_info'
+    mock_plugin.return_value = True
+    mock_srvargs.return_value = 'regionHint=us-east-1'
     cfg = get_test_config()
     assert utils.has_region_changed(cfg) is True
 
@@ -219,14 +229,19 @@ def test_has_region_changed_provider_and_region_change(
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_has_region_changed_region_change(
-        subproc, id_path, plugin, srvargs
+    mock_popen, mock_id_path, mock_plugin, mock_srvargs
 ):
-    subproc.return_value = (b'Google', b'', 0)
-    id_path.return_value = data_path + 'framework_info'
-    plugin.return_value = True
-    srvargs.return_value = 'regionHint=us-east2-f'
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('Google'), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
+    mock_id_path.return_value = data_path + 'framework_info'
+    mock_plugin.return_value = True
+    mock_srvargs.return_value = 'regionHint=us-east2-f'
     cfg = get_test_config()
     assert utils.has_region_changed(cfg) is True
 
@@ -235,15 +250,20 @@ def test_has_region_changed_region_change(
 @patch('cloudregister.registerutils.__get_region_server_args')
 @patch('cloudregister.registerutils.__get_framework_plugin')
 @patch('cloudregister.registerutils.get_framework_identifier_path')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_has_region_changed_provider_and_region_change_exception(
-    mock_subproc,
+    mock_popen,
     mock_id_path,
     mock_plugin,
     mock_srvargs,
     mock_json_loads
 ):
-    mock_subproc.return_value = (b'Amazon EC2', b'', 0)
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('Amazon EC2'), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
     mock_id_path.return_value = data_path + 'framework_info'
     mock_plugin.return_value = True
     mock_srvargs.return_value = 'regionHint=us-east-1'
@@ -2332,9 +2352,9 @@ def test_get_instance_data_cmd_not_found(mock_logging):
 
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.access')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_get_instance_data_cmd_error(
-        mock_exec_sub,
+        mock_popen,
         mock_access,
         mock_logging
 ):
@@ -2343,7 +2363,12 @@ def test_get_instance_data_cmd_error(
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'dataProvider', '/foo')
-    mock_exec_sub.return_value = (b'', b'bar', 0)
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('bar')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
     mock_access.return_value = True
     expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
@@ -2354,9 +2379,9 @@ def test_get_instance_data_cmd_error(
 
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.access')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_get_instance_data_no_data(
-        mock_exec_sub,
+        mock_popen,
         mock_access,
         mock_logging
 ):
@@ -2365,7 +2390,12 @@ def test_get_instance_data_no_data(
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'dataProvider', '/foo')
-    mock_exec_sub.return_value = (b'', b'', 0)
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode(''), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
     mock_access.return_value = True
     expected_data = '<repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
@@ -2377,9 +2407,9 @@ def test_get_instance_data_no_data(
 
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.access')
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_get_instance_data_instance_data(
-        mock_exec_sub,
+        mock_popen,
         mock_access,
         mock_logging
 ):
@@ -2387,7 +2417,12 @@ def test_get_instance_data_instance_data(
     cfg = get_test_config()
     cfg.add_section('instance')
     cfg.set('instance', 'dataProvider', '/foo')
-    mock_exec_sub.return_value = (b'<mydata>', b'', 0)
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('<mydata>'), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
     mock_access.return_value = True
     expected_data = '<mydata><repoformat>plugin:susecloud</repoformat>\n'
     assert utils.get_instance_data(cfg) == expected_data
@@ -2862,7 +2897,7 @@ def test_get_zypper_command(mock_zypper_pid):
 def test_get_zypper_pid_one_pid(mock_popen):
     mock_process = Mock()
     mock_process.communicate = Mock(
-        return_value=[str.encode('12345 '), str.encode('stderr')]
+        return_value=[str.encode('12345 '), str.encode('')]
     )
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
@@ -2873,7 +2908,7 @@ def test_get_zypper_pid_one_pid(mock_popen):
 def test_get_zypper_pid_with_child_pid(mock_popen):
     mock_process = Mock()
     mock_process.communicate = Mock(
-        return_value=[str.encode('12345\n    6789\n'), str.encode('stderr')]
+        return_value=[str.encode('12345\n    6789\n'), str.encode('')]
     )
     mock_process.returncode = 0
     mock_popen.return_value = mock_process
@@ -3992,7 +4027,7 @@ def test_get_service_plugins(mock_glob, mock_os_path_basename):
     assert utils.__get_service_plugins() == ['tests/data/service.service']
 
 
-@patch('cloudregister.registerutils.exec_subprocess')
+@patch('cloudregister.registerutils.subprocess.Popen')
 def test_get_system_mfg(mock_exec_subprocess):
     mock_exec_subprocess.side_effect = TypeError('foo')
     assert utils.__get_system_mfg() == 'unknown'
