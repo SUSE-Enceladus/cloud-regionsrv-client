@@ -140,9 +140,4 @@ for activation in product_activations:
     if has_plugin_format and not trigger_set:
         trigger_set = True
         # Python has no sane way to create a detached process
-        subprocess.Popen(
-            ['nohup', '/usr/sbin/switchcloudguestservices'],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        utils.exec_subprocess(['nohup', '/usr/sbin/switchcloudguestservices'], pipe=False)

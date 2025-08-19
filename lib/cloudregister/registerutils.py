@@ -346,17 +346,20 @@ def enable_repository(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def exec_subprocess(cmd, return_output=False):
+def exec_subprocess(cmd, pipe=True, return_output=False):
     """Execute the given command as a subprocess (blocking)
        Returns one off:
            - exit code of the command
            - stdout, stderr and exit code
            - -1 indicates an exception"""
+    std_pipe = subprocess.PIPE
+    if not pipe:
+        std_pipe = subprocess.DEVNULL
     try:
         proc = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=std_pipe,
+            stderr=std_pipe
         )
         out, err = proc.communicate()
         if return_output:
@@ -1374,7 +1377,7 @@ def get_instance_data(config):
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
                 instance_data, errors, returncode = exec_subprocess(
-                    instance_data_cmd.split(), True
+                    instance_data_cmd.split(), return_output=True
                 )
                 if errors:
                     errMsg = 'Data collected from stderr for instance '
@@ -1710,7 +1713,7 @@ def has_rmt_ipv6_access(smt):
 def has_nvidia_support():
     """Check if the instance has Nvidia capabilities"""
     try:
-        pci_info, errors, returncode = exec_subprocess(['lspci'], True)
+        pci_info, errors, returncode = exec_subprocess(['lspci'], return_output=True)
     except TypeError:
         logging.info(
             'lspci command not found, instance Nvidia support cannot '
@@ -1876,7 +1879,7 @@ def get_profile_env_var(varname, profile_file):
             profile_file, varname
         )
     ]
-    result = exec_subprocess(shell_command, True)
+    result = exec_subprocess(shell_command, return_output=True)
     if result != 1 and not result.error:
         return result.output.strip()
 
@@ -2551,7 +2554,7 @@ def __get_system_mfg():
     """Returns the system manufacturer information"""
     try:
         vendor, error, returncode = exec_subprocess(
-            ['dmidecode', '-s', 'system-manufacturer'], True
+            ['dmidecode', '-s', 'system-manufacturer'], return_output=True
         )
     except TypeError:
         vendor = b'unknown'

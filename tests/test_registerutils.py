@@ -1605,7 +1605,26 @@ def test_exec_subprocess(mock_popen):
     subprocess_type = namedtuple(
         'subprocess_type', ['returncode', 'output', 'error']
     )
-    assert utils.exec_subprocess(['foo'], True) == subprocess_type(
+    assert utils.exec_subprocess(['foo'], return_output=True) == subprocess_type(
+        returncode=1,
+        output='stdout',
+        error='stderr'
+    )
+    assert utils.exec_subprocess(['foo']) == 1
+
+
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_exec_subprocess_devnull_pipe(mock_popen):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('stdout'), str.encode('stderr')]
+    )
+    mock_process.returncode = 1
+    mock_popen.return_value = mock_process
+    subprocess_type = namedtuple(
+        'subprocess_type', ['returncode', 'output', 'error']
+    )
+    assert utils.exec_subprocess(['foo'], pipe=False, return_output=True) == subprocess_type(
         returncode=1,
         output='stdout',
         error='stderr'
