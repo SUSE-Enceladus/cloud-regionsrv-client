@@ -1624,10 +1624,13 @@ def get_zypper_pid():
     """Return the PID of zypper if it is running"""
     pid = ''
     for executable_name in ['zypper', 'Zypp-main']:
-        zyppPIDCmd = ['ps', '-C', executable_name, '-o', 'pid=']
-        zyppPID = subprocess.Popen(zyppPIDCmd, stdout=subprocess.PIPE)
-        pidData = zyppPID.communicate()
-        pid = pidData[0].decode().split('\n')[0].strip()
+        zypp_pid_cmd = ['ps', '-C', executable_name, '-o', 'pid=']
+        zypp_pid_result = exec_subprocess(zypp_pid_cmd, return_output=True)
+        if zypp_pid_result == -1 or zypp_pid_result.returncode != 0:
+            logging.info('Error running %s' % zypp_pid_cmd)
+            continue
+
+        pid = zypp_pid_result.output.split('\n')[0].strip()
         if pid:
             break
 
