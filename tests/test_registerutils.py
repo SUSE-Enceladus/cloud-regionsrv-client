@@ -1182,6 +1182,7 @@ def test_clean_non_free_extensions_request_failed(
     ]
 
 
+@patch('cloudregister.registerutils.get_installed_products')
 @patch('cloudregister.registerutils.os.unlink')
 @patch('cloudregister.registerutils.get_credentials')
 @patch('cloudregister.registerutils.get_product_tree')
@@ -1192,7 +1193,8 @@ def test_clean_non_free_extensions_no_credentials(
     mock_get_current_smt,
     mock_get_product_tree,
     mock_get_creds,
-    mock_os_unlink
+    mock_os_unlink,
+    mock_get_installed_products
 ):
     mock_get_current_smt.return_value = None
     utils.clean_non_free_extensions()

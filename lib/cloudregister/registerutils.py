@@ -1411,18 +1411,16 @@ def get_installed_products():
         return products
 
     zypper_products_cmd = ["zypper", "--no-remote", "-x", "products"]
-    try:
-        cmd = subprocess.Popen(zypper_products_cmd, stdout=subprocess.PIPE)
-        product_xml = cmd.communicate()
-        # Just in case something else started zypper again
-        if cmd.returncode != 0:
+    cmd_result = exec_subprocess(zypper_products_cmd, return_output=True)
+    if cmd_result == -1 or cmd_result.returncode != 0:
+        if cmd_result == -1:
+            logging.error(
+                'Could not get product list %s', ' '.join(zypper_products_cmd)
+            )
+        else:
             errMsg = 'zypper product query returned with zypper code %d'
-            logging.error(errMsg % cmd.returncode)
-            return products
-    except OSError:
-        logging.error(
-            'Could not get product list %s', ' '.join(zypper_products_cmd)
-        )
+            logging.error(errMsg % cmd_result.returncode)
+
         return products
 
     # Determine the base product
@@ -1436,7 +1434,7 @@ def get_installed_products():
         logging.error(errMsg)
         return products
 
-    product_tree = etree.fromstring(product_xml[0].decode())
+    product_tree = etree.fromstring(cmd_result.output)
     for child in product_tree.find("product-list"):
         name = child.attrib['name']
         if name == baseprodName:
