@@ -1713,7 +1713,9 @@ def has_rmt_ipv6_access(smt):
 def has_nvidia_support():
     """Check if the instance has Nvidia capabilities"""
     try:
-        pci_info, errors, returncode = exec_subprocess(['lspci'], return_output=True)
+        pci_info, errors, returncode = exec_subprocess(
+            ['lspci'], return_output=True
+        )
     except TypeError:
         logging.info(
             'lspci command not found, instance Nvidia support cannot '

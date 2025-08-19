@@ -1605,11 +1605,12 @@ def test_exec_subprocess(mock_popen):
     subprocess_type = namedtuple(
         'subprocess_type', ['returncode', 'output', 'error']
     )
-    assert utils.exec_subprocess(['foo'], return_output=True) == subprocess_type(
+    expected = subprocess_type(
         returncode=1,
         output='stdout',
         error='stderr'
     )
+    assert utils.exec_subprocess(['foo'], return_output=True) == expected
     assert utils.exec_subprocess(['foo']) == 1
 
 
@@ -1624,11 +1625,14 @@ def test_exec_subprocess_devnull_pipe(mock_popen):
     subprocess_type = namedtuple(
         'subprocess_type', ['returncode', 'output', 'error']
     )
-    assert utils.exec_subprocess(['foo'], pipe=False, return_output=True) == subprocess_type(
+    expected = subprocess_type(
         returncode=1,
         output='stdout',
         error='stderr'
     )
+    assert utils.exec_subprocess(
+        ['foo'], pipe=False, return_output=True
+    ) == expected
     assert utils.exec_subprocess(['foo']) == 1
 
 
