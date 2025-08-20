@@ -352,17 +352,23 @@ def exec_subprocess(cmd, pipe=True, return_output=False):
            - exit code of the command
            - stdout, stderr and exit code
            - -1 indicates an exception"""
-    std_pipe = subprocess.PIPE
-    if not pipe:
-        std_pipe = subprocess.DEVNULL
 
     proc = ''
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=std_pipe,
-            stderr=std_pipe
-        )
+        if not pipe:
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        else:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+
         out, err = proc.communicate()
     except (OSError, TypeError):
         return -1
