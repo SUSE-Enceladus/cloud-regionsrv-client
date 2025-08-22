@@ -43,6 +43,34 @@ from cloudregister.smt import SMT # noqa
 CACHE_SERVER_IPS = ['54.197.240.216', '54.225.105.144', '107.22.231.220']
 
 
+def test_dir_constants():
+    """Make sure our constants that define directory names meet our
+       expectations.
+       Whenever we add a new constant that defines a directory this test
+       should be updated. If this test fails do not modify the test, fix the
+       path definition in the code and make sure wherever it is used is
+       proper."""
+    _check_dir_path(utils.OLD_REGISTRATION_DATA_DIR)
+    _check_dir_path(utils.REGISTRATION_DATA_DIR)
+    _check_dir_path(utils.ZYPP_CREDENTIALS_PATH)
+
+
+def test_file_name_constants():
+    """Make sure our constants that define file names meet our
+       expectations.
+       Whenever we add a new constant that defines a file name this test
+       should be updated. If this test fails do not modify the test, fix the
+       file name definition in the code and make sure wherever it is used is
+       proper."""
+    _check_file_name(utils.BASE_CREDENTIALS_NAME)
+    _check_file_name(utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME)
+    _check_file_name(utils.FRAMEWORK_IDENTIFIER)
+    _check_file_name(utils.NEW_REGISTRATION_MARKER)
+    _check_file_name(utils.REGISTRATION_COMPLETED_MARKER)
+    _check_file_name(utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME)
+    _check_file_name(utils.RMT_AS_SCC_PROXY_MARKER)
+
+
 def test_get_profile_env_var():
     assert utils.get_profile_env_var(
         'some', '{0}/some_env'.format(data_path)
@@ -5791,6 +5819,20 @@ def get_test_config():
     """Return a config parser object using the minimum configuration in the
        tests/data directory"""
     return utils.get_config(data_path + '/regionserverclnt.cfg')
+
+
+def _check_dir_path(dir_name):
+    """A directory path is expected to start with a '/' and will _not_ have
+       a '/' at the end"""
+    assert (dir_name[0] == '/')
+    assert (dir_name[-1] != '/')
+
+
+def _check_file_name(file_name):
+    """A name that identifies a file is expected to _not_ start or end with
+       a '/'"""
+    assert (file_name[0] != '/')
+    assert (file_name[-1] != '/')
 
 
 class MockServer:
