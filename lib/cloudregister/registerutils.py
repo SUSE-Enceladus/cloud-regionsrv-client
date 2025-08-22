@@ -350,24 +350,43 @@ def enable_repository(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def exec_subprocess(cmd, return_output=False):
+def exec_subprocess(cmd, return_output=False, pipe=True):
     """Execute the given command as a subprocess (blocking)
        Returns one off:
            - exit code of the command
            - stdout, stderr and exit code
            - -1 indicates an exception"""
+
+    proc = ''
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        if not pipe:
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        else:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+
         out, err = proc.communicate()
-        if return_output:
-            return (out, err, proc.returncode)
-        return proc.returncode
-    except OSError:
+    except (OSError, TypeError):
         return -1
+
+    if return_output:
+        subprocess_type = namedtuple(
+            'subprocess_type', ['returncode', 'output', 'error']
+        )
+        return subprocess_type(
+            returncode=proc.returncode,
+            output=out.decode(),
+            error=err.decode()
+        )
+    return proc.returncode
 
 
 # ----------------------------------------------------------------------------
@@ -455,20 +474,7 @@ def register_product(
         log_information = log_information.replace(regcode, 'XXXX')
 
     logging.info('Registration: {0}'.format(log_information))
-    call = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    output, error = call.communicate()
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
-    return suseconnect_type(
-        returncode=call.returncode,
-        output=output.decode(),
-        error=error.decode()
-    )
+    return exec_subprocess(cmd, return_output=True)
 
 
 # ----------------------------------------------------------------------------
@@ -1373,7 +1379,7 @@ def get_framework_identifier_path():
 def get_instance_data(config):
     """Run the configured instance data collection command and return
        the result or none."""
-    instance_data = b''
+    instance_data = ''
     if (
             config.has_section('instance') and
             config.has_option('instance', 'dataProvider')
@@ -1387,13 +1393,15 @@ def get_instance_data(config):
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     logging.error(errMsg)
             if os.access(cmd, os.X_OK):
-                instance_data, errors, returncode = exec_subprocess(
-                    instance_data_cmd.split(), True
+                result = exec_subprocess(
+                    instance_data_cmd.split(), return_output=True
                 )
-                if errors:
+                if result.error:
                     errMsg = 'Data collected from stderr for instance '
-                    errMsg += 'data collection "%s"' % errors.decode()
+                    errMsg += 'data collection "%s"' % result.error
                     logging.error(errMsg)
+
+                instance_data = result.output
                 if not instance_data:
                     warn_msg = 'Possible issue accessing the metadata '
                     warn_msg += 'service. Metadata is empty, may result '
@@ -1402,9 +1410,7 @@ def get_instance_data(config):
 
     # Marker for the server to not return https:// formatted
     # service and repo information
-    inst_data = instance_data.decode()
-
-    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
+    return instance_data + '<repoformat>plugin:susecloud</repoformat>\n'
 
 
 # ----------------------------------------------------------------------------
@@ -1425,18 +1431,16 @@ def get_installed_products():
         return products
 
     zypper_products_cmd = ["zypper", "--no-remote", "-x", "products"]
-    try:
-        cmd = subprocess.Popen(zypper_products_cmd, stdout=subprocess.PIPE)
-        product_xml = cmd.communicate()
-        # Just in case something else started zypper again
-        if cmd.returncode != 0:
+    cmd_result = exec_subprocess(zypper_products_cmd, return_output=True)
+    if cmd_result == -1 or cmd_result.returncode != 0:
+        if cmd_result == -1:
+            logging.error(
+                'Could not get product list %s', ' '.join(zypper_products_cmd)
+            )
+        else:
             errMsg = 'zypper product query returned with zypper code %d'
-            logging.error(errMsg % cmd.returncode)
-            return products
-    except OSError:
-        logging.error(
-            'Could not get product list %s', ' '.join(zypper_products_cmd)
-        )
+            logging.error(errMsg % cmd_result.returncode)
+
         return products
 
     # Determine the base product
@@ -1450,7 +1454,7 @@ def get_installed_products():
         logging.error(errMsg)
         return products
 
-    product_tree = etree.fromstring(product_xml[0].decode())
+    product_tree = etree.fromstring(cmd_result.output)
     for child in product_tree.find("product-list"):
         name = child.attrib['name']
         if name == baseprodName:
@@ -1640,12 +1644,12 @@ def get_zypper_pid():
     """Return the PID of zypper if it is running"""
     pid = ''
     for executable_name in ['zypper', 'Zypp-main']:
-        zyppPIDCmd = ['ps', '-C', executable_name, '-o', 'pid=']
-        zyppPID = subprocess.Popen(zyppPIDCmd, stdout=subprocess.PIPE)
-        pidData = zyppPID.communicate()
-        pid = pidData[0].decode().split('\n')[0].strip()
-        if pid:
-            break
+        zypp_pid_cmd = ['ps', '-C', executable_name, '-o', 'pid=']
+        zypp_pid_result = exec_subprocess(zypp_pid_cmd, return_output=True)
+        if zypp_pid_result != -1:
+            pid = zypp_pid_result.output.split('\n')[0].strip()
+            if pid:
+                break
 
     return pid
 
@@ -1723,20 +1727,18 @@ def has_rmt_ipv6_access(smt):
 # ----------------------------------------------------------------------------
 def has_nvidia_support():
     """Check if the instance has Nvidia capabilities"""
-    try:
-        pci_info, errors, returncode = exec_subprocess(['lspci'], True)
-    except TypeError:
-        logging.info(
-            'lspci command not found, instance Nvidia support cannot '
-            'be determined'
-        )
+    pci_info = exec_subprocess(['lspci'], return_output=True)
+    if pci_info == -1 or 'NVIDIA' not in pci_info.output:
+        if pci_info == -1:
+            logging.info(
+                'lspci command not found, instance Nvidia support cannot '
+                'be determined or there was an error running the command'
+            )
+
         return False
 
-    if 'NVIDIA' in pci_info.decode():
-        logging.info('Instance has Nvidia support')
-        return True
-
-    return False
+    logging.info('Instance has Nvidia support')
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -1894,9 +1896,9 @@ def get_profile_env_var(varname, profile_file):
             profile_file, varname
         )
     ]
-    variable_content, error, returncode = exec_subprocess(shell_command, True)
-    if not error:
-        return variable_content.decode().strip()
+    result = exec_subprocess(shell_command, return_output=True)
+    if result != 1 and not result.error:
+        return result.output.strip()
 
 
 # ----------------------------------------------------------------------------
@@ -2006,14 +2008,14 @@ def is_transactional_system():
     can be found.
     """
     # Figure out if we are on RO transactional-update system
-    output, error, returncode = exec_subprocess(
+    subprocess_result = exec_subprocess(
         ['findmnt', '--noheadings', '--json', '/'], return_output=True
     )
-    if returncode != 0:
+    if subprocess_result == 1 or subprocess_result.returncode != 0:
         logging.warning('Unable to find filesystem information for "/"')
         return False
     else:
-        fsinfo = json.loads(output.decode())
+        fsinfo = json.loads(subprocess_result.output)
         fsdata = fsinfo.get('filesystems')
         if fsdata:
             fsoptions = fsdata[0].get('options')
@@ -2569,14 +2571,17 @@ def __get_service_plugins():
 # ----------------------------------------------------------------------------
 def __get_system_mfg():
     """Returns the system manufacturer information"""
-    try:
-        vendor, error, returncode = exec_subprocess(
-            ['dmidecode', '-s', 'system-manufacturer'], True
-        )
-    except TypeError:
-        vendor = b'unknown'
+    vendor = ''
 
-    return vendor.decode().strip()
+    result = exec_subprocess(
+        ['dmidecode', '-s', 'system-manufacturer'], return_output=True
+    )
+    if result == -1 or result.returncode != 0 or result.error:
+        vendor = 'unknown'
+    else:
+        vendor = result.output.strip()
+
+    return vendor
 
 
 # ----------------------------------------------------------------------------
