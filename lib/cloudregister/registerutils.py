@@ -1638,17 +1638,10 @@ def get_zypper_pid():
     for executable_name in ['zypper', 'Zypp-main']:
         zypp_pid_cmd = ['ps', '-C', executable_name, '-o', 'pid=']
         zypp_pid_result = exec_subprocess(zypp_pid_cmd, return_output=True)
-        if (
-            zypp_pid_result == -1 or
-            zypp_pid_result.returncode != 0 or
-            zypp_pid_result.error
-        ):
-            logging.info('Error running %s' % zypp_pid_cmd)
-            continue
-
-        pid = zypp_pid_result.output.split('\n')[0].strip()
-        if pid:
-            break
+        if zypp_pid_result != -1:
+            pid = zypp_pid_result.output.split('\n')[0].strip()
+            if pid:
+                break
 
     return pid
 

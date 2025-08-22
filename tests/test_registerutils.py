@@ -911,8 +911,6 @@ def test_clean_non_free_extensions(
         )
     ]
     assert mock_logging.info.call_args_list == [
-        call("Error running ['ps', '-C', 'zypper', '-o', 'pid=']"),
-        call("Error running ['ps', '-C', 'Zypp-main', '-o', 'pid=']"),
         call('No credentials entry for "*fantasy_example_com"'),
         call('No credentials entry for "SCC*"'),
         call('Non free extension SLES-LTSS/15.4/x86_64 removed')
@@ -1040,8 +1038,6 @@ def test_clean_non_free_extensions_should_not_be_removed(
         )
     ]
     assert mock_logging.info.call_args_list == [
-        call("Error running ['ps', '-C', 'zypper', '-o', 'pid=']"),
-        call("Error running ['ps', '-C', 'Zypp-main', '-o', 'pid=']"),
         call('No credentials entry for "*fantasy_example_com"'),
         call('No credentials entry for "SCC*"'),
         call('Non free extension SLES-LTSS/15.4/x86_64 removed')
@@ -1144,8 +1140,6 @@ def test_clean_non_free_extensions_failed(
         )
     ]
     assert mock_logging.info.call_args_list == [
-        call("Error running ['ps', '-C', 'zypper', '-o', 'pid=']"),
-        call("Error running ['ps', '-C', 'Zypp-main', '-o', 'pid=']"),
         call('No credentials entry for "*fantasy_example_com"'),
         call('No credentials entry for "SCC*"'),
         call('Non free extension SLES-LTSS/15.4/x86_64 failed to be removed')
@@ -2199,8 +2193,6 @@ def test_get_credentials_file_no_file(mock_logging, mock_glob):
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     utils.get_credentials_file(smt_server, 'bar')
     assert mock_logging.info.mock_calls == [
-        call("Error running ['ps', '-C', 'zypper', '-o', 'pid=']"),
-        call("Error running ['ps', '-C', 'Zypp-main', '-o', 'pid=']"),
         call('No credentials entry for "*bar*"'),
         call('No credentials entry for "*fantasy_example_com"'),
         call('No credentials entry for "SCC*"'),
