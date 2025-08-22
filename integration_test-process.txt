@@ -67,6 +67,7 @@ After installing the test package with "zypper in"
   + systemctl status containerbuild-regionsrv.service
   + podman run --network host -it bci/bci-base
   + zypper lr should have SLES repos; exit the container
+  + exit the container
 - registercloudguest --clean
   + zypper lr has no repos
   On SLE 15 and later
@@ -203,7 +204,7 @@ SLE 15
   + zypper lr | grep LTSS has LTSS repositories
   + zypper ref
   + zypper up
-    + Expected to have new updates due to the addition o fthe LTSS repos
+    + Expected to have new updates due to the addition of the LTSS repos
   + source /etc/profile.local
   + systemctl start docker.service
   + systemctl status docker.service
@@ -231,7 +232,7 @@ SLE 15
 Extended testing
 - Clean out /var/log/cloudregister
 - Create an image from a registered instance (PAYG)
-- Start an image from the created image in a different region
+- Start an instance from the created image in a different region
   + /var/log/cloudregister contains
     "INFO:Region change detected, registering to new servers"
   + instance has repos
