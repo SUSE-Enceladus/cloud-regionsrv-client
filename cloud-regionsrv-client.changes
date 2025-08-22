@@ -1,10 +1,12 @@
 -------------------------------------------------------------------
-$RELEASE_DATE
+Fri Aug 22 17:28:17 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
 
-- Update version to NEXT
-  + Fix the case where an instance can not get verified
-    in any of the siblings, leaving credential files present
-    under /etc/zypp/credentials.d
+- Update version to 10.5.2 (bsc#1247539, 
+  + When an instance fails verification server side the default credentials
+    were left behind requireing manual intervantion prior to the next
+    registration attempt.
+  + Fix issue triggered when using instance-billing-flavor-check due to
+    IP address handling as object rather than string introduced 10.5.0
 
 -------------------------------------------------------------------
 Fri Jul 25 11:06:58 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
