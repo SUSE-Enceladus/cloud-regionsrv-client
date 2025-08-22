@@ -346,7 +346,7 @@ def enable_repository(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def exec_subprocess(cmd, pipe=True, return_output=False):
+def exec_subprocess(cmd, return_output=False, pipe=True):
     """Execute the given command as a subprocess (blocking)
        Returns one off:
            - exit code of the command
