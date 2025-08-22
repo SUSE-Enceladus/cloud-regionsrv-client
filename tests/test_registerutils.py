@@ -2987,25 +2987,38 @@ def test_has_rmt_ipv6_access_exception(
     )
 
 
-@patch('cloudregister.registerutils.exec_subprocess')
-def test_has_nvidia_support(mock_subprocess):
-    mock_subprocess.return_value = b'NVIDIA', 'bar', 0
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_has_nvidia_support(mock_popen):
+    mock_process = Mock()
+    mock_process.communicate = Mock(
+        return_value=[str.encode('NVIDIA'), str.encode('')]
+    )
+    mock_process.returncode = 0
+    mock_popen.return_value = mock_process
     assert utils.has_nvidia_support() is True
 
 
 @patch('cloudregister.registerutils.logging')
-@patch('cloudregister.registerutils.exec_subprocess')
-def test_has_nvidia_support_exception(mock_subprocess, mock_logging):
-    mock_subprocess.side_effect = TypeError('foo')
+@patch('cloudregister.registerutils.subprocess.Popen')
+def test_has_nvidia_support_exception(mock_popen, mock_logging):
+    mock_popen.side_effect = TypeError('foo')
     assert utils.has_nvidia_support() is False
     mock_logging.info.assert_called_once_with(
-        'lspci command not found, instance Nvidia support cannot be determined'
+        'lspci command not found, instance Nvidia support cannot be determined '
+        'or there was an error running the command'
     )
 
 
 @patch('cloudregister.registerutils.exec_subprocess')
 def test_has_nvidia_no_support(mock_subprocess):
-    mock_subprocess.return_value = b'foo', 'bar', 0
+    subprocess_type = namedtuple(
+        'subprocess_tuple', ['returncode', 'output', 'error']
+    )
+    mock_subprocess.return_value = subprocess_type(
+        returncode=0,
+        output='foo',
+        error='bar'
+    )
     assert utils.has_nvidia_support() is False
 
 
