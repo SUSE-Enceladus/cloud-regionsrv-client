@@ -1,7 +1,7 @@
 -------------------------------------------------------------------
 Fri Aug 22 17:28:17 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
 
-- Update version to 10.5.2 (bsc#1247539, 
+- Update version to 10.5.2 (bsc#1247539)
   + When an instance fails verification server side the default credentials
     were left behind requireing manual intervantion prior to the next
     registration attempt.
