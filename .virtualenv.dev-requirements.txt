@@ -13,3 +13,6 @@ flake8
 
 # Version-bump your software with a single command!
 bumpversion
+
+# setup.py
+setuptools

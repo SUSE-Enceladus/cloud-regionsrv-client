@@ -11,6 +11,8 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
+from pytest import fixture
+import logging
 import configparser
 import inspect
 import io
@@ -2127,7 +2129,7 @@ def test_get_activations_request_OK(
     response.json = json_mock
     mock_request_get.return_value = response
     assert utils.get_activations() == {'foo': 'bar'}
-    assert mock_logging.error.not_called
+    mock_logging.error.assert_not_called
     mock_request_get.assert_called_once_with(
         'https://fantasy.example.com/connect/systems/activations',
         auth='foobar',
@@ -2143,7 +2145,7 @@ def test_get_config(mock_config_parser):
 
 @patch('cloudregister.registerutils.sys.exit')
 def test_get_config_not_parsed(mock_sys_exit):
-    utils.get_config()
+    utils.get_config('bogus')
     mock_sys_exit.assert_called_once_with(1)
 
 
@@ -2473,7 +2475,7 @@ def test_get_installed_products_OK(
     mock_os_path_islink.return_value = True
     mock_os_path_realpath.return_value = '/real/path/to/base/prod'
     assert utils.get_installed_products() == ['sle-super-prod/12/x86_64']
-    assert mock_logging.error.not_called
+    mock_logging.error.assert_not_called
 
 
 @patch('cloudregister.registerutils.os.path.realpath')
@@ -2503,7 +2505,7 @@ def test_get_installed_products_baseprod(
     mock_os_path_islink.return_value = True
     mock_os_path_realpath.return_value = '/real/path/to/base/prod'
     assert utils.get_installed_products() == []
-    assert mock_logging.error.not_called
+    mock_logging.error.assert_not_called
 
 
 @patch('cloudregister.registerutils.os.path.realpath')
@@ -4111,7 +4113,7 @@ def test_remove_repos(mock_os_unlink, mock_logging, mock_glob):
     mock_glob.return_value = ['tests/data/repo_foo.repo']
     assert utils.__remove_repos(['foo']) == 1
     mock_os_unlink.assert_called_once_with('tests/data/repo_foo.repo')
-    mock_logging.info.called_once_with('Removing repo: repo_foo.repo')
+    mock_logging.info.assert_called_once_with('Removing repo: repo_foo.repo')
 
 
 @patch('cloudregister.registerutils.glob.glob')
@@ -4119,9 +4121,9 @@ def test_remove_repos(mock_os_unlink, mock_logging, mock_glob):
 @patch('cloudregister.registerutils.os.unlink')
 def test_remove_repos_removed_nothing(mock_os_unlink, mock_logging, mock_glob):
     mock_glob.return_value = ['tests/data/scc_repo.repo']
-    assert utils.__remove_repos('foo') == 1
-    mock_os_unlink.not_called()
-    mock_logging.info.not_called()
+    assert utils.__remove_repos(['foo']) == 1
+    mock_os_unlink.assert_not_called()
+    mock_logging.info.assert_not_called()
 
 
 @patch('cloudregister.registerutils.__get_service_plugins')
@@ -4138,7 +4140,9 @@ def test_remove_service_not_plugins(
     mock_get_service_plugin.return_value = []
     assert utils.__remove_service(['192']) == 1
     mock_os_unlink.assert_called_once_with('tests/data/service.service')
-    mock_logging.info.called_once_with('Removing repo: service.service')
+    mock_logging.info.assert_called_once_with(
+        'Removing service: service.service'
+    )
 
 
 @patch('cloudregister.registerutils.__get_service_plugins')
@@ -4155,7 +4159,7 @@ def test_remove_service(
     mock_get_service_plugins.return_value = ['foo']
     assert utils.__remove_service('192') == 1
     mock_os_unlink.assert_called_once_with('foo')
-    mock_logging.info.not_called()
+    mock_logging.info.assert_not_called()
 
 
 @patch('cloudregister.registerutils._get_region_server_ips')
@@ -4230,17 +4234,17 @@ def test_has_network_access_by_ip_address(mock_socket_create_connection):
 
 
 # ---------------------------------------------------------------------------
-@patch('cloudregister.registerutils.logging')
+@fixture(autouse=True)
 @patch('cloudregister.registerutils.socket.create_connection')
 def test_has_network_access_by_ip_address_no_connection(
-        mock_socket_create_connection, mock_logging
-        ):
+    mock_socket_create_connection, caplog
+):
     mock_socket_create_connection.side_effect = OSError
-    has_access = utils.has_network_access_by_ip_address('FFF::0')
-    assert not has_access
-    assert mock_logging.info.called_once_with(
-        'Skipping IPv6 protocol version, no network configuration'
-    )
+    with caplog.at_level(logging.INFO):
+        has_access = utils.has_network_access_by_ip_address('FFF::0')
+        assert not has_access
+        assert 'Skipping IPv6 protocol version, no network configuration' in \
+            caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -4578,7 +4582,7 @@ def test_unset_env_vars_modified_content(
     mock_clean_bashrc_local.return_value = ['no-registry'], True, False, False
     mock_update_bashrc.return_value = True
     assert utils.unset_env_vars() is True
-    mock_update_bashrc.called_once_with('no-registry', 'w')
+    mock_update_bashrc.assert_called_once_with('no-registry', 'w')
 
 
 # ---------------------------------------------------------------------------
@@ -4899,18 +4903,21 @@ def test_clean_registry_auth_content_same_entry_only_token_based(
 
 
 # ---------------------------------------------------------------------------
+@fixture(autouse=True)
 @patch('cloudregister.registerutils.same_registry_auth_content')
 @patch('cloudregister.registerutils.os.unlink')
-@patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.get_registry_credentials')
+@patch('os.path.exists')
 def test_clean_registry_auth_content_not_relevant_json(
-    mock_get_registry_credentials, mock_logging,
-    mock_os_unlink, mock_same_registry_auth_content
+    mock_os_path_exists, mock_get_registry_credentials,
+    mock_os_unlink, mock_same_registry_auth_content, caplog
 ):
+    mock_os_path_exists.return_value = True
     mock_get_registry_credentials.return_value = {'auths': {}}, None
     mock_same_registry_auth_content.return_value = False
-    assert utils.clean_registry_auth(registry_fqdn='')
-    mock_logging.info.called_once_with('JSON content is empty')
+    with caplog.at_level(logging.INFO):
+        assert utils.clean_registry_auth(registry_fqdn='')
+        assert 'JSON content is empty' in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -5481,7 +5488,7 @@ def test_set_registries_conf_docker_not_OK_order_has_changed(
         # The registry setup contains the entries we care but was
         # modified manually. Don't touch this user modified variant.
         # This can be changed by the user via a --clean re-registration
-        assert not mock_json_dump.called
+        mock_json_dump.assert_not_called
 
 
 # ---------------------------------------------------------------------------
