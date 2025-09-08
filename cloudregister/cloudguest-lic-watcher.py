@@ -22,6 +22,7 @@ import cloudregister.registerutils as utils
 CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), 'cached_license')
 SERVICE_NAME = 'guestregister.service'
 
+
 def update_license_cache(license_type):
     """Update the cache to track the license type"""
     with open(CACHE_LICENSE_PATH, 'w') as cached_license:

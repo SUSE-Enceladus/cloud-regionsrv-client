@@ -22,6 +22,7 @@ import cloudregister.registerutils as utils
 
 from cloudregister import smt
 
+
 def app():
     if os.path.exists(utils.OLD_REGISTRATION_DATA_DIR):
         # The case where both new and old location exist cannot happen. This
@@ -30,8 +31,9 @@ def app():
         # The hard coded path ends in '/' thus producing an empty entry in the
         # split(). We want to make sure we do not create nested dirs.
         os.system(
-            'mv %s %s' % (utils.OLD_REGISTRATION_DATA_DIR,
-                    os.sep.join(utils.REGISTRATION_DATA_DIR.split(os.sep)[:-2])
+            'mv {} {}'.format(
+                utils.OLD_REGISTRATION_DATA_DIR,
+                os.sep.join(utils.REGISTRATION_DATA_DIR.split(os.sep)[:-2])
             )
         )
 

@@ -36,6 +36,7 @@ logging.basicConfig(level=loglevel,
 
 LOG = logging.getLogger('containerbuild-regionsrv')
 
+
 class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
     """
     A TCP server that emits configuration details that are relevant to

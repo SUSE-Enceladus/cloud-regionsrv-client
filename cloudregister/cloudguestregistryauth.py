@@ -27,6 +27,7 @@ from cloudregister.registerutils import (
     get_activations, exec_subprocess
 )
 
+
 def app():
     error_message = 'Could not refresh credentials'
     if os.geteuid():

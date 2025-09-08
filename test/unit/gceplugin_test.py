@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import googlece as gce # noqa
+import cloudregister.googlece as gce # noqa
 
 
 # ----------------------------------------------------------------------------
@@ -33,8 +33,8 @@ class Response():
 
 
 # ----------------------------------------------------------------------------
-@patch('googlece.requests.get')
-@patch('googlece.logging')
+@patch('cloudregister.googlece.requests.get')
+@patch('cloudregister.googlece.logging')
 def test_request_fail(mock_logging, mock_request):
     """Test proper exception handling when request to metadata server fails"""
     mock_request.side_effect = requests.exceptions.RequestException
@@ -48,8 +48,8 @@ def test_request_fail(mock_logging, mock_request):
 
 
 # ----------------------------------------------------------------------------
-@patch('googlece.requests.get')
-@patch('googlece.logging')
+@patch('cloudregister.googlece.requests.get')
+@patch('cloudregister.googlece.logging')
 def test_request_fail_parse_response(mock_logging, mock_request):
     """Test unexpected return value"""
     mock_request.return_value = _get_unexpected_response()
@@ -62,8 +62,8 @@ def test_request_fail_parse_response(mock_logging, mock_request):
 
 
 # ----------------------------------------------------------------------------
-@patch('googlece.requests.get')
-@patch('googlece.logging')
+@patch('cloudregister.googlece.requests.get')
+@patch('cloudregister.googlece.logging')
 def test_request_fail_response_error(mock_logging, mock_request):
     """Test unexpected return value"""
     mock_request.return_value = _get_error_response()
@@ -75,7 +75,7 @@ def test_request_fail_response_error(mock_logging, mock_request):
 
 
 # ----------------------------------------------------------------------------
-@patch('googlece.requests.get')
+@patch('cloudregister.googlece.requests.get')
 def test_request_succeed(mock_request):
     """Test behavior with expected return value"""
     mock_request.return_value = _get_expected_response()

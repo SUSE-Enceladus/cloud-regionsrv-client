@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import msftazure as azure # noqa
+import cloudregister.msftazure as azure # noqa
 
 
 # ----------------------------------------------------------------------------
@@ -38,9 +38,9 @@ class Resolver():
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_metadata_request_fail(mock_logging, mock_request, mock_resolver):
     """Test proper exception handling when request to metadata server fails"""
     mock_request.side_effect = requests.exceptions.RequestException
@@ -56,8 +56,8 @@ def test_metadata_request_fail(mock_logging, mock_request, mock_resolver):
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_metadata_request_fail_server_error(mock_logging, mock_request):
     """Test metadata server error code return"""
     mock_request.return_value = _get_error_response()
@@ -76,7 +76,7 @@ def test_metadata_request_fail_server_error(mock_logging, mock_request):
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.requests.get')
+@patch('cloudregister.msftazure.requests.get')
 def test_metadata_request_success(mock_request):
     """Test unexpected return value"""
     mock_request.return_value = _get_expected_response_metadata()
@@ -90,9 +90,9 @@ def test_metadata_request_success(mock_request):
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_goal_state_request_fail(
         mock_logging,
         mock_request,
@@ -110,9 +110,9 @@ def test_wire_request_goal_state_request_fail(
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_goal_state_request_fail_server_error(
         mock_logging,
         mock_request,
@@ -130,9 +130,9 @@ def test_wire_request_goal_state_request_fail_server_error(
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_goal_state_request_success_no_match(
         mock_logging,
         mock_request,
@@ -150,9 +150,9 @@ def test_wire_request_goal_state_request_success_no_match(
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_extension_request_fail(
         mock_logging,
         mock_request,
@@ -175,9 +175,9 @@ def test_wire_request_extension_request_fail(
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_extension_request_fail_server_error(
         mock_logging,
         mock_request,
@@ -199,9 +199,9 @@ def test_wire_request_extension_request_fail_server_error(
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_extension_request_success_no_match(
         mock_logging,
         mock_request,
@@ -223,9 +223,9 @@ def test_wire_request_extension_request_success_no_match(
 
 
 # ----------------------------------------------------------------------------
-@patch('msftazure.dns.resolver.get_default_resolver')
-@patch('msftazure.requests.get')
-@patch('msftazure.logging')
+@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
+@patch('cloudregister.msftazure.requests.get')
+@patch('cloudregister.msftazure.logging')
 def test_wire_request_success(mock_logging, mock_request, mock_resolver):
     """Test success for info on the wire server"""
     mock_request.side_effect = [

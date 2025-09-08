@@ -19,11 +19,11 @@
 import glob
 import logging
 import os
-import subprocess
 import sys
 import time
 
 import cloudregister.registerutils as utils
+
 
 def app():
     utils.start_logging()

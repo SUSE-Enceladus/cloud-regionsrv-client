@@ -23,6 +23,7 @@ import sys
 
 import cloudregister.registerutils as utils
 
+
 def app():
     region_info_path = os.path.join(
         utils.get_state_dir(), utils.FRAMEWORK_IDENTIFIER

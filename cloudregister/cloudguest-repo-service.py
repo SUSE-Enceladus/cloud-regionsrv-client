@@ -80,8 +80,8 @@ def print_repo_data(update_server, activation, available_repos):
             base_url += 'path=/repo%s' % relative_path
         print('[%s]' % name)
         print('name=%s' % name)
-        print('enabled=%d' % int(enabled == True))
-        print('autorefresh=%s' % int(refresh == True))
+        print('enabled=%d' % int(bool(enabled)))
+        print('autorefresh=%s' % int(bool(refresh)))
         print('baseurl=%s' % base_url)
 
     return is_plugin_url
