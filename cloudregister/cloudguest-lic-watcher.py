@@ -93,13 +93,12 @@ def maybe_register_system(license_type):
             status='already registered, nothing to do')
         )
 
-utils.start_logging()
 
-current_flavor = inst_flvr_utils.check_payg_byos()[0]
-if has_license_changed(current_flavor):
-    maybe_drop_registration(current_flavor)
-    maybe_register_system(current_flavor)
-    update_license_cache(current_flavor)
-        
-        
-    
+def app():
+    utils.start_logging()
+
+    current_flavor = inst_flvr_utils.check_payg_byos()[0]
+    if has_license_changed(current_flavor):
+        maybe_drop_registration(current_flavor)
+        maybe_register_system(current_flavor)
+        update_license_cache(current_flavor)

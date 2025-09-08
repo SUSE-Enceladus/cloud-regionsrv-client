@@ -1,34 +1,30 @@
-DESTDIR=
-PREFIX=
-dirs = etc man usr
-files = Makefile README LICENSE setup.py cloud-regionsrv-client.spec
+buildroot = /
 
-nv = $(shell rpm -q --specfile --qf '%{NAME}-%{VERSION}|' *.spec | cut -d'|' -f1)
-verSpec = $(shell rpm -q --specfile --qf '%{VERSION}|' *.spec | cut -d'|' -f1)
-verSrc = $(shell cat lib/cloudregister/VERSION)
-ifneq "$(verSpec)" "$(verSrc)"
-    $(error "Version mismatch, will not take any action")
-endif
+clean:
+	rm -rf dist
 
-package: tar
-	git checkout master
-	git pull
-	mkdir -p dist
-	rm -f dist/*
-	cp cloud-regionsrv-client* dist/
-	cp *.patch dist/
+package: clean
+	poetry build --format=sdist
+	cp package/* dist/
 	@echo "Find package files for submission below dist/"
 
-tar:
-	mkdir "$(nv)"
-	cp -r $(dirs) lib $(files) "$(nv)"
-	find "$(nv)" -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
-	find "$(nv)" -path "*/lib/cloudregister.egg-info/*" -delete
-	find "$(nv)" -type d -name "cloudregister.egg-info" -delete
-	tar -cjf "$(nv).tar.bz2" "$(nv)"
-	rm -rf "$(nv)"
-
 install:
-	cp -r $(dirs) "$(DESTDIR)/"
-	python3 setup.py install --prefix="$(PREFIX)" --root="$(DESTDIR)"
-	gzip "$(DESTDIR)"/"$(MANDIR)"/man1/registercloudguest.1
+	install -d -m 755 ${buildroot}usr/share/man/man1
+	for man in doc/man/man1/*.1; do \
+		install -m 644 $$man ${buildroot}usr/share/man/man1 ;\
+	done
+
+setup:
+	poetry install --all-extras
+
+check: setup
+	# python flake tests
+	poetry run flake8 --statistics -j auto --count cloudregister
+	poetry run flake8 --statistics -j auto --count test/unit
+
+test: setup
+	# unit tests
+	poetry run bash -c 'pushd test/unit && pytest \
+		--doctest-modules --no-cov-on-fail --cov=cloudregister \
+		--cov-report=term-missing --cov-fail-under=100 \
+		--cov-config .coveragerc'

@@ -583,14 +583,7 @@ argparse.add_argument(
 argparse.add_argument(
     '-v', '--version',
     action='version',
-    version='{version}'.format(
-        version=open(
-            os.path.join(
-                os.path.dirname(smt.__file__),
-                'VERSION'
-            )
-        ).read().strip()
-    )
+    version='10.5.2'
 )
 
 
@@ -851,7 +844,7 @@ def main(args):
                 utils.enable_repository(repo_name)
 
 
-if __name__ == '__main__':  # pragma: no cover
+def app():  # pragma: no cover
     args = argparse.parse_args()
     main(args)
     utils.switch_services_to_plugin()

@@ -87,62 +87,63 @@ def print_repo_data(update_server, activation, available_repos):
     return is_plugin_url
 
 
-utils.start_logging()
-utils.set_proxy()
+def app():
+    utils.start_logging()
+    utils.set_proxy()
 
-# Make sure we are pointing to a reachable server
-update_server = utils.get_smt()
-if not update_server:
-    logging.info('[Repo-Service] No update server found cannot provide repos')
-    sys.exit(1)
+    # Make sure we are pointing to a reachable server
+    update_server = utils.get_smt()
+    if not update_server:
+        logging.info('[Repo-Service] No update server found cannot provide repos')
+        sys.exit(1)
 
-# Get the available repos from the server
-user, password = utils.get_credentials(
-    utils.get_credentials_file(update_server)
-)
-auth_creds = HTTPBasicAuth(user, password)
-instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
-headers = {'X-Instance-Data': base64.b64encode(instance_data)}
-res = requests.get(
-    'https://%s/repo/repoindex.xml' % update_server.get_FQDN(),
-    auth=auth_creds,
-    headers=headers
-)
-if not res.status_code == 200:
-    logging.info('[Repo-Service] Unable to retrieve update server repo data')
-    sys.exit(1)
-
-repo_info_xml = res.text
-repo_info_start = repo_info_xml.index('<repoindex>')
-repo_data = etree.fromstring(repo_info_xml[repo_info_start:])
-
-available_repos = []
-for repo in repo_data.findall('repo'):
-    available_repos.append(repo.get('name'))
-
-# Get activated products for repo processing
-# We have to process the activation information as otherwise it is difficult
-# to relate services to repositories since the repoindex.xml file
-# does not provide such correlation.
-product_activations = utils.get_activations()
-if not product_activations:
-    logging.error(
-        '[Repo-Service] Unable to retrieve product activations '
-        'from "%s"' % update_server.get_FQDN()
+    # Get the available repos from the server
+    user, password = utils.get_credentials(
+        utils.get_credentials_file(update_server)
     )
-    sys.exit(1)
-
-trigger_set = False
-for activation in product_activations:
-    has_plugin_format = print_repo_data(
-        update_server, activation, available_repos
+    auth_creds = HTTPBasicAuth(user, password)
+    instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
+    headers = {'X-Instance-Data': base64.b64encode(instance_data)}
+    res = requests.get(
+        'https://%s/repo/repoindex.xml' % update_server.get_FQDN(),
+        auth=auth_creds,
+        headers=headers
     )
-    if has_plugin_format and not trigger_set:
-        trigger_set = True
-        # Python has no sane way to create a detached process
-        subprocess.Popen(
-            ['nohup', '/usr/sbin/switchcloudguestservices'],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+    if not res.status_code == 200:
+        logging.info('[Repo-Service] Unable to retrieve update server repo data')
+        sys.exit(1)
+
+    repo_info_xml = res.text
+    repo_info_start = repo_info_xml.index('<repoindex>')
+    repo_data = etree.fromstring(repo_info_xml[repo_info_start:])
+
+    available_repos = []
+    for repo in repo_data.findall('repo'):
+        available_repos.append(repo.get('name'))
+
+    # Get activated products for repo processing
+    # We have to process the activation information as otherwise it is difficult
+    # to relate services to repositories since the repoindex.xml file
+    # does not provide such correlation.
+    product_activations = utils.get_activations()
+    if not product_activations:
+        logging.error(
+            '[Repo-Service] Unable to retrieve product activations '
+            'from "%s"' % update_server.get_FQDN()
         )
+        sys.exit(1)
+
+    trigger_set = False
+    for activation in product_activations:
+        has_plugin_format = print_repo_data(
+            update_server, activation, available_repos
+        )
+        if has_plugin_format and not trigger_set:
+            trigger_set = True
+            # Python has no sane way to create a detached process
+            subprocess.Popen(
+                ['nohup', '/usr/sbin/switchcloudguestservices'],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )

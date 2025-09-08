@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Copyright (c) 2024, SUSE LLC, All rights reserved.
+# Copyright (c) 2022, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -14,27 +14,21 @@
 # License along with this library.
 
 """
-Totally trivial wrapper to support re-authentication for the registry
-feature.
-
-The script is used in a sudo rule to allow its use by a non root user
+Create the region info file if it does not exist. During package update the
+system is in the region to which it is registered.
 """
 
 import os
 import sys
 
-from cloudregister.registerutils import (
-    get_activations, exec_subprocess
-)
+import cloudregister.registerutils as utils
 
-error_message = 'Could not refresh credentials'
-if os.geteuid():
-    if exec_subprocess(['sudo', sys.argv[0]]):
-        # geteuid is not root and
-        # the command was called with sudo
-        # and failed
-        sys.exit(error_message)
-elif not get_activations():
-    sys.exit(error_message)
+def app():
+    region_info_path = os.path.join(
+        utils.get_state_dir(), utils.FRAMEWORK_IDENTIFIER
+    )
 
-print('Credentials refreshed')
+    if os.path.exists(region_info_path):
+        sys.exit(0)
+
+    utils.write_framework_identifier(utils.get_config())
