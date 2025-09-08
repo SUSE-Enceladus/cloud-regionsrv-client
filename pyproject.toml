@@ -56,12 +56,12 @@ toml = "*"
 [tool.poetry.scripts]
 registercloudguest = "cloudregister.registercloudguest:app"
 cloudguestregistryauth = "cloudregister.cloudguestregistryauth:app"
-cloudguest-lic-watcher = "cloudregister.cloudguest-lic-watcher:app"
+cloudguest-lic-watcher = "cloudregister.cloudguest_lic_watcher:app"
 updatesmtcache = "cloudregister.updatesmtcache:app"
 switchcloudguestservices = "cloudregister.switchcloudguestservices:app"
 createregioninfo = "cloudregister.createregioninfo:app"
-containerbuild-regionsrv = "cloudregister.containerbuild-regionsrv:app"
-cloudguest-repo-service = "cloudregister.cloudguest-repo-service:app"
+containerbuild-regionsrv = "cloudregister.containerbuild_regionsrv:app"
+cloudguest-repo-service = "cloudregister.cloudguest_repo_service:app"
 
 [tool.poetry.group.test]
 [tool.poetry.group.test.dependencies]

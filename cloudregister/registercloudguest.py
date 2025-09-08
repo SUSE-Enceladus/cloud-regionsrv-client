@@ -46,6 +46,8 @@ from requests.auth import HTTPBasicAuth
 LOG_FILE = '/var/log/cloudregister'
 ZYPP_SERVICES = '/etc/zypp/services.d'
 
+__version__ = '10.5.2'
+
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
 # We have to check the server state API without certificate validation
@@ -583,7 +585,7 @@ argparse.add_argument(
 argparse.add_argument(
     '-v', '--version',
     action='version',
-    version='10.5.2'
+    version=__version__
 )
 
 

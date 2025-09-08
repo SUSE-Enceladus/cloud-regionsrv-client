@@ -1,18 +1,24 @@
 buildroot = /
 
+python_version = 3
+python_lookup_name = python$(python_version)
+python = $(shell which $(python_lookup_name))
+
+version := $(shell \
+    $(python) -c \
+    'from cloudregister.registercloudguest import __version__; print(__version__)'\
+)
+
 clean:
 	rm -rf dist
 
 package: clean
+	# build the sdist source tarball
 	poetry build --format=sdist
+	# provide rpm source tarball
+	mv dist/cloudregister-${version}.tar.gz dist/cloud-regionsrv-client-${version}.tar.gz
 	cp package/* dist/
 	@echo "Find package files for submission below dist/"
-
-install:
-	install -d -m 755 ${buildroot}usr/share/man/man1
-	for man in doc/man/man1/*.1; do \
-		install -m 644 $$man ${buildroot}usr/share/man/man1 ;\
-	done
 
 setup:
 	poetry install --all-extras
