@@ -22,6 +22,7 @@ packages = [
 ]
 
 include = [
+   { path = "setup.py", format = "sdist" },
    { path = "tools", format = "sdist" },
    { path = "usr", format = "sdist" },
    { path = "etc", format = "sdist" },
