@@ -10,3 +10,6 @@
 
 dist
 *.tar.bz2
+
+# Poetry
+poetry.lock

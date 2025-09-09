@@ -1,0 +1,19 @@
+[run]
+omit =
+    */cloudguest_lic_watcher.py
+    */cloudguest_repo_service.py
+    */cloudguestregistryauth.py
+    */containerbuild_regionsrv.py
+    */createregioninfo.py
+    */switchcloudguestservices.py
+    */updatesmtcache.py
+
+[report]
+omit =
+    */cloudguest_lic_watcher.py
+    */cloudguest_repo_service.py
+    */cloudguestregistryauth.py
+    */containerbuild_regionsrv.py
+    */createregioninfo.py
+    */switchcloudguestservices.py
+    */updatesmtcache.py

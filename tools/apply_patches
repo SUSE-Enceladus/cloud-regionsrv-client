@@ -2,7 +2,7 @@
 
 set -ex
 
-for patch in *.patch;do
+for patch in package/*.patch;do
     git apply "$patch"
 done
 

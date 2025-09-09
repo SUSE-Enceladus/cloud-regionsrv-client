@@ -28,7 +28,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-from smt import SMT # noqa
+from cloudregister.smt import SMT # noqa
 
 smt_data_ipv4 = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
@@ -132,8 +132,8 @@ def test_not_equal_not_SMT_instance():
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.logging')
-@patch('smt.requests.get')
+@patch('cloudregister.smt.logging')
+@patch('cloudregister.smt.requests.get')
 def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):
     """Received an invalid cert"""
     response = Response()
@@ -148,8 +148,8 @@ def test_get_cert_invalid_cert(mock_cert_pull, mock_logging):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.logging')
-@patch('smt.requests.get')
+@patch('cloudregister.smt.logging')
+@patch('cloudregister.smt.requests.get')
 def test_get_cert_access_exception_ipv4(mock_request_get, mock_logging):
     """Test the exception path for cert retrieval when we cannot reach
        an update server with IPv4 adddress"""
@@ -164,8 +164,8 @@ def test_get_cert_access_exception_ipv4(mock_request_get, mock_logging):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.logging')
-@patch('smt.requests.get')
+@patch('cloudregister.smt.logging')
+@patch('cloudregister.smt.requests.get')
 def test_get_cert_access_exception_ipv6(mock_request_get, mock_logging):
     """Test the exception path for cert retrieval when we cannot reach
        an update server with IPv6 adddress"""
@@ -176,9 +176,9 @@ def test_get_cert_access_exception_ipv6(mock_request_get, mock_logging):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.X509.load_cert_string')
-@patch('smt.logging')
-@patch('smt.requests.get')
+@patch('cloudregister.smt.X509.load_cert_string')
+@patch('cloudregister.smt.logging')
+@patch('cloudregister.smt.requests.get')
 def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
     """Test the received cert has a different fingerprint than stored one."""
     response = Response()
@@ -196,9 +196,9 @@ def test_get_cert_no_match_cert(mock_cert_pull, mock_logging, mock_load_cert):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.logging')
+@patch('cloudregister.smt.logging')
 @patch.object(SMT, 'get_fingerprint')
-@patch('smt.requests.get')
+@patch('cloudregister.smt.requests.get')
 def test_get_cert_not_found(
     mock_cert_pull,
     mock_get_fingerprint,
@@ -217,9 +217,9 @@ def test_get_cert_not_found(
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.logging')
+@patch('cloudregister.smt.logging')
 @patch.object(SMT, 'get_fingerprint')
-@patch('smt.requests.get')
+@patch('cloudregister.smt.requests.get')
 def test_get_cert(
     mock_cert_pull,
     mock_get_fingerprint,
@@ -228,7 +228,7 @@ def test_get_cert(
     """Test get cert."""
     response = Response()
     response.status_code = 200
-    with open('tests/data/cert.pem') as cert_file:
+    with open('../data/cert.pem') as cert_file:
         response.text = cert_file.read()
 
     mock_cert_pull.return_value = response
@@ -344,7 +344,7 @@ def test_is_equivalent_true_same():
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.requests.get')
+@patch('cloudregister.smt.requests.get')
 def test_is_responsive_server_offline(mock_cert_pull):
     """Verify we detect a non responsive server"""
     mock_cert_pull.return_value = None
@@ -353,7 +353,7 @@ def test_is_responsive_server_offline(mock_cert_pull):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.requests.get')
+@patch('cloudregister.smt.requests.get')
 def test_is_responsive_server_error(mock_cert_pull):
     """Verify we detect a server an error as non responsive"""
     response = Response()
@@ -365,7 +365,7 @@ def test_is_responsive_server_error(mock_cert_pull):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.requests.get')
+@patch('cloudregister.smt.requests.get')
 def test_is_responsive_ok(mock_cert_pull):
     """Verify we detect a responsive server"""
     response = Mock()
@@ -377,7 +377,7 @@ def test_is_responsive_ok(mock_cert_pull):
 
 
 # ----------------------------------------------------------------------------
-@patch('smt.requests.get')
+@patch('cloudregister.smt.requests.get')
 def test_is_responsive_not_found(mock_cert_pull):
     """
     Verify we detect a responsive server returning 404,
@@ -486,7 +486,7 @@ def test_write_cert_dual_stack(mock_get_cert):
 
 # ----------------------------------------------------------------------------
 @patch.object(SMT, 'get_cert')
-@patch('smt.logging')
+@patch('cloudregister.smt.logging')
 def test_write_cert_no_write_perm(mock_logging, mock_get_cert):
     """Check that we properly handle the exception if we cannot write the
        cert."""

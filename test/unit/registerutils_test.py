@@ -14,13 +14,11 @@
 from pytest import fixture
 import logging
 import configparser
-import inspect
 import io
 import json
 import os
 import pickle
 import requests
-import sys
 import tempfile
 import toml
 import yaml
@@ -32,12 +30,8 @@ from textwrap import dedent
 from unittest.mock import patch, call, MagicMock, Mock, mock_open
 from lxml import etree
 
-test_path = os.path.abspath(
-    os.path.dirname(inspect.getfile(inspect.currentframe())))
-code_path = os.path.abspath('%s/../lib' % test_path)
+test_path = '..'
 data_path = test_path + os.sep + 'data/'
-
-sys.path.insert(0, code_path)
 
 import cloudregister.registerutils as utils # noqa
 from cloudregister.smt import SMT # noqa
@@ -2012,7 +2006,7 @@ def test_find_equivalent_smt_server(mock_is_responsive):
 
 @patch('cloudregister.registerutils.glob.glob')
 def test_find_repos(mock_glob):
-    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    mock_glob.return_value = ['../data/repo_foo.repo']
     assert utils.find_repos('Foo') == ['SLE-Module-Live-Foo15-SP5-Source-Pool']
 
 
@@ -2237,7 +2231,7 @@ def test_get_current_smt_no_registered(
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_smt_from_store.return_value = smt_server
-    mock_glob_glob.return_value = ['tests/data/service.service']
+    mock_glob_glob.return_value = ['../data/service.service']
     hosts_content = """
     # simulates hosts file containing the ipv4 we are looking for in the test
 
@@ -2541,7 +2535,7 @@ def test_get_installed_products_no_link(
 
 @patch('cloudregister.registerutils.glob.glob')
 def test_get_repo_url(mock_glob):
-    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    mock_glob.return_value = ['../data/repo_foo.repo']
     assert utils.get_repo_url('SLE-Module-Live-Foo15-SP5-Source-Pool') == (
         'plugin:/susecloud?credentials=SUSE_Linux_Enterprise_Live_Foo_x86_64&'
         'path=/repo/SUSE/Products/SLE-Module-Live-Foo/15-SP5/x86_64/'
@@ -2813,7 +2807,7 @@ def test_get_smt_from_store_raise_exception(mock_unpickler):
     mock_unpickler.return_value = unpick
     unpick.load.side_effect = pickle.UnpicklingError
     assert utils.get_smt_from_store(
-        'tests/data/availableSMTInfo_1.obj'
+        '../data/availableSMTInfo_1.obj'
     ) is None
 
 
@@ -3120,7 +3114,7 @@ def test_is_registration_supported():
 
 @patch('cloudregister.registerutils.glob.glob')
 def test_is_scc_connected(mock_glob):
-    mock_glob.return_value = ['tests/data/scc_repo.repo']
+    mock_glob.return_value = ['../data/scc_repo.repo']
     assert utils.is_scc_connected() is True
 
 
@@ -3295,7 +3289,7 @@ def test_switch_services_to_plugin_unlink_service(
          region="antarctica-1"/>''')
     smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_available_smt_servers.return_value = [smt_server]
-    mock_glob.return_value = ['tests/data/service.service']
+    mock_glob.return_value = ['../data/service.service']
     mock_os_path_exists.return_value = True
     utils.switch_services_to_plugin()
     mock_os_symlink.assert_called_once_with(
@@ -3304,7 +3298,7 @@ def test_switch_services_to_plugin_unlink_service(
     )
     assert mock_os_unlink.call_args_list == [
         call('/usr/lib/zypp/plugins/services/Public_Cloud_Module_x86_64'),
-        call('tests/data/service.service')
+        call('../data/service.service')
     ]
 
 
@@ -3620,9 +3614,9 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
          region="antarctica-1"/>''')
     current_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = current_smt_server
-    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    mock_glob.return_value = ['../data/repo_foo.repo']
     file_azo = ""
-    with open('tests/data/repo_foo.repo') as f:
+    with open('../data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
     open_mock = mock_open(read_data=file_azo)
 
@@ -3633,15 +3627,15 @@ def test_switch_smt_repos(mock_get_current_smt, mock_glob):
         m_open.side_effect = open_f
         utils.switch_smt_repos(new_smt_server)
         assert m_open.call_args_list == [
-            call('tests/data/repo_foo.repo', 'r'),
-            call('tests/data/repo_foo.repo', 'w')
+            call('../data/repo_foo.repo', 'r'),
+            call('../data/repo_foo.repo', 'w')
         ]
         expected_content = file_azo.replace(
            'plugin:/susecloud',
            new_smt_server.get_FQDN()
         )
         m_open(
-            'tests/data/repo_foo.repo', 'w'
+            '../data/repo_foo.repo', 'w'
         ).write.assert_called_once_with(expected_content)
 
 
@@ -3665,9 +3659,9 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
          region="antarctica-1"/>''')
     current_smt_server = SMT(etree.fromstring(smt_data_ipv46))
     mock_get_current_smt.return_value = current_smt_server
-    mock_glob.return_value = ['tests/data/service.service']
+    mock_glob.return_value = ['../data/service.service']
     file_azo = ""
-    with open('tests/data/repo_foo.repo') as f:
+    with open('../data/repo_foo.repo') as f:
         file_azo = ' '.join(f.readlines())
     open_mock = mock_open(read_data=file_azo)
 
@@ -3678,15 +3672,15 @@ def test_switch_smt_service(mock_get_current_smt, mock_glob):
         m_open.side_effect = open_f
         utils.switch_smt_service(new_smt_server)
         assert m_open.call_args_list == [
-            call('tests/data/service.service', 'r'),
-            call('tests/data/service.service', 'w')
+            call('../data/service.service', 'r'),
+            call('../data/service.service', 'w')
         ]
         expected_content = file_azo.replace(
             'plugin:/susecloud',
             new_smt_server.get_FQDN()
         )
         m_open(
-            'tests/data/repo_foo.repo', 'w'
+            '../data/repo_foo.repo', 'w'
         ).write.assert_called_once_with(expected_content)
 
 
@@ -3927,7 +3921,7 @@ def test_get_framework_plugin():
 
 @patch('cloudregister.registerutils.glob.glob')
 def test_get_referenced_credentials(mock_glob):
-    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    mock_glob.return_value = ['../data/repo_foo.repo']
     assert utils.__get_referenced_credentials('foo') == [
         'SUSE_Linux_Enterprise_Live_Foo_x86_64'
     ]
@@ -3936,7 +3930,7 @@ def test_get_referenced_credentials(mock_glob):
 @patch('cloudregister.registerutils.get_config')
 @patch('cloudregister.registerutils.glob.glob')
 def test_get_referenced_credentials_not_found(mock_glob, mock_get_config):
-    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    mock_glob.return_value = ['../data/repo_foo.repo']
     cfg = get_test_config()
     cfg.set('server', 'baseurl', 'bar')
     mock_get_config.return_value = cfg
@@ -3979,9 +3973,9 @@ def test_get_region_server_args_not_region_srv_args(
 @patch('cloudregister.registerutils.os.path.basename')
 @patch('cloudregister.registerutils.glob.glob')
 def test_get_service_plugins(mock_glob, mock_os_path_basename):
-    mock_glob.return_value = ['tests/data/service.service']
+    mock_glob.return_value = ['../data/service.service']
     mock_os_path_basename.return_value = 'cloudguest-repo-service'
-    assert utils.__get_service_plugins() == ['tests/data/service.service']
+    assert utils.__get_service_plugins() == ['../data/service.service']
 
 
 @patch('cloudregister.registerutils.exec_subprocess')
@@ -4110,9 +4104,9 @@ def test_remove_credentials_no_remove_etc_scccreds(
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.unlink')
 def test_remove_repos(mock_os_unlink, mock_logging, mock_glob):
-    mock_glob.return_value = ['tests/data/repo_foo.repo']
+    mock_glob.return_value = ['../data/repo_foo.repo']
     assert utils.__remove_repos(['foo']) == 1
-    mock_os_unlink.assert_called_once_with('tests/data/repo_foo.repo')
+    mock_os_unlink.assert_called_once_with('../data/repo_foo.repo')
     mock_logging.info.assert_called_once_with('Removing repo: repo_foo.repo')
 
 
@@ -4120,7 +4114,7 @@ def test_remove_repos(mock_os_unlink, mock_logging, mock_glob):
 @patch('cloudregister.registerutils.logging')
 @patch('cloudregister.registerutils.os.unlink')
 def test_remove_repos_removed_nothing(mock_os_unlink, mock_logging, mock_glob):
-    mock_glob.return_value = ['tests/data/scc_repo.repo']
+    mock_glob.return_value = ['../data/scc_repo.repo']
     assert utils.__remove_repos(['foo']) == 1
     mock_os_unlink.assert_not_called()
     mock_logging.info.assert_not_called()
@@ -4136,10 +4130,10 @@ def test_remove_service_not_plugins(
     mock_glob,
     mock_get_service_plugin
 ):
-    mock_glob.return_value = ['tests/data/service.service']
+    mock_glob.return_value = ['../data/service.service']
     mock_get_service_plugin.return_value = []
     assert utils.__remove_service(['192']) == 1
-    mock_os_unlink.assert_called_once_with('tests/data/service.service')
+    mock_os_unlink.assert_called_once_with('../data/service.service')
     mock_logging.info.assert_called_once_with(
         'Removing service: service.service'
     )
@@ -5224,7 +5218,7 @@ def test_clean_registries_conf_podman_file_clean_content_no_smt(
 def test_set_registry_order_search_podman_no_configured(
     mock_get_registry_file, mock_toml_dump
 ):
-    with open('tests/data/unconfigured_registry.conf') as f:
+    with open('../data/unconfigured_registry.conf') as f:
         registry_conf = toml.load(f)
     mock_get_registry_file.return_value = registry_conf, False
     with patch('builtins.open', create=True) as mock_open:
@@ -5258,7 +5252,7 @@ def test_set_registry_order_search_podman_no_configured(
 def test_set_registry_order_search_podman_conf_missing_suse_registry(
     mock_get_registry_file, mock_toml_dump
 ):
-    with open('tests/data/registry_conf.conf') as f:
+    with open('../data/registry_conf.conf') as f:
         registry_conf = toml.load(f)
     mock_get_registry_file.return_value = registry_conf, False
     with patch('builtins.open', create=True) as mock_open:
@@ -5824,7 +5818,7 @@ def get_modified_servers_data():
 
 def get_test_config():
     """Return a config parser object using the minimum configuration in the
-       tests/data directory"""
+       ../data directory"""
     return utils.get_config(data_path + '/regionserverclnt.cfg')
 
 

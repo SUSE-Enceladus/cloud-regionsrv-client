@@ -24,7 +24,7 @@ code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
 
 sys.path.insert(0, code_path)
 
-import amazonec2 as ec2 # noqa
+import cloudregister.amazonec2 as ec2 # noqa
 
 
 # ----------------------------------------------------------------------------
@@ -33,9 +33,9 @@ class Response():
 
 
 # ----------------------------------------------------------------------------
-@patch('amazonec2.requests.put')
-@patch('amazonec2.requests.get')
-@patch('amazonec2.logging')
+@patch('cloudregister.amazonec2.requests.put')
+@patch('cloudregister.amazonec2.requests.get')
+@patch('cloudregister.amazonec2.logging')
 def test_request_fail(mock_logging, mock_request_get, mock_request_put):
     """Test proper exception handling when request to metadata server fails"""
     mock_request_get.side_effect = requests.exceptions.RequestException
@@ -62,9 +62,9 @@ def test_request_fail(mock_logging, mock_request_get, mock_request_put):
 
 
 # ----------------------------------------------------------------------------
-@patch('amazonec2.requests.put')
-@patch('amazonec2.requests.get')
-@patch('amazonec2.logging')
+@patch('cloudregister.amazonec2.requests.put')
+@patch('cloudregister.amazonec2.requests.get')
+@patch('cloudregister.amazonec2.logging')
 def test_request_fail_response_error(
         mock_logging, mock_request_get, mock_request_put
 ):
@@ -93,8 +93,8 @@ def test_request_fail_response_error(
 
 
 # ----------------------------------------------------------------------------
-@patch('amazonec2.requests.put')
-@patch('amazonec2.requests.get')
+@patch('cloudregister.amazonec2.requests.put')
+@patch('cloudregister.amazonec2.requests.get')
 def test_request_succeed(mock_request_get, mock_request_put):
     """Test behavior with expected return value"""
     mock_request_put.return_value = _get_expected_region_response()

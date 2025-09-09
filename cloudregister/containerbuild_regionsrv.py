@@ -36,6 +36,7 @@ logging.basicConfig(level=loglevel,
 
 LOG = logging.getLogger('containerbuild-regionsrv')
 
+
 class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
     """
     A TCP server that emits configuration details that are relevant to
@@ -105,5 +106,5 @@ def main():
     server.serve_forever()
 
 
-if __name__ == "__main__":
+def app():
     main()

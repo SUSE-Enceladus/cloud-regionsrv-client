@@ -1,7 +1,7 @@
-diff --git a/lib/cloudregister/registerutils.py b/lib/cloudregister/registerutils.py
+diff --git a/cloudregister/registerutils.py b/cloudregister/registerutils.py
 index 7825ff0..5a712b0 100644
---- a/lib/cloudregister/registerutils.py
-+++ b/lib/cloudregister/registerutils.py
+--- a/cloudregister/registerutils.py
++++ b/cloudregister/registerutils.py
 @@ -30,7 +30,8 @@ import stat
  import subprocess
  import sys
@@ -59,8 +59,8 @@ index 7825ff0..5a712b0 100644
              with open(container_path, 'w') as registries_conf_file:
 diff --git a/usr/sbin/registercloudguest b/usr/sbin/registercloudguest
 index d32f036..c5f40d3 100755
---- a/usr/sbin/registercloudguest
-+++ b/usr/sbin/registercloudguest
+--- a/cloudregister/registercloudguest.py
++++ b/cloudregister/registercloudguest.py
 @@ -139,6 +139,8 @@ def setup_registry(registration_target, clean='registry'):
      clean == all -> cleans repository and registry setup
      clean == registry -> clean only registry artifacts

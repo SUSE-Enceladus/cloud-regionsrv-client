@@ -27,14 +27,16 @@ from cloudregister.registerutils import (
     get_activations, exec_subprocess
 )
 
-error_message = 'Could not refresh credentials'
-if os.geteuid():
-    if exec_subprocess(['sudo', sys.argv[0]]):
-        # geteuid is not root and
-        # the command was called with sudo
-        # and failed
-        sys.exit(error_message)
-elif not get_activations():
-    sys.exit(error_message)
 
-print('Credentials refreshed')
+def app():
+    error_message = 'Could not refresh credentials'
+    if os.geteuid():
+        if exec_subprocess(['sudo', sys.argv[0]]):
+            # geteuid is not root and
+            # the command was called with sudo
+            # and failed
+            sys.exit(error_message)
+    elif not get_activations():
+        sys.exit(error_message)
+
+    print('Credentials refreshed')

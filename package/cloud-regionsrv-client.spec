@@ -33,7 +33,7 @@ Summary:        Cloud Environment Guest Registration
 License:        LGPL-3.0-only
 Group:          Productivity/Networking/Web/Servers
 URL:            http://www.github.com/SUSE-Enceladus/cloud-regionsrv-client
-Source0:        %{name}-%{version}.tar.bz2
+Source0:        %{name}-%{version}.tar.gz
 # PATCH-FIX-SLES12 bsc#1203382 fix-for-sles12-disable-ipv6.patch
 Patch0:         fix-for-sles12-disable-ipv6.patch
 # PATCH-FIX-SLES12 fix-for-sles12-disable-registry.patch
@@ -88,9 +88,13 @@ BuildRequires:  %{pythons}-zypp-plugin
 %if 0%{?suse_version} >= 1600
 BuildRequires:  %{pythons}-pip
 BuildRequires:  %{pythons}-wheel
+BuildRequires:  %{pythons}-poetry-core >= 1.2.0
 %endif
 %if 0%{?suse_version} > 1315
 BuildRequires:  %{pythons}-toml
+%endif
+%if 0%{?suse_version} && 0%{?suse_version} < 1600 && 0%{?suse_version} > 1315
+BuildRequires:  python311-poetry-core >= 1.2.0
 %endif
 BuildRequires:  sudo
 BuildRequires:  systemd-rpm-macros
@@ -167,7 +171,8 @@ model change direction.
 
 
 %prep
-%setup -q
+%setup -n cloudregister-%{base_version}
+
 %if 0%{?suse_version} == 1315
 %patch -P 0 -p1
 %patch -P 1 -p1
@@ -196,12 +201,19 @@ cp -r usr %{buildroot}
 %else
 %{pythons} setup.py install --prefix=%{_prefix} --root=%{buildroot}
 %endif
+
+# The location of the binaries
+mkdir -p %{buildroot}/usr/sbin
+mv %{buildroot}/usr/bin/* %{buildroot}/usr/sbin
+mv %{buildroot}/usr/sbin/cloudguestregistryauth %{buildroot}/usr/bin
 # The location of the regionserver certs
 mkdir -p %{buildroot}/usr/lib/regionService/certs
 # The directory for the cache data
 mkdir -p %{buildroot}/var/cache/cloudregister
+# The man pages
 install -d -m 755 %{buildroot}/%{_mandir}/man1
-install -m 644 man/man1/* %{buildroot}/%{_mandir}/man1
+install -m 644 doc/man/man1/* %{buildroot}/%{_mandir}/man1
+# The sudo setup for cloudguestregistryauth
 install -m 440 etc/sudoers.d/cloudguestregistryauth %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
 %if 0%{?suse_version} == 1315
 rm -rf %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
@@ -283,7 +295,7 @@ fi
 
 %files
 %defattr(-,root,root,-)
-%doc README
+%doc README.rst
 %license LICENSE
 %dir %{_usr}/lib/zypp
 %dir %{_usr}/lib/zypp/plugins
@@ -310,6 +322,7 @@ fi
 %exclude %{_sitelibdir}/cloudregister/google*
 %exclude %{_sitelibdir}/cloudregister/amazon*
 %exclude %{_sitelibdir}/cloudregister/msft*
+%exclude %{_sitelibdir}/cloudregister/cloudguest_lic_watcher.py
 %{_sitelibdir}/cloudregister/
 %if 0%{?suse_version} >= 1600
 %{_sitelibdir}/cloudregister-*.dist-info/
@@ -342,6 +355,7 @@ fi
 %defattr(-,root,root,-)
 %{_unitdir}/guestregister-lic-watcher.service
 %{_unitdir}/guestregister-lic-watcher.timer
+%{_sitelibdir}/cloudregister/cloudguest_lic_watcher.py
 %attr(744, root, root) %{_sbindir}/cloudguest-lic-watcher
 
 

@@ -23,11 +23,13 @@ import sys
 
 import cloudregister.registerutils as utils
 
-region_info_path = os.path.join(
-    utils.get_state_dir(), utils.FRAMEWORK_IDENTIFIER
-)
 
-if os.path.exists(region_info_path):
-    sys.exit(0)
+def app():
+    region_info_path = os.path.join(
+        utils.get_state_dir(), utils.FRAMEWORK_IDENTIFIER
+    )
 
-utils.write_framework_identifier(utils.get_config())
+    if os.path.exists(region_info_path):
+        sys.exit(0)
+
+    utils.write_framework_identifier(utils.get_config())
