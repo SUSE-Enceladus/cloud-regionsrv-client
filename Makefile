@@ -27,6 +27,7 @@ check: setup
 	# python flake tests
 	poetry run flake8 --statistics -j auto --count cloudregister
 	poetry run flake8 --statistics -j auto --count test/unit
+	poetry run flake8 --statistics -j auto --count usr/lib/zypp/plugins/urlresolver
 
 test: setup
 	# unit tests
