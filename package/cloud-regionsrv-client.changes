@@ -3,6 +3,7 @@ Wed Sep 17 07:47:42 UTC 2025 - Marcus Schäfer <marcus.schaefer@suse.com>
 
 - Update to version 10.5.3
 
+  + Move project setup to poetry and apply python standards
   + Fix use of logging facility
     Use logging facility in the desired way throughout the entire
     code base. This includes the following changes and refactor
