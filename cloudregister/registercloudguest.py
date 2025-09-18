@@ -47,7 +47,7 @@ from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
-__version__ = '10.5.2'
+__version__ = '10.5.3'
 
 log_instance = Logger()
 log = Logger.get_logger()
