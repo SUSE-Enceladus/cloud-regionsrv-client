@@ -93,7 +93,7 @@ BuildRequires:  %{pythons}-poetry-core >= 1.2.0
 %if 0%{?suse_version} > 1315
 BuildRequires:  %{pythons}-toml
 %endif
-%if 0%{?suse_version} && 0%{?suse_version} < 1600 && 0%{?suse_version} > 1315
+%if 0%{?suse_version} && 0%{?suse_version} < 1600 && 0%{?suse_version} > 1315 && 0%{?sle_version} > 150300
 BuildRequires:  python311-poetry-core >= 1.2.0
 %endif
 BuildRequires:  sudo
