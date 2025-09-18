@@ -23,10 +23,10 @@ except ImportError:
     sys.stderr.write('Python setuptools required, please install.')
     sys.exit(1)
 
-version = open('lib/cloudregister/VERSION').read().strip()
+from cloudregister.registercloudguest import __version__
 
 if __name__ == '__main__':
-     pkg = setuptools.find_packages('lib')
+     pkg = setuptools.find_packages('cloudregister')
      setuptools.setup(
         name='cloudregister',
         description=('Register a cloud guest with an SMT server'),
@@ -34,10 +34,18 @@ if __name__ == '__main__':
         license='LGPL-3.0',
         author='SUSE',
         author_email='public-cloud-dev@susecloud.net',
-        version=version,
-        packages=setuptools.find_packages('lib'),
-        package_data={'cloudregister' : ['VERSION']},
-        package_dir={
-            '': 'lib',
+        version=__version__,
+        packages=['cloudregister'],
+        entry_points={
+            'console_scripts': [
+                'registercloudguest = cloudregister.registercloudguest:app',
+                'cloudguestregistryauth = cloudregister.cloudguestregistryauth:app',
+                'cloudguest-lic-watcher = cloudregister.cloudguest_lic_watcher:app',
+                'updatesmtcache = cloudregister.updatesmtcache:app',
+                'switchcloudguestservices = cloudregister.switchcloudguestservices:app',
+                'createregioninfo = cloudregister.createregioninfo:app',
+                'containerbuild-regionsrv = cloudregister.containerbuild_regionsrv:app',
+                'cloudguest-repo-service = cloudregister.cloudguest_repo_service:app'
+            ],
         }
      )

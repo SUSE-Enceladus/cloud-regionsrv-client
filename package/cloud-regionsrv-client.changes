@@ -1,0 +1,985 @@
+-------------------------------------------------------------------
+Wed Sep 17 07:47:42 UTC 2025 - Marcus Schäfer <marcus.schaefer@suse.com>
+
+- Update to version 10.5.3
+
+  + Fix use of logging facility
+    Use logging facility in the desired way throughout the entire
+    code base. This includes the following changes and refactor
+    * Add handler and formatter for the logfile containing more
+      information about function and position in code for the message
+    * Add handler for stdout (INFO and WARNING)
+    * Add handler for stderr (ERROR).
+    * Implement Logger class providing the logging setup and methods
+    * Drop the start_logging() method.
+    * Fix and refactor all unit tests around the use of logging
+      with a proper fixture and place all tests for registerutils
+      into its own class TestRegisterUtils.
+    * Add --debug switch for registercloudguest. Allow to increase
+      logfile information. All messages produced via log.debug(...)
+      in code will be part of the logfile. Debug messages will not
+      be shown on the console
+    * Update SLE12 patches due to logging refactor
+    * Use --debug flag in guestregister service
+    
+    This Fixes #188 
+
+-------------------------------------------------------------------
+Fri Aug 22 17:28:17 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
+
+- Update version to 10.5.2 (bsc#1247539)
+  + When an instance fails verification server side the default credentials
+    were left behind requireing manual intervantion prior to the next
+    registration attempt.
+  + Fix issue triggered when using instance-billing-flavor-check due to
+    IP address handling as object rather than string introduced 10.5.0
+
+-------------------------------------------------------------------
+Fri Jul 25 11:06:58 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
+
+- Update version to 10.5.1
+  + Fix issue with picking up configured server names from the
+    regionsrv config file. Previously only IP addresses were collected
+  + Update scriptlet for package uninstall to avoid issues in the
+    build service
+
+-------------------------------------------------------------------
+Wed Jul 23 19:38:28 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
+
+- Update version to 10.5.0
+  + Use region server IP addresses to determine Internet access rather
+    than a generic address. Region server IP addresses may not be blocked
+    in the network construct. (bsc#1245305)
+
+-------------------------------------------------------------------
+Tue Apr 29 12:31:05 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
+
+- Update version to 10.4.0
+  + Remove repositories when the package is being removed
+    We do not want to leave repositories behind refering to the plugin that
+    is being removed when the package gets removed (bsc#1240310, bsc#1240311)
+  + Turn docker into an optional setup (jsc#PCT-560)
+    Change the Requires into a Recommends and adapt the code accordingly
+  + Support flexible licenses in GCE (jsc#PCT-531)
+  + Drop the azure-addon package it is geting replaced by the
+    license-watcher package which has a generic implementation of the
+    same functionality.
+  + Handle cache inconsistencies (bsc#1218345)
+  + Properly handle the zypper root target argument (bsc#1240997)
+    
+-------------------------------------------------------------------
+Tue Dec  3 17:21:52 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
+
+- Update to 10.3.11 (bsc#1234050)
+  + Send registration code for the extensions, not only base product
+
+-------------------------------------------------------------------
+Wed Nov 18 16:12:23 UTC 2024 - Marcus Schäfer <marcus.schaefer@suse.com>
+
+- Update to 10.3.8 (bsc#1233333)
+  + Fix the package requirements for cloud-regionsrv-client
+  + Follow changes to suseconnect error reporting from stdout to stderr
+
+-------------------------------------------------------------------
+Tue Nov  5 13:58:12 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to 10.3.7 (bsc#1232770)
+  + Fix the product triplet for LTSS, it is always SLES-LTSS, not
+    $BASEPRODUCT-LTSS
+ 
+-------------------------------------------------------------------
+Tue Oct 29 13:44:21 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to 10.3.6 (jsc#PCT-471, bsc#1230615)
+  + Fix sudo setup
+    ~ permissions cloudguestregistryauth
+    ~ directory ownership /etc/sudoers.d
+  + spec file
+    ~ Remove traces of registry related entries on SLE 12
+  + Forward port
+    ~ fix-for-sles12-disable-registry.patch
+    ~ fix-for-sles12-no-trans_update.patch
+  + Deregister non free extensions at registercloudguest --clean
+  + Fix registry cleanup at registercloudguest --clean, don't remove files
+  + Prevent duplicate search entries in registry setup
+- Update EC2 plugin to 1.0.5
+  + Switch to using the region endpoint from IMDS to determine the region
+    instead of deriving the data from the availability zone
+
+-------------------------------------------------------------------
+Wed Sep 11 13:20:32 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to 10.3.5
+  + Update spec file to build in all code streams,
+    SLE 12, SLE 15, ALP, and SLFO and have proper dependencies
+
+-------------------------------------------------------------------
+Wed Aug 28 20:17:24 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to 10.3.4
+  + Modify the message when network access over a specific IP version does
+    not work. This is an informational message and should not look like
+    an error
+  + Inform the user that LTSS registration takes a little longer
+  + Add fix-for-sles12-no-trans_update.patch
+    + SLE 12 family has no products with transactional-update we do not
+      need to look for this condition
+- From 10.3.3 (bsc#1229472)
+  + Handle changes in process structure to properly identify the running
+    zypper parent process and only check for 1 PID
+- From 10.3.2
+  + Remove rgnsrv-clnt-fix-docker-setup.patch included upstream
+- From 10.3.1 (jsc#PCT-400)
+  + Add support for LTSS registration
+  + Add fix-for-sles12-disable-registry.patch
+    ~ No container support in SLE 12
+
+-------------------------------------------------------------------
+Thu Aug 15 13:07:06 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Add rgnsrv-clnt-fix-docker-setup.patch (bsc#1229137)
+  + The entry for the update infrastructure registry mirror was written
+    incorrectly causing docker daemon startup to fail.
+
+-------------------------------------------------------------------
+Tue Jul  2 18:24:38 UTC 2024 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
+
+- Update to version 10.3.0 (bsc#1227308, bsc#1222985)
+  + Add support for sidecar registry
+    Podman and rootless Docker support to set up the necessary 
+    configuration for the container engines to run as defined
+
+  + Add running command as root through sudoers file
+
+-------------------------------------------------------------------
+Thu May  9 17:32:38 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.2.0 (bsc#1223571, bsc#1224014, bsc#1224016)
+  + In addition to logging, write message to stderr when registration fails
+  + Detect transactional-update system with read only setup and use
+    the transactional-update command to register
+  + Handle operation in a different target root directory for credentials
+    checking
+
+-------------------------------------------------------------------
+Thu Feb 22 12:08:17 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.1.7 (bsc#1220164, bsc#1220165)
+  + Fix the failover path to a new target update server. At present a new
+    server is not found since credential validation fails. We targeted
+    the server detected in down condition to verify the credentials instead
+    of the replacement server.
+
+-------------------------------------------------------------------
+Wed Jan 24 22:38:42 UTC 2024 - Robert Schweikert <rjschwei@suse.com>
+
+- Update EC2 plugin to 1.0.4 (bsc#1219156, bsc#1219159)
+  + Fix the algorithm to determine the region from the availability zone
+    information retrieved from IMDS.
+- Update to version 10.1.6
+  + Support specifying an IPv6 address for a manually configured target
+    update server.
+
+-------------------------------------------------------------------
+Wed Dec  6 23:09:03 UTC 2023 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.1.5 (bsc#1217583)
+  + Fix fallback path when IPv6 network path is not usable 
+  + Enable an IPv6 fallback path in IMDS access if it cannot be accessed
+    over IPv4
+  + Enable IMDS access over IPv6
+
+-------------------------------------------------------------------
+Thu Nov 23 17:50:29 UTC 2023 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
+
+- Update to version 10.1.4 (bsc#1217451)
+  + Fetch cert for new update server during failover 
+
+-------------------------------------------------------------------
+Fri Sep 15 18:28:30 UTC 2023 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.1.3 (bsc#1214801)
+  + Add a warning if we detect a Python package cert bundle for certifi
+    This will help with debugging and point to potential issues when
+    using SUSE images in AWS, Azure, and GCE
+
+-------------------------------------------------------------------
+Thu May 11 19:30:59 UTC 2023 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.1.2 (bsc#1211282)
+  + Properly handle Ipv6 when checking update server responsiveness. If not
+    available fall back and use IPv4 information
+  + Use systemd_ordered to allow use in a container without pulling systemd
+    into the container as a requirement
+
+-------------------------------------------------------------------
+Thu Apr  6 13:58:21 UTC 2023 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.1.1 (bsc#1210020, bsc#1210021)
+  + Clean up the system if baseproduct registraion fails to leave the
+    system in prestine state
+  + Log when the registercloudguest command is invoked with --clean
+
+-------------------------------------------------------------------
+Mon Feb 13 12:45:06 UTC 2023 - Andres Pozo <amunoz@suse.com>
+
+- Update to version 10.1.0 (bsc#1207133, bsc#1208097, bsc#1208099 )
+  - Removes a warning about system_token entry present in the credentials
+  file.
+  - Adds logrotate configuration for log rotation.
+
+-------------------------------------------------------------------
+Mon Feb 13 12:45:06 UTC 2023 - Andres Pozo <amunoz@suse.com>
+
+- Update to version 10.1.0 (bsc#1207133, bsc#1208097, bsc#1208099 )
+  - Removes a warning about system_token entry present in the credentials
+  file.
+  - Adds logrotate configuration for log rotation.
+
+-------------------------------------------------------------------
+Thu Dec 15 12:45:06 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.8 (bsc#1206428)
+  - Fix regression introduced by 10.0.7. When the hosts file was modified
+    such that there is no empty line at the end of the file the content
+    after removing the registration data does not match the content prior
+    to registration. The update fixes the issue triggered by an index
+    logic error.
+
+-------------------------------------------------------------------
+Tue Dec  6 13:38:41 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Guard dmidecode dependency (bsc#1206082)
+
+-------------------------------------------------------------------
+Tue Nov 22 15:39:04 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.7 (bsc#1191880, bsc#1195925, bsc#1195924)
+  - Implement functionality to detect if an update server has a new cert.
+    Import the new cert when it is detected.
+  - Forward port fix-for-sles12-disable-ipv6.patch
+- From 10.0.6 (bsc#1205089)
+  - Credentials are equal when username and password are the same ignore
+    other entries in the credentials file
+  - Handle multiple zypper names in process table, zypper and Zypp-main
+    to properly detect the running process
+
+-------------------------------------------------------------------
+Wed Nov 16 21:09:03 UTC 2022 - James Mason <james.mason@suse.com>
+
+- Add patch to block IPv6 on SLE12 (bsc#1203382) 
+
+-------------------------------------------------------------------
+Thu Aug 25 13:44:20 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Follow up fix to 10.0.4 (bsc#1202706)
+  - While the source code was updated to support SLE Micro the spec file
+    was not updated for the new locations of the cache and the certs.
+    Update the spec file to be consistent with the code implementation.
+
+-------------------------------------------------------------------
+Wed Jul 20 12:39:54 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.5 (bsc#1201612)
+  - Handle exception when trying to deregister a system form the server
+
+-------------------------------------------------------------------
+Thu May 19 11:25:49 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.4 (bsc#1199668)
+  - Store the update server certs in the /etc path instead of /usr to
+    accomodate read only setup of SLE-Micro
+
+-------------------------------------------------------------------
+Thu Apr 14 12:26:17 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.3 (bsc#1198389)
+  - Descend into the extension tree even if top level module is recommended
+  - Cache license state for AHB support to detect type switch
+  - Properly clean suse.com credentials when switching from SCC to update
+    infrastructure
+  - New log message to indicate base product registration success
+
+-------------------------------------------------------------------
+Fri Mar 18 18:13:43 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.2
+  + Fix name of logfile in error message
+  + Fix variable scoping to properly detect registration error
+  + Cleanup any artifacts on registration failure
+  + Fix latent bug with /etc/hosts population
+  + Do not throw error when attemting to unregister a system that is not
+    registered
+  + Skip extension registration if the extension is recommended by the
+    baseproduct as it gets automatically installed
+
+-------------------------------------------------------------------
+Fri Mar 18 11:33:43 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.1 (bsc#1197113)
+  + Provide status feedback on registration, success or failure
+  + Log warning message if data provider is configured but no data
+    can be retrieved
+- Update -addon-azure to 1.0.3 follow up fix for (bsc#1195414, bsc#1195564)
+  + The repo enablement timer cannot depend on guestregister.service
+
+-------------------------------------------------------------------
+Wed Feb 23 18:31:13 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update -addon-azure to 1.0.2 (bsc#1196305)
+  + The is-registered() function expects a string of the update server FQDN.
+    The regionsrv-enabler-azure passed an Object of type SMT. Fix the call
+    in regionsrv-enabler-azure.
+- Update -plugin-azure to 2.0.0 (bsc#1196146)
+  + Lower case the region hint to reduce issues with Azure region name
+    case inconsistencies
+
+-------------------------------------------------------------------
+Fri Feb  4 15:04:44 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 10.0.0 (bsc#1195414, bsc#1195564)
+  + Refactor removes check_registration() function in utils implementation
+  + Only start the registration service for PAYG images
+    - addon-azure sub-package to version 1.0.1
+
+-------------------------------------------------------------------
+Fri Jan 14 12:39:27 UTC 2022 - Robert Schweikert <rjschwei@suse.com>
+
+- Follow up changes to (jsc#PCT-130, bsc#1182026)
+  + Fix executable name for AHB service/timer
+  + Update manpage for BYOS instance registration
+
+-------------------------------------------------------------------
+Fri Nov 12 18:02:38 UTC 2021 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.3.0 (jsc#PCT-130)
+  + Support AHB-v3
+  + Support registration of BYOS instances against the update infrastructure
+  + Properly extract the region for local zones in AWS to ensure instances
+    get connected to the proper update servers
+  + Azure addon service and executable rename
+  + Support non SLE repos
+  + Fix handling of regionservers configured with DNS names
+
+-------------------------------------------------------------------
+Tue Sep 28 11:40:19 UTC 2021 - Robert Schweikert <rjschwei@suse.com>
+
+- Avoid race confition with ca-certificates (bsc#1189362)
+  + Make the service run after ca-sertificates is done
+  + Attempt multiple times to update the trust chain
+
+-------------------------------------------------------------------
+Thu Jul 29 15:35:12 UTC 2021 - Jesús Bermúdez Velázquez <jesusbv@suse.com>
+
+- New package to enable/disable access due to AHB
+  This references bsc#1182026, (jsc#SLE-21246, jsc#SLE-21247, jsc#SLE-21248, jsc#SLE-21249, jsc#SLE-21250) 
+
+-------------------------------------------------------------------
+Tue Jun 15 23:36:41 UTC 2021 - James Mason <jmason@suse.com>
+
+- Update to version 9.2.0 (bsc#1029162)
+  + Support IPv6 as best-effort, with fallback to IPv4 
+
+-------------------------------------------------------------------
+Mon Apr 26 20:39:25 UTC 2021 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.1.5 (bsc#1182779, bsc#1185234, bsc#1185198)
+  + Another startup process may run zypper before the registration process
+    if zypper is still running we cannot get the lock and as such
+    the installed products cannot be determined. Wait for the lock to be
+    released for up to 30 seconds.
+  + On any error durring product list generation return a list to avoid
+    a traceback by trying to iterate over None
+
+-------------------------------------------------------------------
+Wed Sep 23 19:38:35 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.1.4 (bsc#1176858, bsc#1176859)
+  + Properly handle the exit code for SUSEConnect and provide log
+    message with failure details for registration failure
+
+-------------------------------------------------------------------
+Tue Aug 25 22:15:01 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.1.3 (bsc#1175752, bsc#1175753)
+  + Re-write the cache for the update server objects to avoid an
+    attribute error that is triggered if the config is not set to
+    https_only.
+
+-------------------------------------------------------------------
+Wed Aug  5 22:59:09 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.1.2 (bsc#1174791, bsc#1174937)
+  + Implement changes to configure the client to use https only for
+    outbound traffic
+
+- plugin-ec2 to version 1.0.1 (bsc#1174743, bsc#1174837)
+  + Prefer IMDSv2 and switch all IMDS access requests to support v2 token
+    based access method.
+
+-------------------------------------------------------------------
+Fri Jul 31 13:44:56 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.1.1 (bsc#1174731, bsc#1174732)
+  + Do not immediately failover to a sibling system. Upon contact failure
+    to the target system give the server/route time to recover. We have
+    seen network instability trigger a pre-mature failover during initial
+    registration causing problems later during updates.
+  + When we do failover make sure the access credentials are known to the
+    new target
+
+-------------------------------------------------------------------
+Mon Jun 29 13:10:43 UTC 2020 - Ivan Kapelyukhin <ikapelyukhin@suse.com>
+
+- Update to version 9.1.0 (bsc#1173474, bsc#1173475)
+  + Introduce containerbuild-regionsrv service to allow container
+    building tools to access required data for accessing Public Cloud RMTs 
+
+-------------------------------------------------------------------
+Tue May 19 18:16:45 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Improve error message for failed update server access to determine
+  product status
+
+-------------------------------------------------------------------
+Mon May 18 15:57:37 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.10 (bsc#1171704, bsc#1171705)
+  + While the service starts After=network-online.target this is no
+    guarantee that the cloud framework has configured the outgoing routing
+    for the instance. This configuration on the framework side may take
+    longer. Introduce a wait look that retries connections to the
+    update infrastructure 3 times before giving up.
+
+-------------------------------------------------------------------
+Mon Apr 20 14:56:58 UTC 2020 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.9 (bsc#1169599)
+  + Handle the /etc/hosts file with Python 3.4 if there are non ascii
+    characters in the file.
+
+-------------------------------------------------------------------
+Fri Dec 13 10:55:08 UTC 2019 - Ivan Kapelyukhin <ikapelyukhin@suse.com>
+
+- Update to version 9.0.8
+  + Properly handle IPv6 addresses in URLs
+
+-------------------------------------------------------------------
+Fri Dec 13 10:55:07 UTC 2019 - Ivan Kapelyukhin <ikapelyukhin@suse.com>
+- Update to version 9.0.7
+  + Fix crash with a stack trace if no current_smt is
+    present (bsc#1158664)
+
+-------------------------------------------------------------------
+Fri Oct 25 18:02:38 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.6 (bsc#1154533)
+  + Support repositories with different credentials files
+  + Add --clean option and --help
+  + Add man page
+
+-------------------------------------------------------------------
+Tue Oct  1 15:51:17 UTC 2019 - James Mason <jmason@suse.com>
+
+- Update to version 9.0.5 (bsc#1152567, bsc#1149528)
+  + Ignore exception if the new registration flag file does not
+    exist but there is an attempt to remove it.
+  + Properly include the IP addresses of the update server if we 
+    were unable to get the product information
+  + Include requirement for python3-six in specfile
+
+-------------------------------------------------------------------
+Fri Sep  6 19:21:21 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.4 (bsc#1148644, bsc#1149840)
+  + The logic in the URLresolver my result in "None" being returned during
+    initial registration when zypper tries to refresh the repos. This
+    triggers a condition where repos are missing from the system. This
+    version changes the logic in the URL resolver to address this condition.
+
+-------------------------------------------------------------------
+Wed Aug 21 12:00:24 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.3
+  + Fix missing dependency for python3-urllib3 (bsc#1146610, bsc#1146321i,
+    bsc#1144754)
+  + Cast the the resolved link of the serice plugin to a string to
+    allow proper use of basename() and comparison (bsc#1146462, bsc#1146463)
+  + Clear the new-registration marker if the instance has a cache of
+    update servers (bsc#1146467, bsc#1146468) 
+
+-------------------------------------------------------------------
+Mon Aug  5 17:34:01 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.2
+  + If the credentials are not valid an error is issued and the user is
+    instructed to re-register the system
+
+-------------------------------------------------------------------
+Fri Jun  7 20:43:46 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.1 (bsc#1136113, bsc#1136112)
+  + Refresh the server cache if non of the currently cached update servers
+    can be reached. The condition may arise in a general outage or when
+    systems have been decomissioned. In the later case the refresh will
+    re-eastablish update capabilities
+
+-------------------------------------------------------------------
+Fri Jun  7 18:09:39 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 9.0.0
+  + Fix logging issues. During registration against RMT
+    "inconsistent system state" messages were printed to the log, while
+    the system was not in an inconsistent state.
+  + The public has_repos() method was removed from the registerutil
+    implementtaion making this an incompatible change and therefore
+    the major version changed.
+
+-------------------------------------------------------------------
+Thu Jun  6 12:47:52 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.2.0 (bsc#1137384, bsc#1137385)
+  + Upstream version jump from 8.1.4 to 8.2.0 due to compatible
+    behavior change of get_instance_data() implementation
+  + Always return the marker that triggers the server to return
+    URL resolver URIs for get_instance_data()
+  + Handle exception when metadata retrieval fails.
+
+-------------------------------------------------------------------
+Fri May 24 18:24:29 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.1.4 (bsc#1136112, bsc#1136113)
+  + Modules need to be registered in a given order, simply following
+    the order in which 'zypper products' returns the information
+    is insufficient and may lead to failure. Fix the order by obtaining
+    the order information from the registration server.
+
+-------------------------------------------------------------------
+Thu Feb  7 18:40:50 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.1.3
+  + Fix file permissions for generated credentials rw root only
+
+-------------------------------------------------------------------
+Fri Feb  1 19:40:37 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.1.2
+  + Generate instance data as string as expected by zypper plugin
+    handling
+  + Write the proper credentials file when switching back to RIS service
+
+-------------------------------------------------------------------
+Fri Jan 25 20:00:27 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.1.1
+  + Support registration against RMT
+
+-------------------------------------------------------------------
+Tue Jan 15 21:05:43 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.1.0 (bsc#1120980)
+  + Implement URL resolver to facilitate instance verification for
+    zypper access
+  + Fixes related to bsc#1120980 also need server side support
+
+-------------------------------------------------------------------
+Sat Jan  5 11:53:05 UTC 2019 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.0.6 (bsc#1029162)
+  + IPv6 support
+  + Fix handling of older cached SMT objects loaded from cached file
+
+-------------------------------------------------------------------
+Wed Nov  7 18:47:44 UTC 2018 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 8.0.5 (bsc#1114985)
+  + Fix dependencies
+  + Handle exception
+
+-------------------------------------------------------------------
+Thu May 17 11:22:24 UTC 2018 - rjschwei@suse.com
+
+- Update to version 8.0.4 (bsc#1093688)
+  + Fix variable name issue in plugin to avoid always falling back to the
+    wire server in the exception handling block. Found and fixed by jmason
+
+-------------------------------------------------------------------
+Wed Mar 21 19:17:04 UTC 2018 - rjschwei@suse.com
+
+- Update to version 8.0.3 (bsc#1086356)
+  + Azure plugin, use proper URL to get region information from
+    metadata server
+
+-------------------------------------------------------------------
+Wed Dec 20 16:29:15 UTC 2017 - rjschwei@suse.com
+
+- Update to version 8.0.2 (bsc#1072973)
+  + systemd order, only start after the network is online
+
+-------------------------------------------------------------------
+Thu Oct 12 20:30:00 UTC 2017 - rjschwei@suse.com
+
+- Update to version 8.0.1
+  + systemd order start before GCE user scripts are executed
+- From version 8.0.0
+  + Port to Python 3
+
+-------------------------------------------------------------------
+Thu Sep 14 12:53:40 UTC 2017 - rjschwei@suse.com
+
+- Update to version 7.0.7 (bsc#1058616, 1058719)
+  + Set proxy setting in the zypper plugin
+
+-------------------------------------------------------------------
+Wed Aug 23 16:04:29 UTC 2017 - rjschwei@suse.com
+
+- Update to version 7.0.6 (bsc#1054602, bsc#1054603)
+  + Fix traceback if configuration file is not set up properly
+  + Add feature to allow user to specify a target SMT server, new command
+    line options --smt-ip, --smt-fp, --smt-fqdn
+
+-------------------------------------------------------------------
+Tue Apr 18 22:20:19 UTC 2017 - rjschwei@suse.com
+
+- Update to version 7.0.5 (bsc#1034691, bsc#1034691)
+  + Fix argument mismatch
+- From version 7.0.4
+  + Implement plugins for EC2 and Azure to provide region hint in preparation
+    of IPv6 support (FATE#323081, bsc#1029162)
+
+-------------------------------------------------------------------
+Wed Mar  1 17:56:06 UTC 2017 - rjschwei@suse.com
+
+- Update to version 7.0.3 (bsc#1027298, bsc#1027299)
+  + Set the current SMT server after failover
+
+-------------------------------------------------------------------
+Fri Feb 10 20:42:24 UTC 2017 - rjschwei@suse.com
+
+- Update to version 7.0.2 (bsc#1024794)
+  + Fix list name for loops in failover code path
+
+-------------------------------------------------------------------
+Wed Dec  7 20:24:20 UTC 2016 - rjschwei@suse.com
+
+- Update to version 7.0.1 (bsc#1014339, bsc#1014682)
+  + Create the missing cache directory if it does not exist
+
+-------------------------------------------------------------------
+Thu Nov 24 11:01:10 UTC 2016 - rjschwei@suse.com
+
+- Update to version 7.0.0 (bsc#986294)
+  + Incompatible changes for remove_registration_data
+  + Code restructuring
+  + Enable Nvidia repo only on instances that have Nvidia "HW"
+
+-------------------------------------------------------------------
+Tue Jul 12 12:51:07 UTC 2016 - rjschwei@suse.com
+
+- Update to version 6.5.1 (bsc#981689)
+  + Enable the public cloud repo module repository after registration
+
+-------------------------------------------------------------------
+Wed Jun  8 08:00:25 UTC 2016 - rjschwei@suse.com
+
+- Update to version 6.5.0
+  + Add option "metadata_server" to indicate that the SMt server data
+    is supposed to be pulled from a metadata server rather than a 
+    region server. Intended to aid integration of the update infrastructure
+    into SOC
+
+-------------------------------------------------------------------
+Fri Apr 15 16:05:36 UTC 2016 - rjschwei@suse.com
+
+- Update to version 6.4.6 (bsc#975209,bsc#975815)
+  + Try another SMT server if registration fails
+
+-------------------------------------------------------------------
+Wed Feb 24 20:49:13 UTC 2016 - rjschwei@suse.com
+
+- Update to version 6.4.5 (bsc#968128)
+  + Do not attempt to generate the product list using remote
+    repositories
+
+-------------------------------------------------------------------
+Sat Jan 30 19:18:08 UTC 2016 - rjschwei@suse.com
+
+- Update to version 6.4.4 (bsc#964334,bsc#964335)
+  + Properly handle proxy configuration
+
+-------------------------------------------------------------------
+Fri Dec 18 15:09:51 UTC 2015 - rjschwei@suse.com
+
+- Modify spec file (bsc#959206)
+  + generic config provides the certs to allow it to be installed
+    with out conflicts
+
+-------------------------------------------------------------------
+Tue Dec  8 20:52:57 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.4.3 (bsc#958402)
+  + Continue to register other products even if one sould fail
+  + pep8 code clean up
+
+-------------------------------------------------------------------
+Sat Oct 17 13:09:24 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.4.2 (bsc#950865)
+  + Properly register the base product
+
+-------------------------------------------------------------------
+Sat Oct 17 10:20:54 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.4.1 (bsc#950858)
+  + Detect and properly report errors when the base product registration
+    fails
+
+-------------------------------------------------------------------
+Wed Sep 30 01:57:15 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.4.0 (bsc#948129, bsc#948130)
+  + If the server to which the guest is registered to is not available
+    attempt to find another available SMT server
+
+-------------------------------------------------------------------
+Tue Sep 29 16:15:28 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.19 (bsc#948057)
+  + Register base product properly even if no other products are
+    set up
+
+-------------------------------------------------------------------
+Mon Jul 13 17:42:53 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.18 (bnc#937873, bnc#937880)
+  + Fix variable name issue in exception block causing the code to exit
+    pre-maturely if a region server is not reachable within the
+    given timeout
+
+-------------------------------------------------------------------
+Sat Apr 11 12:07:36 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.17 (bnc#926647)
+  + Do not modify /etc/hosts file if a registrations exists, the
+    registration data is consistent and the configured SMT server
+    is reachable
+
+-------------------------------------------------------------------
+Wed Apr  1 14:37:06 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.16
+  + Take no action on --force-new if zypper is running. Provide
+    feedback to the user. Follow up to bnc#921526
+
+-------------------------------------------------------------------
+Mon Mar 30 08:29:18 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.15 (bnc#924712)
+  + Write instance data to /var/lib into a randomly generated file name
+  + Better implementation to kill zypper, follow up to bnc#921526
+
+-------------------------------------------------------------------
+Wed Mar 25 10:23:47 UTC 2015 - rjschwei@suse.com
+
+- Add missing provides for the generic configuration. Resolves
+  improper conflict between -plugin-gce and the generic
+  configuration
+
+-------------------------------------------------------------------
+Tue Mar 10 11:56:40 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.13 (bnc#921526)
+  + Implements new --force-new command line option for
+    registration code fo on demand images
+
+-------------------------------------------------------------------
+Mon Mar  2 23:21:23 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.12 (bnc#920295)
+  + Improve logging information on registration failure in SLES 12
+
+-------------------------------------------------------------------
+Wed Feb 11 23:08:35 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.11 (bnc#917450, bnc#917453)
+  + Fix boot order for Azure, force waagent to run after registration
+  + Properly handle exception if network connection fails
+  + Retry network connection 3 times before giving up
+
+-------------------------------------------------------------------
+Mon Feb  2 15:31:46 UTC 2015 - rjschwei@suse.com
+
+- Update to version 6.3.8 (bnc#912979)
+  + Fix the ordering in the boot phase
+  + Source from new upstream location
+
+-------------------------------------------------------------------
+Mon Oct 13 20:24:11 UTC 2014 - rschweikert@suse.com
+
+- Update to version 6.3.5  (bnc#909114)
+  + Fix bug with cert writing. After getting the cert from the SMT server
+    the file was never closed properly, thus trying to update the CA
+    information failed. This fix addresses this issue.
+
+-------------------------------------------------------------------
+Mon Oct 13 14:19:27 UTC 2014 - ms@suse.com
+
+- regionServiceClient
+  + set version to 6.3.4, location of SMT cert for SUSEConnect has changed
+
+-------------------------------------------------------------------
+Mon Oct 13 14:18:27 UTC 2014 - ms@suse.com
+
+- regionServiceClient
+  + store SMT cert to /usr/share/pki/trust/anchors/registration_server.pem
+    This is the place the SUSEConnect code wants to read it with regards
+    to ib/suse/connect/ssl_certificate.rb
+
+-------------------------------------------------------------------
+Sun Oct 12 12:27:25 UTC 2014 - rschweikert@suse.com
+
+- Update to version 6.3.3
+  + Get SLE 12 registration to be reliable
+
+-------------------------------------------------------------------
+Fri Oct 10 12:57:46 UTC 2014 - rschweikert@suse.com
+
+- Update to version 6.2.3
+  + re-licensed to LGPL-3.0
+  + fix registration for SLE 11, this was broken during implementation of the
+    SLE 12 registration, logic error
+  + Add a setup.py file
+        ~ Use standard python installation technique to install plugins
+  + Implement a plugin for Google Compute Engine
+  + Create separate package for the plugin
+  + Implement mechanism to configure plugins
+
+-------------------------------------------------------------------
+Fri Oct  3 01:32:28 UTC 2014 - rschweikert@suse.com
+
+- add new line to end of /etc/hosts after modification. Not having the
+  new line creates issues for other code that might modify /etc/hosts
+
+-------------------------------------------------------------------
+Thu Sep 25 09:44:57 CEST 2014 - ms@suse.de
+
+- regionServiceClient
+  + added an after registration check to make sure the repos
+    were added. If no repos exists complete the registration
+    by calling suse_register with the restore-repos option
+
+-------------------------------------------------------------------
+Tue Sep 23 12:13:32 UTC 2014 - rschweikert@suse.com
+
+- Update to version 4.1.1
+  + Fix sysV init script, no run level 4, avoid warning
+
+-------------------------------------------------------------------
+Fri Sep 12 01:38:32 UTC 2014 - rschweikert@suse.com
+
+- Update to version 4.0.1
+  + Handle instance restart more gracefully, do not register if
+    the instance already has repositories configured
+
+-------------------------------------------------------------------
+Tue Sep  2 21:43:06 UTC 2014 - rschweikert@suse.com
+
+- Update to version 4.0.0
+  + Handle new multiple server information provided by the region server
+    in version 5.0.0
+
+-------------------------------------------------------------------
+Mon Jun  2 17:54:52 UTC 2014 - rschweikert@suse.com
+
+- Update to version 3.2.0
+  + Support use of command and arguments for the data provider in the
+    configuration file
+
+-------------------------------------------------------------------
+Fri May 30 11:49:39 UTC 2014 - rschweikert@suse.com
+
+- Remove backup file (~) from archive
+
+-------------------------------------------------------------------
+Wed May 28 19:23:35 UTC 2014 - rschweikert@suse.com
+
+- Update to version 3.1.2
+  + add a timeout value of 15 seconds per contact attempt. This will avoid
+    lengthy delays if the client runs in a network configuration environment
+    where the region servers are not accessible
+
+-------------------------------------------------------------------
+Tue May  6 12:42:56 UTC 2014 - rschweikert@suse.com
+
+- Fix license for generic config package
+
+-------------------------------------------------------------------
+Mon May  5 15:55:16 UTC 2014 - rschweikert@suse.com
+
+- Fix licensing, properly implement Apache 2.0 license use
+
+-------------------------------------------------------------------
+Tue Apr 22 16:17:15 UTC 2014 - rschweikert@suse.com
+
+- Include in SLE 12 (FATE #315990, 315991, 316167, 316168)
+
+-------------------------------------------------------------------
+Tue Apr 22 15:34:28 UTC 2014 - rschweikert@suse.com
+
+- update to version 3.1.1
+  + break configuration into separate package to support config
+    via cloud specific packages
+
+-------------------------------------------------------------------
+Sun Mar 30 02:04:48 UTC 2014 - rschweikert@suse.com
+
+- update to version 3.1.0
+  + add configuration option to handle collection of instance data
+    and pass it to the smt registration script
+
+-------------------------------------------------------------------
+Tue Mar 25 16:28:56 UTC 2014 - rschweikert@suse.com
+
+- Fix dependencies
+  + suseRegister SLE 11
+  + SUSEConnect SLE 12
+
+-------------------------------------------------------------------
+Wed Jan 22 21:04:41 UTC 2014 - rschweikert@suse.com
+
+- update to version 3.0.0
+  + change the client to match the region service changes to use https
+      - add cert location configuration option to config file
+      - switch from using urllib2 to requests to support cert validation
+
+-------------------------------------------------------------------
+Sat Jan  4 12:24:30 UTC 2014 - rschweikert@suse.com
+
+- update to version 2.2.0
+  + support the specification of multiple region servers in the config file
+
+-------------------------------------------------------------------
+Wed Dec  4 17:31:35 UTC 2013 - rschweikert@suse.com
+
+- update to version 2.1.0
+  + use SMT server name for registration, not the IP address
+
+-------------------------------------------------------------------
+Tue Dec  3 21:05:40 UTC 2013 - rschweikert@suse.com
+
+- update to version 2.0
+  + modifies /etc/hosts
+  + handle new information sent by the region server
+
+-------------------------------------------------------------------
+Mon Dec  2 21:08:08 UTC 2013 - rschweikert@suse.com
+
+- push to version 1.0.1
+  + fix syntax errors
+  + add dependency to python-lxml
+
+-------------------------------------------------------------------
+Thu Nov 28 10:52:53 UTC 2013 - rschweikert@suse.com
+
+- Initial build
+

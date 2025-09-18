@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -ex
+
+for patch in package/*.patch;do
+    git apply "$patch"
+done
+
+find -name "*.orig" && false || true

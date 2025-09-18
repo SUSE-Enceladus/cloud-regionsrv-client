@@ -1,34 +1,37 @@
-DESTDIR=
-PREFIX=
-dirs = etc man usr
-files = Makefile README LICENSE setup.py cloud-regionsrv-client.spec
+buildroot = /
 
-nv = $(shell rpm -q --specfile --qf '%{NAME}-%{VERSION}|' *.spec | cut -d'|' -f1)
-verSpec = $(shell rpm -q --specfile --qf '%{VERSION}|' *.spec | cut -d'|' -f1)
-verSrc = $(shell cat lib/cloudregister/VERSION)
-ifneq "$(verSpec)" "$(verSrc)"
-    $(error "Version mismatch, will not take any action")
-endif
+python_version = 3
+python_lookup_name = python$(python_version)
+python = $(shell which $(python_lookup_name))
 
-package: tar
-	git checkout master
-	git pull
-	mkdir -p dist
-	rm -f dist/*
-	cp cloud-regionsrv-client* dist/
-	cp *.patch dist/
+version := $(shell \
+    $(python) -c \
+    'from cloudregister.registercloudguest import __version__; print(__version__)'\
+)
+
+clean:
+	rm -rf dist
+
+package: clean
+	# build the sdist source tarball
+	poetry build --format=sdist
+	# provide rpm source tarball
+	mv dist/cloudregister-${version}.tar.gz dist/cloud-regionsrv-client-${version}.tar.gz
+	cp package/* dist/
 	@echo "Find package files for submission below dist/"
 
-tar:
-	mkdir "$(nv)"
-	cp -r $(dirs) lib $(files) "$(nv)"
-	find "$(nv)" -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete
-	find "$(nv)" -path "*/lib/cloudregister.egg-info/*" -delete
-	find "$(nv)" -type d -name "cloudregister.egg-info" -delete
-	tar -cjf "$(nv).tar.bz2" "$(nv)"
-	rm -rf "$(nv)"
+setup:
+	poetry install --all-extras
 
-install:
-	cp -r $(dirs) "$(DESTDIR)/"
-	python3 setup.py install --prefix="$(PREFIX)" --root="$(DESTDIR)"
-	gzip "$(DESTDIR)"/"$(MANDIR)"/man1/registercloudguest.1
+check: setup
+	# python flake tests
+	poetry run flake8 --statistics -j auto --count cloudregister
+	poetry run flake8 --statistics -j auto --count test/unit
+	poetry run flake8 --statistics -j auto --count usr/lib/zypp/plugins/urlresolver
+
+test: setup
+	# unit tests
+	poetry run bash -c 'pushd test/unit && pytest \
+		--doctest-modules --no-cov-on-fail --cov=cloudregister \
+		--cov-report=term-missing --cov-fail-under=100 \
+		--cov-config .coveragerc'

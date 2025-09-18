@@ -1,0 +1,110 @@
+#!/usr/bin/python3
+# -*- encoding: utf-8 -*-
+
+# Copyright (c) 2020 SUSE LLC.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3.0 of the License, or (at your option) any later version.
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library.
+
+import cloudregister.registerutils as utils
+import base64
+import os
+import socketserver
+import json
+import logging
+import urllib3
+
+# Disable the urllib warnings
+# We have server certs that have no subject alt names
+# cloudregister.registerutils() checks the server state API without
+# certificate validation
+urllib3.disable_warnings()
+
+loglevel = os.getenv("CONTAINER_BUILD_LOGLEVEL", "INFO")
+
+logging.basicConfig(level=loglevel,
+                    format='%(levelname)s: %(message)s'
+                    )
+
+LOG = logging.getLogger('containerbuild-regionsrv')
+
+
+class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
+    """
+    A TCP server that emits configuration details that are relevant to
+    SUSEConnect.
+    """
+
+    def instance_data_header(self):
+        """
+        Returns the instance data as retrieved from the SMT server.
+        """
+
+        instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
+        return base64.b64encode(instance_data).decode()
+
+    def get_credentials(self):
+        """
+        Returns the SCC credentials as stored in
+        /etc/zypp/credentials.d/SCCcredentials
+        """
+        credentials_file_path = '/etc/zypp/credentials.d/SCCcredentials'
+        return utils.get_credentials(credentials_file_path)
+
+    def handle(self):
+        """
+        This is the method being called for each request. It returns a JSON response
+        with all the relevant information.
+        """
+
+        try:
+            smt = utils.get_smt()
+        except AttributeError as err:
+            # This is the exception being raised whenever there is something
+            # really off about the SMT (because of the internal implementation).
+            LOG.warn(
+                "Caught exception while obtaining SMT server: {0}".format(err)
+            )
+            smt = None
+
+        username, password = self.get_credentials()
+
+        if smt is None:
+            resp = {}
+        else:
+            resp = {
+                'instance-data': self.instance_data_header(),
+                "server-fqdn": smt.get_FQDN(),
+                'server-ip': smt.get_ipv4(),
+                'username': username,
+                'password': password,
+                'ca': smt.get_cert()
+            }
+
+        self.request.sendall(bytes(json.dumps(resp), 'utf-8'))
+
+
+def main():
+    """
+    main entry point of the program.
+    """
+
+    ip = os.getenv("CONTAINER_BUILD_IP", '127.0.0.1')
+    port = int(os.getenv("CONTAINER_BUILD_PORT", 7956))
+
+    socketserver.TCPServer.allow_reuse_address = True
+
+    server = socketserver.TCPServer((ip, port), ContainerBuildTCPServer)
+    server.serve_forever()
+
+
+def app():
+    main()

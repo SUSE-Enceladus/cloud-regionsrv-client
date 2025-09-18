@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set -ex
-
-for patch in *.patch;do
-    git apply "$patch"
-done
-
-find -name "*.orig" && false || true
