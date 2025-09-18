@@ -16,7 +16,6 @@
 """This script provides the repositories for on-demand instances."""
 
 import base64
-import logging
 import os
 import requests
 import subprocess
@@ -25,7 +24,13 @@ import sys
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
+from cloudregister.logger import Logger
+from cloudregister.defaults import LOG_FILE
 import cloudregister.registerutils as utils
+
+log_instance = Logger()
+log_instance.set_logfile(LOG_FILE)
+log = Logger.get_logger()
 
 
 def print_repo_data(update_server, activation, available_repos):
@@ -88,13 +93,12 @@ def print_repo_data(update_server, activation, available_repos):
 
 
 def app():
-    utils.start_logging()
     utils.set_proxy()
 
     # Make sure we are pointing to a reachable server
     update_server = utils.get_smt()
     if not update_server:
-        logging.info('[Repo-Service] No update server found cannot provide repos')
+        log.info('[Repo-Service] No update server found cannot provide repos')
         sys.exit(1)
 
     # Get the available repos from the server
@@ -110,7 +114,7 @@ def app():
         headers=headers
     )
     if not res.status_code == 200:
-        logging.info('[Repo-Service] Unable to retrieve update server repo data')
+        log.info('[Repo-Service] Unable to retrieve update server repo data')
         sys.exit(1)
 
     repo_info_xml = res.text
@@ -127,7 +131,7 @@ def app():
     # does not provide such correlation.
     product_activations = utils.get_activations()
     if not product_activations:
-        logging.error(
+        log.error(
             '[Repo-Service] Unable to retrieve product activations '
             'from "%s"' % update_server.get_FQDN()
         )

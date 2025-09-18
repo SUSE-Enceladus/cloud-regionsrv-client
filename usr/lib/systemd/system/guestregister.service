@@ -5,7 +5,7 @@ Before=cloud-final.service google-startup-scripts.service waagent.service
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/sbin/registercloudguest
+ExecStart=/usr/sbin/registercloudguest --debug
 Type=oneshot
 
 [Install]

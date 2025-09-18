@@ -1,4 +1,30 @@
 -------------------------------------------------------------------
+Wed Sep 17 07:47:42 UTC 2025 - Marcus Schäfer <marcus.schaefer@suse.com>
+
+- Update to version 10.5.3
+
+  + Fix use of logging facility
+    Use logging facility in the desired way throughout the entire
+    code base. This includes the following changes and refactor
+    * Add handler and formatter for the logfile containing more
+      information about function and position in code for the message
+    * Add handler for stdout (INFO and WARNING)
+    * Add handler for stderr (ERROR).
+    * Implement Logger class providing the logging setup and methods
+    * Drop the start_logging() method.
+    * Fix and refactor all unit tests around the use of logging
+      with a proper fixture and place all tests for registerutils
+      into its own class TestRegisterUtils.
+    * Add --debug switch for registercloudguest. Allow to increase
+      logfile information. All messages produced via log.debug(...)
+      in code will be part of the logfile. Debug messages will not
+      be shown on the console
+    * Update SLE12 patches due to logging refactor
+    * Use --debug flag in guestregister service
+    
+    This Fixes #188 
+
+-------------------------------------------------------------------
 Fri Aug 22 17:28:17 UTC 2025 - Robert Schweikert <rjschwei@suse.com>
 
 - Update version to 10.5.2 (bsc#1247539)

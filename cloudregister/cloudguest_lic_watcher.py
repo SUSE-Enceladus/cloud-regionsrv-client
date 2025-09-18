@@ -13,14 +13,19 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
-import logging
 import os
 
 import instance_billing_flavor_check.utils as inst_flvr_utils
 import cloudregister.registerutils as utils
+from cloudregister.logger import Logger
+from cloudregister.defaults import LOG_FILE
 
 CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), 'cached_license')
 SERVICE_NAME = 'guestregister.service'
+
+log_instance = Logger()
+log_instance.set_logfile(LOG_FILE)
+log = Logger.get_logger()
 
 
 def update_license_cache(license_type):
@@ -48,7 +53,7 @@ def maybe_drop_registration(license_type):
             # There is no target registration server, nothing to do
             return
         if not utils.uses_rmt_as_scc_proxy():
-            logging.info(
+            log.info(
                 'Detected flavor change to BYOS, clean up registration')
             utils.clean_all()
             utils.exec_subprocess(['systemctl', 'disable', SERVICE_NAME])
@@ -68,7 +73,7 @@ def maybe_register_system(license_type):
             # a registration code. Now that the system is PAYG we have to
             # clean up that registration
             utils.clean_all()
-            logging.info(base_msg.format(
+            log.info(base_msg.format(
                 status='removed registration to update infra as BYOS')
             )
             current_target = None
@@ -76,7 +81,7 @@ def maybe_register_system(license_type):
             # The system is registered to the SUSE Customer center. Now
             # that the system is PAYG we have to clean up that registration
             utils.clean_all()
-            logging.info(base_msg.format(
+            log.info(base_msg.format(
                 status='removed registration to SCC as BYOS')
             )
             current_target = None
@@ -85,19 +90,17 @@ def maybe_register_system(license_type):
                 utils.is_registered(current_target.get_FQDN())
         ):
             # The system is not registered to the update infrastructure
-            logging.info(base_msg.format(status='registering'))
+            log.info(base_msg.format(status='registering'))
             utils.exec_subprocess(['registercloudguest'])
             utils.exec_subprocess(['systemctl', 'enable', SERVICE_NAME])
             return
         # Everything is as it is expected to be
-        logging.info(base_msg.format(
+        log.info(base_msg.format(
             status='already registered, nothing to do')
         )
 
 
 def app():
-    utils.start_logging()
-
     current_flavor = inst_flvr_utils.check_payg_byos()[0]
     if has_license_changed(current_flavor):
         maybe_drop_registration(current_flavor)

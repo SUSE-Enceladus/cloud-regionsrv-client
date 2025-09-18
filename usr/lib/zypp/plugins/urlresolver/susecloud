@@ -18,13 +18,17 @@
 
 
 import base64
-import logging
 
+from cloudregister.logger import Logger
+from cloudregister.defaults import LOG_FILE
 import cloudregister.registerutils as utils
 
 from zypp_plugin import Plugin
 
-utils.start_logging()
+log_instance = Logger()
+log_instance.set_logfile(LOG_FILE)
+log = Logger.get_logger()
+
 utils.set_proxy()
 
 
@@ -118,7 +122,7 @@ class SUSECloudPlugin(Plugin):
                     'utf-8'
                 )
             except TypeError:
-                logging.warning(
+                log.warning(
                     '[URL-Resolver] Unable to retrieve instance data'
                 )
             # zypper wants a string or bad things happen on the other side

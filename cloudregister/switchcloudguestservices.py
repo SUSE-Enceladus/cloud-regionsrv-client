@@ -17,16 +17,21 @@
    a plugin based service or switch from plugin service to RIS"""
 
 import glob
-import logging
 import os
 import sys
 import time
 
+from cloudregister.logger import Logger
+from cloudregister.defaults import LOG_FILE
+
 import cloudregister.registerutils as utils
+
+log_instance = Logger()
+log_instance.set_logfile(LOG_FILE)
+log = Logger.get_logger()
 
 
 def app():
-    utils.start_logging()
     utils.set_proxy()
 
     service_revert_file = os.path.join(
@@ -53,7 +58,7 @@ def app():
         switch_services = open(service_revert_file, 'r').readlines()
         product_activations = utils.get_activations()
         if not product_activations:
-            logging.error('[Serviceswitch] Unable to retrieve product activations')
+            log.error('[Serviceswitch] Unable to retrieve product activations')
             sys.exit(1)
         service_plugins = dict(
             (os.path.basename(plugin), plugin) for plugin in glob.glob(
@@ -70,7 +75,7 @@ def app():
                 continue
             plugin = service_plugins.get(service_name)
             if plugin:
-                logging.info(
+                log.info(
                     '[Serviceswitch] Removing service plugin "%s"' % service_name
                 )
                 os.unlink(plugin)
@@ -98,7 +103,7 @@ def app():
                 time.sleep(5)
             result = utils.exec_subprocess(cmd)
             if result:
-                logging.info(
+                log.info(
                     '[Serviceswitch] Adding RIS for "%s" failed' % service_url
                 )
                 link_dest = os.path.join(
@@ -106,7 +111,7 @@ def app():
                     service_name
                 )
                 os.symlink('/usr/sbin/cloudguest-repo-service', link_dest)
-                logging.info(
+                log.info(
                     '[Serviceswitch] Re-created service plugin "%s"' % service_name
                 )
             else:

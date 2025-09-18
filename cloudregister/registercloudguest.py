@@ -29,7 +29,6 @@
 
 import argparse
 import ipaddress
-import logging
 import os
 import requests
 import sys
@@ -37,16 +36,21 @@ import time
 import urllib.parse
 import uuid
 
+from cloudregister.logger import Logger
+from cloudregister.defaults import (
+    LOG_FILE,
+    ZYPP_SERVICES
+)
 import cloudregister.registerutils as utils
 
 from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
-LOG_FILE = '/var/log/cloudregister'
-ZYPP_SERVICES = '/etc/zypp/services.d'
-
 __version__ = '10.5.2'
+
+log_instance = Logger()
+log = Logger.get_logger()
 
 # Disable the urllib warnings
 # We have server certs that have no subject alt names
@@ -112,7 +116,7 @@ def register_modules(
                     # because of extra modules registered
                     registration_returncode = 0
                 else:
-                    logging.error('\tRegistration failed: %s' % error_message)
+                    log.error('\tRegistration failed: %s' % error_message)
 
         register_modules(
             extension.get('extensions'), products, registration_target,
@@ -141,7 +145,7 @@ def setup_registry(registration_target, clean='registry'):
 
     with_docker = utils.is_docker_present()
     if not with_docker:
-        logging.info(
+        log.info(
             'docker config file {} not found. '
             'Registration for docker skipped. '
             'Install docker to add docker support.'.format(
@@ -158,35 +162,35 @@ def setup_registry(registration_target, clean='registry'):
             # setup routine even though docker was setup before. However,
             # the code will only effectively write a new registry setup
             # if the required modifications are not included.
-            logging.info('Adding docker support')
+            log.info('Adding docker support')
             docker_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
 
             # docker_setup_ok will take a True/False value on a real
             # action that happened. In any other case a None value is
             # present which indicates no action was performed.
             if docker_setup_ok is False:
-                print(
+                log.error(
                     'Registration failed(docker), see {0} for details'.format(
                         LOG_FILE
-                    ), file=sys.stderr
+                    )
                 )
                 sys.exit(1)
             elif docker_setup_ok is True:
-                print('Successfully added docker to the registry setup')
-        logging.info(
+                log.info('Successfully added docker to the registry setup')
+        log.info(
             'Instance is setup to access container registry, nothing to do'
         )
         return True
-    logging.info(
+    log.info(
         'Adding registry setup to instance, all existing shell '
         'sessions must be restarted to use the registry.'
     )
     registry_setup_ok = False
     if utils.prepare_registry_setup(registry_fqdn, user, password):
-        logging.info('Adding podman support')
+        log.info('Adding podman support')
         registry_setup_ok = utils.set_registries_conf_podman(registry_fqdn)
         if with_docker:
-            logging.info('Adding docker support')
+            log.info('Adding docker support')
             registry_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
         if utils.is_suma_instance():
             registry_setup_ok = utils.set_registry_fqdn_suma(registry_fqdn)
@@ -195,13 +199,13 @@ def setup_registry(registration_target, clean='registry'):
             cleanup()
         elif clean == 'registry':
             utils.clean_registry_setup()
-        print(
+        log.error(
             'Registration failed(registry), see {0} for details'.format(
                 LOG_FILE
-            ), file=sys.stderr
+            )
         )
         sys.exit(1)
-    print('Instance registry setup done, sessions must be restarted !')
+    log.warning('Instance registry setup done, sessions must be restarted !')
 
 
 # ----------------------------------------------------------------------------
@@ -217,7 +221,7 @@ def get_responding_update_server(region_smt_servers):
         if smt_srv.is_responsive():
             utils.set_as_current_smt(smt_srv)
             return smt_srv
-    logging.error(
+    log.error(
         'No response from: {}'.format(tested_smt_servers)
     )
     sys.exit(1)
@@ -230,13 +234,12 @@ def setup_ltss_registration(
     """
     Run registration command to register LTSS for this instance
     """
-    logging.info('Running LTSS registration...')
-    print('Running LTSS registration...this takes a little longer')
+    log.info('Running LTSS registration...')
+    log.debug('Running LTSS registration...this takes a little longer')
     product = utils.get_product_tree()
     if product is None:
         message = 'Cannot find baseproduct registration for LTSS'
-        logging.error(message)
-        print(message, file=sys.stderr)
+        log.error(message)
         sys.exit(1)
 
     ltss_registered = False
@@ -247,8 +250,7 @@ def setup_ltss_registration(
                 break
     if ltss_registered:
         message = 'LTSS registration succeeded'
-        logging.info(message)
-        print(message)
+        log.info(message)
     else:
         base_product = utils.get_product_triplet(product)
         # LTSS registration is always SLES even for variants such as
@@ -267,16 +269,13 @@ def setup_ltss_registration(
             # Something went wrong...
             # Even on error SUSEConnect writes messages to stdout, go figure
             message = prod_reg.output
-            logging.error('LTSS registration failed')
-            logging.error('\t{0}'.format(message))
-            print(
-                'LTSS registration failed see /var/log/cloudregister '
-                'for details', file=sys.stderr
+            log.error(
+                'LTSS registration failed see /var/log/cloudregister for details'
             )
+            log.debug('\t{0}'.format(message))
             sys.exit(1)
         message = 'LTSS registration succeeded'
-        logging.info(message)
-        print(message)
+        log.info(message)
 
 
 # ----------------------------------------------------------------------------
@@ -316,10 +315,9 @@ def register_base_product(
                 # 65: Access error, e.g. files not readable
                 # 66: Parser error: Server JSON response was not parseable
                 # 67: Server responded with error: see log output
-                logging.error('Baseproduct registration failed')
-                logging.error('\t%s' % error_message)
+                log.error('Baseproduct registration failed')
+                log.error(error_message)
                 cleanup()
-                print(error_message, file=sys.stderr)
                 sys.exit(1)
             for smt_srv in region_smt_servers:
                 target_smt_ipv4 = registration_target.get_ipv4()
@@ -331,7 +329,7 @@ def register_base_product(
                         smt_srv.get_ipv4() not in failed_smts
                 ):
                     error_msg = 'Registration with %s failed. Trying %s'
-                    logging.error(
+                    log.error(
                         error_msg % (
                             str((target_smt_ipv4, target_smt_ipv6)),
                             str((new_smt_ipv4, new_smt_ipv6))
@@ -344,7 +342,7 @@ def register_base_product(
                     registration_target = smt_srv
                     break
         else:
-            logging.info('Baseproduct registration complete')
+            log.info('Baseproduct registration complete')
             base_registered = True
             utils.clear_new_registration_flag()
             if args.email or args.reg_code:
@@ -382,7 +380,7 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
             if not utils.has_registry_in_hosts(registration_smt):
                 utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
-            logging.info(msg)
+            log.info(msg)
             target_found = True
         else:
             # The current target server is not resposive, lets check if we can
@@ -411,7 +409,7 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
                 msg = 'Configured update server is unresponsive. '
                 msg += 'Could not find a replacement update server '
                 msg += 'in this region. Possible network configuration issue'
-                logging.error(msg)
+                log.error(msg)
                 sys.exit(1)
 
     return registration_smt, target_found
@@ -434,7 +432,7 @@ def make_request(url, registration_target):
         ips = '%s,%s' % (
             registration_target.get_ipv4(), registration_target.get_ipv6()
         )
-        logging.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
+        log.error(err_msg % (ips, res.reason, res.content.decode("UTF-8")))
         sys.exit(1)
 
     return res.json()
@@ -474,7 +472,7 @@ def get_proxies():
             'https_proxy': https_proxy,
             'no_proxy': no_proxy
         }
-        logging.info('Using proxy settings: %s' % proxies)
+        log.info('Using proxy settings: %s' % proxies)
 
     return proxies
 
@@ -527,6 +525,13 @@ argparse.add_argument(
     dest='clean_up',
     default=False,
     help='Clean up registration data'
+)
+argparse.add_argument(
+    '--debug',
+    action='store_true',
+    default=False,
+    dest='debug',
+    help='Increase verbosity of logfile information'
 )
 argparse.add_argument(
     '-d', '--delay',
@@ -594,7 +599,7 @@ def main(args):
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
             msg = '--smt-ip, --smt-fqdn, and --smt-fp must be used together'
-            print(msg, file=sys.stderr)
+            log.error(msg)
             sys.exit(1)
 
         try:
@@ -604,7 +609,7 @@ def main(args):
                 ip_addr=args.user_smt_ip,
                 err=err
             )
-            print(msg, file=sys.stderr)
+            log.error(msg)
             sys.exit(1)
 
         if not utils.has_network_access_by_ip_address(args.user_smt_ip):
@@ -613,18 +618,18 @@ def main(args):
                 'Please, make sure the network configuration supports the '
                 'provided {ip} address version.'.format(ip=args.user_smt_ip)
             )
-            print(error_message, file=sys.stderr)
+            log.error(error_message)
             sys.exit(1)
 
     if args.clean_up and args.force_new_registration:
         msg = '--clean and --force-new are incompatible, use one or the other'
-        print(msg, file=sys.stderr)
+        log.error(msg)
         sys.exit(1)
 
         # Specifying reg code only works, but an e-mail requires a reg code
     if (args.email and not args.reg_code):
         msg = '--email and --regcode must be used together'
-        print(msg, file=sys.stderr)
+        log.error(msg)
         sys.exit(1)
 
     time.sleep(int(args.delay_time))
@@ -633,10 +638,11 @@ def main(args):
     if config_file:
         config_file = os.path.expanduser(args.config_file)
     cfg = utils.get_config(config_file)
-    utils.start_logging()
+
+    log_instance.set_logfile(LOG_FILE, args.debug)
 
     if args.clean_up:
-        logging.info('Registration clean up initiated by user')
+        log.info('Registration clean up initiated by user')
         cleanup()
         sys.exit(0)
 
@@ -645,14 +651,14 @@ def main(args):
 
     utils.set_new_registration_flag()
     if args.force_new_registration:
-        logging.info('Forced new registration')
+        log.info('Forced new registration')
 
     if args.user_smt_ip:
         msg = 'Using user specified SMT server:\n'
         msg += '\n\t"IP:%s"' % args.user_smt_ip
         msg += '\n\t"FQDN:%s"' % args.user_smt_fqdn
         msg += '\n\t"Fingerprint:%s"' % args.user_smt_fp
-        logging.info(msg)
+        log.info(msg)
 
     cached_smt_servers = utils.get_available_smt_servers()
     if cached_smt_servers:
@@ -671,7 +677,7 @@ def main(args):
             msg += 'infrastructure is only possible if zypper is not running.\n'
             msg += 'Please re-run the force registration process after zypper '
             msg += 'has completed'
-            print(msg)
+            log.warning(msg)
             sys.exit(1)
         cleanup()
         utils.set_new_registration_flag()
@@ -694,15 +700,15 @@ def main(args):
         # due to the instance data.
         # This code is a safe guard in case a user enabled the service on a BYOS
         # instance, which is not supposed to be the case or tries
-        print('Region change detected:')
-        print(
+        log.warning('Region change detected:')
+        log.warning(
             '\tSystem uses SCC credentials, please re-register the system'
             ' to the update infrastrusture in this region\n'
             '\tregistercloudguest --clean\n'
             '\tregistercloudguest -r YOUR_REG_CODE'
         )
     elif region_change:
-        logging.info('Region change detected, registering to new servers')
+        log.info('Region change detected, registering to new servers')
         cleanup()
         region_smt_servers = cached_smt_servers = []
         registration_smt = None
@@ -748,8 +754,10 @@ def main(args):
     # We should not get here for a registered system that is a proxy. However,
     # it doesn't hurt to check and get out before breaking things
     if utils.uses_rmt_as_scc_proxy():
-        logging.info('System already uses the update infrastructure with a '
-                     'registration code, nothing to do')
+        log.info(
+            'System already uses the update infrastructure with a '
+            'registration code, nothing to do'
+        )
         sys.exit(0)
 
     # The system is not yet registered, Figure out which server
@@ -770,18 +778,17 @@ def main(args):
     register_cmd = utils.get_register_cmd()
     if not (os.path.exists(register_cmd) and os.access(register_cmd, os.X_OK)):
         err_msg = 'No registration executable found'
-        logging.error(err_msg)
-        print(err_msg, file=sys.stderr)
+        log.error(err_msg)
         sys.exit(1)
 
     # get product list
     products = utils.get_installed_products()
     if products is None:
-        logging.error('No products installed on system')
+        log.error('No products installed on system')
         sys.exit(1)
 
     if not utils.import_smt_cert(registration_target):
-        logging.error('SMT certificate import failed')
+        log.error('SMT certificate import failed')
         sys.exit(1)
 
     # Register the base product first
@@ -803,10 +810,10 @@ def main(args):
 
     if registration_returncode:
         cleanup()
-        print(
+        log.error(
             'Registration failed(repository), see {0} for details'.format(
                 LOG_FILE
-            ), file=sys.stderr
+            )
         )
         sys.exit(registration_returncode)
 
@@ -814,10 +821,10 @@ def main(args):
     setup_registry(registration_target)
 
     utils.set_registration_completed_flag()
-    print('Registration succeeded')
+    log.info('Registration succeeded')
 
     if failed_extensions:
-        print(
+        log.warning(
             'There are products that were not registered because they need '
             'an additional registration code, to register them please run '
             'the following command:'
@@ -827,7 +834,7 @@ def main(args):
             activate_prod_cmd = 'transactional-update register -p {} '
             activate_prod_cmd += '-r ADDITIONAL REGCODE'
         for failed_extension in failed_extensions:
-            print(activate_prod_cmd.format(failed_extension))
+            log.error(activate_prod_cmd.format(failed_extension))
 
     # Enable Nvidia repo if repo(s) are configured
     # and destination can be reached
@@ -841,7 +848,7 @@ def main(args):
                     'Cannot reach host: "{hostname}", '
                     'will not enable repo "{repo_name}"'
                 ).format(hostname=url.hostname, repo_name=repo_name)
-                logging.info(msg)
+                log.info(msg)
             else:
                 utils.enable_repository(repo_name)
 

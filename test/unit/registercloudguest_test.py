@@ -1,21 +1,27 @@
 import json
 import requests
+import logging
 import tempfile
 
-from io import StringIO
 from collections import namedtuple
 from lxml import etree
 from textwrap import dedent
 from urllib.parse import ParseResult
 
-from pytest import raises
+from pytest import (
+    raises, fixture
+)
 from types import SimpleNamespace
-from unittest.mock import patch, call, Mock, mock_open
+from unittest.mock import patch, Mock, mock_open
 
+from tempfile import NamedTemporaryFile
 from cloudregister.smt import SMT # noqa
 import cloudregister.registerutils as utils # noqa
 
 import cloudregister.registercloudguest as register_cloud_guest
+
+temp_log = NamedTemporaryFile()
+register_cloud_guest.LOG_FILE = temp_log.name
 
 
 # Helper functions
@@ -26,8 +32,9 @@ class Response():
 
 
 class TestRegisterCloudGuest:
-    def setup(self):
-        pass
+    @fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog
 
     def test_register_cloud_guest_missing_param(self):
         fake_args = SimpleNamespace(
@@ -64,7 +71,8 @@ class TestRegisterCloudGuest:
             force_new_registration=True,
             user_smt_ip=None,
             user_smt_fqdn=None,
-            user_smt_fp=None
+            user_smt_fp=None,
+            debug=True
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -77,7 +85,8 @@ class TestRegisterCloudGuest:
             user_smt_fqdn=None,
             user_smt_fp=None,
             email='foo',
-            reg_code=None
+            reg_code=None,
+            debug=True
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -106,7 +115,8 @@ class TestRegisterCloudGuest:
             email=None,
             reg_code=None,
             delay_time=1,
-            config_file='config_file'
+            config_file='config_file',
+            debug=False
         )
         with raises(SystemExit):
             register_cloud_guest.main(fake_args)
@@ -135,7 +145,8 @@ class TestRegisterCloudGuest:
             email=None,
             reg_code=None,
             delay_time=1,
-            config_file='config_file'
+            config_file='config_file',
+            debug=True
         )
         mock_clean_non_free_extensions.side_effect = Exception('oh no')
         with raises(SystemExit):
@@ -172,7 +183,8 @@ class TestRegisterCloudGuest:
             email=None,
             reg_code=None,
             delay_time=1,
-            config_file='config_file'
+            config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = True
@@ -213,7 +225,8 @@ class TestRegisterCloudGuest:
             email=None,
             reg_code=None,
             delay_time=1,
-            config_file='config_file'
+            config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = True
@@ -225,7 +238,6 @@ class TestRegisterCloudGuest:
             register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
 
-    @patch('cloudregister.registercloudguest.logging')
     @patch.object(SMT, 'is_equivalent')
     @patch.object(SMT, 'is_responsive')
     @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
@@ -257,7 +269,7 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_smt_is_responsive, mock_smt_is_equivalent, mock_logging
+        mock_smt_is_responsive, mock_smt_is_equivalent
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -281,7 +293,8 @@ class TestRegisterCloudGuest:
             email=None,
             reg_code=None,
             delay_time=1,
-            config_file='config_file'
+            config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -296,15 +309,10 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with self._caplog.at_level(logging.DEBUG):
+                register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
-        assert mock_logging.error.call_args_list == [
-            call(
-                'Configured update server is unresponsive. Could not find '
-                'a replacement update server in this region. '
-                'Possible network configuration issue'
-            )
-        ]
+        assert 'Configured update server is unresponsive' in self._caplog.text
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.update_rmt_cert')
@@ -367,6 +375,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -448,6 +457,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -533,6 +543,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -615,6 +626,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -635,7 +647,6 @@ class TestRegisterCloudGuest:
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -678,7 +689,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_set_proxy
+        mock_set_as_current_smt, mock_set_proxy
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -700,6 +711,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -718,9 +730,7 @@ class TestRegisterCloudGuest:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
-            assert mock_logging.error.call_args_list == [
-                'No registration executable found'
-            ]
+            assert 'No registration executable found' in self._caplog.text
             assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -789,6 +799,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -813,7 +824,6 @@ class TestRegisterCloudGuest:
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -856,7 +866,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_set_proxy
     ):
         smt_data_ipv46 = dedent('''\
@@ -879,6 +889,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -899,15 +910,12 @@ class TestRegisterCloudGuest:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
-        assert mock_logging.error.call_args_list == [
-            call('No products installed on system')
-        ]
+        assert 'No products installed on system' in self._caplog.text
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -950,7 +958,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_set_proxy
     ):
         smt_data_ipv46 = dedent('''\
@@ -973,6 +981,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -995,15 +1004,12 @@ class TestRegisterCloudGuest:
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
-        assert mock_logging.error.call_args_list == [
-            call('SMT certificate import failed')
-        ]
+        assert 'SMT certificate import failed' in self._caplog.text
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -1046,7 +1052,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product, mock_set_proxy
     ):
         smt_data_ipv46 = dedent('''\
@@ -1069,6 +1075,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1098,13 +1105,10 @@ class TestRegisterCloudGuest:
         )
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
-        assert mock_logging.error.call_args_list == [
-            call('Baseproduct registration failed'),
-            call('\tregistration code')
-        ]
+        assert 'Baseproduct registration failed' in self._caplog.text
         assert sys_exit.value.code == 1
 
-    @patch('cloudregister.registerutils.__remove_state_file')
+    @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('cloudregister.registerutils.set_proxy')
     @patch.object(SMT, 'is_equivalent')
@@ -1115,7 +1119,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -1158,7 +1161,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product, mock_remove_reg_data,
         mock_fetch_smt_data, mock_get_responding_update_server,
         mock_is_reg_supported, mock_is_equivalent, mock_set_proxy,
@@ -1197,6 +1200,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1231,17 +1235,11 @@ class TestRegisterCloudGuest:
         mock_is_reg_supported.return_value = True
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
-        assert mock_logging.error.call_args_list == [
-            call(
-                "Registration with ('1.2.3.5', 'fc00::1') failed. "
-                "Trying ('1.2.3.6', 'fc00::1')"
-            ),
-            call('Baseproduct registration failed'),
-            call('\tsome error')
-        ]
+        assert 'Baseproduct registration failed' in self._caplog.text
+        assert 'some error' in self._caplog.text
         assert sys_exit.value.code == 1
 
-    @patch('cloudregister.registerutils.__remove_state_file')
+    @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
@@ -1251,7 +1249,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -1294,7 +1291,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product, mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
         mock_get_creds_file, mock_set_proxy, mock_remove_state_file
@@ -1319,6 +1316,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1369,11 +1367,9 @@ class TestRegisterCloudGuest:
         mock_set_proxy.return_value = False
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
-        mock_logging.error.assert_called_once_with(
-            'Unable to obtain product information from server "1.2.3.5,None"'
-            '\n\tBecause nope\n\t"no accessio"\n'
-            'Unable to register modules, exiting.'
-        )
+        assert 'Unable to obtain product information from server "1.2.3.5,None"' in \
+            self._caplog.text
+        assert 'Unable to register modules, exiting.' in self._caplog.text
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -1387,7 +1383,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -1430,7 +1425,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
@@ -1456,6 +1451,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1566,7 +1562,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -1609,7 +1604,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
@@ -1637,6 +1632,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1738,18 +1734,11 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
         assert register_cloud_guest.main(fake_args) is None
-        assert mock_logging.info.call_args_list == [
-            call('Forced new registration'),
-            call(
-                'Using user specified SMT server:\n\n\t"IP:1.2.3.5"\n\t"'
-                'FQDN:foo-ec2.susecloud.net"\n\t"Fingerprint:AA:BB:CC:DD"'
-            ),
-            call('Region change detected, registering to new servers'),
-            call('Baseproduct registration complete'),
-            call(
-                'Cannot reach host: "susecloud.net", will not enable repo "repo_a"'
-            )
-        ]
+        assert 'Forced new registration' in self._caplog.text
+        assert 'Using user specified SMT server:\n\n\t"IP:1.2.3.5"\n\t"' in self._caplog.text
+        assert 'Region change detected, registering to new servers' in self._caplog.text
+        assert 'Cannot reach host: "susecloud.net", will not enable repo "repo_a"' \
+            in self._caplog.text
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('cloudregister.registerutils.set_proxy')
@@ -1769,7 +1758,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -1812,7 +1800,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
@@ -1839,6 +1827,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1940,20 +1929,13 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
         assert register_cloud_guest.main(fake_args) is None
-        assert mock_logging.info.call_args_list == [
-            call('Forced new registration'),
-            call(
-                'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"'
-                'FQDN:foo-ec2.susecloud.net"\n\t"Fingerprint:AA:BB:CC:DD"'
-            ),
-            call('Region change detected, registering to new servers'),
-            call('Baseproduct registration complete'),
-            call(
-                'Cannot reach host: "susecloud.net", will not enable repo "repo_a"'
-            )
-        ]
+        assert 'Forced new registration' in self._caplog.text
+        assert 'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"' in self._caplog.text
+        assert 'Region change detected, registering to new servers' in self._caplog.text
+        assert 'Cannot reach host: "susecloud.net", will not enable repo "repo_a"' \
+            in self._caplog.text
 
-    @patch('cloudregister.registerutils.__remove_state_file')
+    @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('os.system')
     @patch('cloudregister.registerutils.set_proxy')
@@ -1973,7 +1955,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -2016,7 +1997,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
@@ -2044,6 +2025,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -2150,15 +2132,13 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
 
-        with patch('sys.stdout', new_callable=StringIO) as buffer:
-            assert register_cloud_guest.main(fake_args) is None
-        fake_stdout = buffer.getvalue()
+        assert register_cloud_guest.main(fake_args) is None
 
-        assert 'Registration succeeded' in fake_stdout
-        assert 'There are products that were not registered' in fake_stdout
-        assert 'transactional-update register -p' in fake_stdout
-        assert 'SLES-LTSS-FOO/15.4/x86_64' in fake_stdout
-        assert '-r ADDITIONAL REGCODE' in fake_stdout
+        assert 'Registration succeeded' in self._caplog.text
+        assert 'There are products that were not registered' in self._caplog.text
+        assert 'transactional-update register -p' in self._caplog.text
+        assert 'SLES-LTSS-FOO/15.4/x86_64' in self._caplog.text
+        assert '-r ADDITIONAL REGCODE' in self._caplog.text
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registercloudguest.get_responding_update_server')
@@ -2180,7 +2160,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
     @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.set_as_current_smt')
     @patch('os.access')
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -2223,7 +2202,7 @@ class TestRegisterCloudGuest:
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_logging, mock_get_installed_products,
+        mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
@@ -2253,6 +2232,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
+            debug=True
         )
         mock_is_reg_supported.return_value = False
         mock_os_path_isdir.return_value = False
@@ -2357,10 +2337,7 @@ class TestRegisterCloudGuest:
             with patch('builtins.open', mock_open()):
                 register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
-        assert mock_logging.info.call_args_list == [
-            call('Forced new registration'),
-            call('Region change detected, registering to new servers')
-        ]
+        assert 'Region change detected, registering to new servers' in self._caplog.text
 
     @patch('cloudregister.registerutils.register_product')
     def test_register_modules(self, mock_register_product):
@@ -2600,17 +2577,15 @@ class TestRegisterCloudGuest:
         assert register_cloud_guest.setup_registry(smt_server) is None
         assert not mock_set_registries_conf_docker.called
 
-    @patch('cloudregister.registercloudguest.logging')
-    def test_get_responding_update_server_error(self, mock_logging):
+    def test_get_responding_update_server_error(self):
         with raises(SystemExit) as sys_exit:
             assert register_cloud_guest.get_responding_update_server([])
         assert sys_exit.value.code == 1
-        assert mock_logging.error.call_args_list == [call('No response from: []')]
+        assert 'No response from: []' in self._caplog.text
 
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.get_product_tree')
     def test_setup_ltss_registration_no_product(
-        self, mock_get_product_tree, mock_logging
+        self, mock_get_product_tree
     ):
         mock_get_product_tree.return_value = None
         with raises(SystemExit) as sys_exit:
@@ -2618,16 +2593,13 @@ class TestRegisterCloudGuest:
                 'target', 'regcode', 'instance_filepath'
             )
         assert sys_exit.value.code == 1
-        assert mock_logging.error.call_args_list == [
-            call('Cannot find baseproduct registration for LTSS')
-        ]
+        assert 'Cannot find baseproduct registration for LTSS' in self._caplog.text
 
     @patch('os.listdir')
     @patch('os.path.isdir')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.get_product_tree')
     def test_setup_ltss_registration_registered(
-        self, mock_get_product_tree, mock_logging, mock_os_path_isdir, mock_os_listdir
+        self, mock_get_product_tree, mock_os_path_isdir, mock_os_listdir
     ):
         mock_get_product_tree.return_value = True
         mock_os_path_isdir.return_value = True
@@ -2635,19 +2607,16 @@ class TestRegisterCloudGuest:
         assert register_cloud_guest.setup_ltss_registration(
             'target', 'regcode', 'instance_filepath'
         ) is None
-        assert mock_logging.info.call_args_list == [
-            call('Running LTSS registration...'),
-            call('LTSS registration succeeded')
-        ]
+        assert 'Running LTSS registration...' in self._caplog.text
+        assert 'LTSS registration succeeded' in self._caplog.text
 
     @patch('cloudregister.registerutils.register_product')
     @patch('os.listdir')
     @patch('os.path.isdir')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.get_product_tree')
     def test_setup_ltss_registration_registration_ok(
         self,
-        mock_get_product_tree, mock_logging,
+        mock_get_product_tree,
         mock_os_path_isdir, mock_os_listdir,
         mock_register_product
     ):
@@ -2678,19 +2647,16 @@ class TestRegisterCloudGuest:
         assert register_cloud_guest.setup_ltss_registration(
             'target', 'regcode', 'instance_filepath'
         ) is None
-        assert mock_logging.info.call_args_list == [
-            call('Running LTSS registration...'),
-            call('LTSS registration succeeded')
-        ]
+        assert 'Running LTSS registration...' in self._caplog.text
+        assert 'LTSS registration succeeded' in self._caplog.text
 
     @patch('cloudregister.registerutils.register_product')
     @patch('os.listdir')
     @patch('os.path.isdir')
-    @patch('cloudregister.registercloudguest.logging')
     @patch('cloudregister.registerutils.get_product_tree')
     def test_setup_ltss_registration_registration_failed(
         self,
-        mock_get_product_tree, mock_logging,
+        mock_get_product_tree,
         mock_os_path_isdir, mock_os_listdir,
         mock_register_product
     ):
@@ -2723,7 +2689,5 @@ class TestRegisterCloudGuest:
                 'target', 'regcode', 'instance_filepath'
             )
         assert sys_exit.value.code == 1
-        assert mock_logging.error.call_args_list == [
-            call('LTSS registration failed'),
-            call('\tnot OK')
-        ]
+        assert 'LTSS registration failed' in self._caplog.text
+        assert '\tnot OK' in self._caplog.text

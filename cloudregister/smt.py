@@ -81,10 +81,10 @@ class SMT:
     def get_cert(self):
         """Return the CA certificate for the SMT server"""
         if not self._cert:
-            cert_rq = self.__request_cert()
+            cert_rq = self._request_cert()
             if cert_rq:
                 cert = cert_rq.text
-                if self.__is_cert_valid(cert):
+                if self._is_cert_valid(cert):
                     self._cert = cert
 
         return self._cert
@@ -248,7 +248,7 @@ class SMT:
         return check_urls
 
     # --------------------------------------------------------------------
-    def __is_cert_valid(self, cert):
+    def _is_cert_valid(self, cert):
         """Verify that the fingerprint of the given cert matches the
            expected fingerprint"""
         try:
@@ -267,7 +267,7 @@ class SMT:
         return True
 
     # --------------------------------------------------------------------
-    def __request_cert(self):
+    def _request_cert(self):
         """Request the cert from the SMT server and return the request"""
         cert_res = None
         attempts = 0
