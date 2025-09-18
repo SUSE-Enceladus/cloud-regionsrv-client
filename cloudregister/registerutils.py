@@ -346,30 +346,37 @@ def enable_repository(repo_name):
     """Enable the given repository"""
 
     cmd = ['zypper', 'mr', '-e', repo_name]
-    res = exec_subprocess(cmd)
-    if res:
-        log.error('Unable to enable repository %s' % repo_name)
+    _, _, failed = exec_subprocess(cmd)
+    if failed:
+        log.error(
+            'Unable to enable repository {}'.format(repo_name)
+        )
 
 
 # ----------------------------------------------------------------------------
-def exec_subprocess(cmd, return_output=False):
-    """Execute the given command as a subprocess (blocking)
-       Returns one off:
-           - exit code of the command
-           - stdout, stderr and exit code
-           - -1 indicates an exception"""
+def exec_subprocess(cmd, tolog=True):
+    """
+    Execute the given command as a subprocess (blocking)
+    Returns a tuple list:
+        (binary_stdout, binary_stderr, exitcode)
+        A -1 exitcode indicates an OSError at command invocation
+    """
+    stdout = b''
+    stderr = b''
+    rcode = -1
+    if tolog:
+        log.debug('EXEC: {}'.format(cmd))
     try:
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        out, err = proc.communicate()
-        if return_output:
-            return (out, err, proc.returncode)
-        return proc.returncode
-    except OSError:
-        return -1
+        stdout, stderr = proc.communicate()
+        rcode = proc.returncode
+    except OSError as issue:
+        log.debug('EXEC failed with: {}'.format(issue))
+    return (stdout, stderr, rcode)
 
 
 # ----------------------------------------------------------------------------
@@ -455,17 +462,12 @@ def register_product(
         log_information = log_information.replace(regcode, 'XXXX')
 
     log.info('Registration: {0}'.format(log_information))
-    call = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    output, error = call.communicate()
+    output, error, returncode = exec_subprocess(cmd)
     suseconnect_type = namedtuple(
         'suseconnect_type', ['returncode', 'output', 'error']
     )
     return suseconnect_type(
-        returncode=call.returncode,
+        returncode=returncode,
         output=output.decode(),
         error=error.decode()
     )
@@ -825,7 +827,7 @@ def get_registry_credentials(set_new):
         mv_file_cmd = 'mv -Z {} {}.bak'.format(
             REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
         ).split()
-        status = exec_subprocess(mv_file_cmd)
+        _, _, status = exec_subprocess(mv_file_cmd)
         message = 'File not preserved.' if status else 'File preserved.'
         log.info(message)
 
@@ -933,7 +935,7 @@ def get_registry_conf_file(container_path, container):
     mv_file_cmd = 'mv -Z {} {}.bak'.format(
         container_path, container_path
     ).split()
-    failed = exec_subprocess(mv_file_cmd)
+    _, _, failed = exec_subprocess(mv_file_cmd)
     message = 'File not preserved.' if failed else 'File preserved.'
     log.info(message)
     return {}, failed
@@ -1034,7 +1036,7 @@ def clean_registry_auth(registry_fqdn):
         mv_file_cmd = 'mv -Z {} {}.bak'.format(
             REGISTRATION_DATA_DIR, REGISTRY_CREDENTIALS_PATH
         )
-        status = exec_subprocess(mv_file_cmd)
+        _, _, status = exec_subprocess(mv_file_cmd)
         message = 'File not preserved.' if status else 'File preserved.'
         log.info(message)
 
@@ -1383,13 +1385,13 @@ def get_instance_data(config):
         cmd = instance_data_cmd.split()[0]
         if cmd != 'none':
             if not cmd.startswith('/'):
-                cmd_lookup = exec_subprocess(['which', cmd])
+                _, _, cmd_lookup = exec_subprocess(['which', cmd])
                 if cmd_lookup:
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     log.error(errMsg)
             if os.access(cmd, os.X_OK):
                 instance_data, errors, returncode = exec_subprocess(
-                    instance_data_cmd.split(), True
+                    instance_data_cmd.split()
                 )
                 if errors:
                     errMsg = 'Data collected from stderr for instance '
@@ -1426,17 +1428,21 @@ def get_installed_products():
         return products
 
     zypper_products_cmd = ["zypper", "--no-remote", "-x", "products"]
-    try:
-        cmd = subprocess.Popen(zypper_products_cmd, stdout=subprocess.PIPE)
-        product_xml = cmd.communicate()
-        # Just in case something else started zypper again
-        if cmd.returncode != 0:
-            errMsg = 'zypper product query returned with zypper code %d'
-            log.error(errMsg % cmd.returncode)
-            return products
-    except OSError:
+    product_xml, _, returncode = exec_subprocess(zypper_products_cmd)
+    if returncode > 0:
+        # zypper returned with an issue...
         log.error(
-            'Could not get product list %s', ' '.join(zypper_products_cmd)
+            'zypper product query returned with zypper code: {}'.format(
+                returncode
+            )
+        )
+        return products
+    elif returncode == -1:
+        # OSError exception in exec_subprocess...
+        log.error(
+            'Could not get product list {}'.format(
+                ' '.join(zypper_products_cmd)
+            )
         )
         return products
 
@@ -1451,7 +1457,7 @@ def get_installed_products():
         log.error(errMsg)
         return products
 
-    product_tree = etree.fromstring(product_xml[0].decode())
+    product_tree = etree.fromstring(product_xml.decode())
     for child in product_tree.find("product-list"):
         name = child.attrib['name']
         if name == baseprodName:
@@ -1644,9 +1650,8 @@ def get_zypper_pid():
     pid = ''
     for executable_name in ['zypper', 'Zypp-main']:
         zyppPIDCmd = ['ps', '-C', executable_name, '-o', 'pid=']
-        zyppPID = subprocess.Popen(zyppPIDCmd, stdout=subprocess.PIPE)
-        pidData = zyppPID.communicate()
-        pid = pidData[0].decode().split('\n')[0].strip()
+        pidData, _, _ = exec_subprocess(zyppPIDCmd)
+        pid = pidData.decode().split(os.linesep)[0].strip()
         if pid:
             break
 
@@ -1727,7 +1732,7 @@ def has_rmt_ipv6_access(smt):
 def has_nvidia_support():
     """Check if the instance has Nvidia capabilities"""
     try:
-        pci_info, errors, returncode = exec_subprocess(['lspci'], True)
+        pci_info, errors, returncode = exec_subprocess(['lspci'])
     except TypeError:
         log.info(
             'lspci command not found, instance Nvidia support cannot '
@@ -1897,7 +1902,7 @@ def get_profile_env_var(varname, profile_file):
             profile_file, varname
         )
     ]
-    variable_content, error, returncode = exec_subprocess(shell_command, True)
+    variable_content, error, returncode = exec_subprocess(shell_command)
     if not error:
         return variable_content.decode().strip()
 
@@ -2010,7 +2015,7 @@ def is_transactional_system():
     """
     # Figure out if we are on RO transactional-update system
     output, error, returncode = exec_subprocess(
-        ['findmnt', '--noheadings', '--json', '/'], return_output=True
+        ['findmnt', '--noheadings', '--json', '/']
     )
     if returncode != 0:
         log.warning('Unable to find filesystem information for "/"')
@@ -2293,7 +2298,8 @@ def update_ca_chain(cmd_w_args_lst):
     log.info('Updating CA certificates: %s' % cmd_w_args_lst[0])
     retry_attempts = 3
     for attempt in range(retry_attempts):
-        if exec_subprocess(cmd_w_args_lst):
+        _, _, failed = exec_subprocess(cmd_w_args_lst)
+        if failed:
             errMsg = 'Certificate update failed attempt %d' % (attempt + 1)
             log.error(errMsg)
             time.sleep(5)
@@ -2558,7 +2564,7 @@ def _get_system_mfg():
     """Returns the system manufacturer information"""
     try:
         vendor, error, returncode = exec_subprocess(
-            ['dmidecode', '-s', 'system-manufacturer'], True
+            ['dmidecode', '-s', 'system-manufacturer']
         )
     except TypeError:
         vendor = b'unknown'
@@ -2734,7 +2740,7 @@ def _mv_file_backup(filename):
     message = ('Preserving file as %s.bak' % filename)
     log.info(message)
     mv_file_cmd = 'mv -Z {} {}.bak'.format(filename, filename).split()
-    failed = exec_subprocess(mv_file_cmd)
+    _, _, failed = exec_subprocess(mv_file_cmd)
     message = 'File not preserved' if failed else 'File preserved'
     log.info(message)
     return failed
