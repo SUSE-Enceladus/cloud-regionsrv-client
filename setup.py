@@ -42,7 +42,6 @@ if __name__ == '__main__':
                 'cloudguestregistryauth = cloudregister.cloudguestregistryauth:app',
                 'cloudguest-lic-watcher = cloudregister.cloudguest_lic_watcher:app',
                 'updatesmtcache = cloudregister.updatesmtcache:app',
-                'switchcloudguestservices = cloudregister.switchcloudguestservices:app',
                 'createregioninfo = cloudregister.createregioninfo:app',
                 'containerbuild-regionsrv = cloudregister.containerbuild_regionsrv:app',
                 'cloudguest-repo-service = cloudregister.cloudguest_repo_service:app'

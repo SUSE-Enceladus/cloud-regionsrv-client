@@ -4,8 +4,6 @@ Test one SLE 15, SLE 16 and one SLE 12 based instance
 
 on-demand
 After installing the test package with "zypper in"
-- run /usr/sbin/switchcloudguestservices
-  + $? is 0
 - run /usr/sbin/updatesmtcache
   + $? is 0
 - run /usr/sbin/createregioninfo
@@ -110,8 +108,6 @@ After installing the test package with "zypper in"
 
 byos - test on SLES4SAP instance
 After installing the test package with "zypper in"
-- run /usr/sbin/switchcloudguestservices
-  + $? is 0
 - run /usr/sbin/updatesmtcache
   + $? is 0
 - run /usr/sbin/createregioninfo

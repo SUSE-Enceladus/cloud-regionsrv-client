@@ -18,7 +18,6 @@
 import base64
 import os
 import requests
-import subprocess
 import sys
 
 from lxml import etree
@@ -137,17 +136,7 @@ def app():
         )
         sys.exit(1)
 
-    trigger_set = False
     for activation in product_activations:
-        has_plugin_format = print_repo_data(
+        print_repo_data(
             update_server, activation, available_repos
         )
-        if has_plugin_format and not trigger_set:
-            trigger_set = True
-            # Python has no sane way to create a detached process
-            subprocess.Popen(
-                ['nohup', '/usr/sbin/switchcloudguestservices'],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
