@@ -19,12 +19,16 @@ import glob
 import os
 
 import cloudregister.registerutils as utils
+from cloudregister.defaults import (
+    OLD_REGISTRATION_DATA_DIR,
+    REGISTRATION_DATA_DIR
+)
 
 from cloudregister import smt
 
 
 def app():
-    if os.path.exists(utils.OLD_REGISTRATION_DATA_DIR):
+    if os.path.exists(OLD_REGISTRATION_DATA_DIR):
         # The case where both new and old location exist cannot happen. This
         # code runs on package update and as such moves the directory.
         #
@@ -32,14 +36,14 @@ def app():
         # split(). We want to make sure we do not create nested dirs.
         os.system(
             'mv {} {}'.format(
-                utils.OLD_REGISTRATION_DATA_DIR,
-                os.sep.join(utils.REGISTRATION_DATA_DIR.split(os.sep)[:-2])
+                OLD_REGISTRATION_DATA_DIR,
+                os.sep.join(REGISTRATION_DATA_DIR.split(os.sep)[:-2])
             )
         )
 
     # Update the server cache with region information introduced in
     # region server 8.1.3
-    cached_server_files = glob.glob('%s/*SMT*' % utils.REGISTRATION_DATA_DIR)
+    cached_server_files = glob.glob('%s/*SMT*' % REGISTRATION_DATA_DIR)
     proxies = None
     if utils.set_proxy():
         proxies = {
