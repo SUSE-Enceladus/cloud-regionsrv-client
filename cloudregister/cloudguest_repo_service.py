@@ -24,7 +24,10 @@ from lxml import etree
 from requests.auth import HTTPBasicAuth
 
 from cloudregister.logger import Logger
-from cloudregister.defaults import LOG_FILE
+from cloudregister.defaults import (
+    LOG_FILE,
+    REGISTRATION_DATA_DIR
+)
 import cloudregister.registerutils as utils
 
 log_instance = Logger()
@@ -34,7 +37,7 @@ log = Logger.get_logger()
 
 def print_repo_data(update_server, activation, available_repos):
     """Print repository data from product activation info."""
-    service_revert_file = os.path.join(utils.REGISTRATION_DATA_DIR, 'installservice')
+    service_revert_file = os.path.join(REGISTRATION_DATA_DIR, 'installservice')
     service_info = activation.get('service')
     service_name = service_info.get('name')
     service_url = service_info.get('url')

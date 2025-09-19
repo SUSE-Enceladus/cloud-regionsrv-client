@@ -40,31 +40,50 @@ from requests.auth import HTTPBasicAuth
 from cloudregister.logger import Logger
 from cloudregister import smt
 
-AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
-BASE_CREDENTIALS_NAME = 'SCCcredentials'
-FRAMEWORK_IDENTIFIER = 'framework_info'
-HOSTSFILE_PATH = '/etc/hosts'
-NEW_REGISTRATION_MARKER = 'newregistration'
-REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
-OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister'
-REGISTRATION_DATA_DIR = '/var/cache/cloudregister'
-REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
-RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
-REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
-PROFILE_LOCAL_PATH = '/etc/profile.local'
-REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
-DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
-SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
-BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
-SUSE_REGISTRY = 'registry.suse.com'
-REGSHARING_SYNC_TIME = 30
-ZYPP_CREDENTIALS_PATH = '/etc/zypp/credentials.d'
+from cloudregister.defaults import (
+    AVAILABLE_SMT_SERVER_DATA_FILE_NAME,
+    BASE_CREDENTIALS_NAME,
+    FRAMEWORK_IDENTIFIER,
+    HOSTSFILE_PATH,
+    NEW_REGISTRATION_MARKER,
+    REGISTRATION_COMPLETED_MARKER,
+    REGISTRATION_DATA_DIR,
+    REGISTERED_SMT_SERVER_DATA_FILE_NAME,
+    RMT_AS_SCC_PROXY_MARKER,
+    REGISTRY_CREDENTIALS_PATH,
+    PROFILE_LOCAL_PATH,
+    REGISTRIES_CONF_PATH,
+    DOCKER_CONFIG_PATH,
+    SUMA_REGISTRY_CONF_PATH,
+    BASE_PRODUCT_PATH,
+    SUSE_REGISTRY,
+    REGSHARING_SYNC_TIME,
+    ZYPP_CREDENTIALS_PATH
+)
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
 )
 
 log = Logger.get_logger()
+
+etc_content = None
+
+
+# ----------------------------------------------------------------------------
+def etc_manage(filename, as_empty_file=False):
+    """
+    Add file to etc content manager if defined
+
+    if as_empty_file is set to True the given file will
+    be added as an empty file to the content manager
+    """
+    if etc_content:
+        if as_empty_file:
+            os.rename(filename, '{}.new'.format(filename))
+        etc_content.manage(filename)
+        if as_empty_file:
+            os.rename('{}.new'.format(filename), filename)
 
 
 # ----------------------------------------------------------------------------
@@ -87,6 +106,7 @@ def add_hosts_entry(smt_server):
             smt_server.get_registry_FQDN()
         )
 
+    etc_manage('/etc/hosts')
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
@@ -112,20 +132,39 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
-def clean_all():
-    """Clean up any registration artifacts"""
-    try:
-        clean_non_free_extensions()
-    except Exception as err:
-        log.info('Could not check the system product data: {}'.format(err))
+def clean_all_legacy():
+    """
+    Clean up any registration artifacts
 
+    This is a legacy method which cleans up registration data
+    without using the git content manager. This function is kept
+    for tools not yet moved to use git and to allow transition
+    from non git based content management to git based content
+    management, e.g on package update of cloud-regionsrv-client
+    on already registered clients.
+    """
+    # Clean registrations via API requests
+    deregister_non_free_extensions()
+    deregister_from_update_infrastructure()
+    deregister_from_SCC()
+
+    # Clean all data from etc
+    clean_repo_artifacts()
     clean_registry_setup()
-    remove_registration_data()
+    clean_hosts_file()
+
+    # Clean all cache data from /var/cache
+    clean_cache()
+
+
+# ----------------------------------------------------------------------------
+def clean_cache():
     clean_smt_cache()
+    clear_rmt_as_scc_proxy_flag()
     clear_new_registration_flag()
     clean_framework_identifier()
-    clean_hosts_file()
     clear_registration_completed_flag()
+    clean_registered_smt_data_file()
 
 
 # ----------------------------------------------------------------------------
@@ -162,9 +201,34 @@ def clean_hosts_file(domain_name=None):
     except IndexError:
         pass
 
+    etc_manage(HOSTSFILE_PATH)
     with open(HOSTSFILE_PATH, 'wb') as hosts_file:
         for entry in new_hosts_content:
             hosts_file.write(entry)
+
+
+# ----------------------------------------------------------------------------
+def clean_repo_artifacts():
+    """Remove the artifacts related to repository handling for a registration
+    """
+    repo_server_names = []
+    # Lookup SCC connected...
+    if is_scc_connected():
+        repo_server_names.append('suse.com')
+
+    # Lookup update infrastructure connected...
+    smt_data_file = _get_registered_smt_file_path()
+    if os.path.exists(smt_data_file):
+        smt = get_smt_from_store(smt_data_file)
+        repo_server_names.append(smt.get_FQDN())
+
+    if repo_server_names:
+        _remove_credentials(repo_server_names)
+        _remove_repos(repo_server_names)
+        _remove_service(repo_server_names)
+
+    if os.path.exists('/etc/SUSEConnect'):
+        os.unlink('/etc/SUSEConnect')
 
 
 # ----------------------------------------------------------------------------
@@ -173,6 +237,14 @@ def clean_framework_identifier():
     framework_file_path = os.sep.join([get_state_dir(), FRAMEWORK_IDENTIFIER])
     if os.path.exists(framework_file_path):
         os.unlink(framework_file_path)
+
+
+# ----------------------------------------------------------------------------
+def clean_registered_smt_data_file():
+    """Remove the registered SMT data cache file"""
+    smt_data_file = _get_registered_smt_file_path()
+    if os.path.exists(smt_data_file):
+        os.unlink(smt_data_file)
 
 
 # ----------------------------------------------------------------------------
@@ -211,35 +283,39 @@ def is_product_removable(triplet):
 
 
 # ----------------------------------------------------------------------------
-def clean_non_free_extensions():
-    """Remove/uninstall non free extensions from the system."""
-    extensions = get_extensions()
-    installed_products = get_installed_products()
+def deregister_non_free_extensions():
+    """deregister non free extensions from the system."""
+    try:
+        extensions = get_extensions()
+        installed_products = get_installed_products()
 
-    for extension in extensions:
-        # The following not free condition checks on
-        # the access capability of the extension
-        # This is a server side capability
-        if not extension.get('free', True):
-            triplet = get_product_triplet(extension)
-            triplet = '{name}/{version}/{arch}'.format(
-                name=triplet.name,
-                version=triplet.version,
-                arch=triplet.arch
-            )
-            if triplet in installed_products and is_product_removable(triplet):
-                reg_prod = register_product(
-                    registration_target=get_current_smt(),
-                    product=triplet,
-                    de_register=True
+        for extension in extensions:
+            # The following not free condition checks on
+            # the access capability of the extension
+            # This is a server side capability
+            if not extension.get('free', True):
+                triplet = get_product_triplet(extension)
+                triplet = '{name}/{version}/{arch}'.format(
+                    name=triplet.name,
+                    version=triplet.version,
+                    arch=triplet.arch
                 )
-                msg = 'Non free extension {} '.format(triplet)
-                if reg_prod.returncode:
-                    msg += 'failed to be removed'
-                else:
-                    msg += 'removed'
-
-                log.info(msg)
+                if triplet in installed_products and is_product_removable(triplet):
+                    reg_prod = register_product(
+                        registration_target=get_current_smt(),
+                        product=triplet,
+                        de_register=True
+                    )
+                    msg = 'Non free extension {} '.format(triplet)
+                    if reg_prod.returncode:
+                        msg += 'failed to be removed'
+                    else:
+                        msg += 'removed'
+                    log.info(msg)
+    except Exception as issue:
+        log.info(
+            'Deregister non free extensions failed with: {}'.format(issue)
+        )
 
 
 # ----------------------------------------------------------------------------
@@ -462,10 +538,38 @@ def register_product(
         log_information = log_information.replace(regcode, 'XXXX')
 
     log.info('Registration: {0}'.format(log_information))
+    etc_manage('{}/{}'.format(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME))
+
+    # get list of zypp setup files eventually existing prior
+    # registration. Those files will not be taken into account
+    # for the registration client.
+    exclude_zypp_files = []
+    for exclude in glob.glob(
+        '/etc/zypp/repos.d/*.repo'
+    ) + glob.glob(
+        '/etc/zypp/services.d/*.service'
+    ) + glob.glob('/etc/zypp/credentials.d/*'):
+        exclude_zypp_files.append(exclude)  # pragma: no cover
+
+    # perform registration
     output, error, returncode = exec_subprocess(cmd, tolog=False)
     suseconnect_type = namedtuple(
         'suseconnect_type', ['returncode', 'output', 'error']
     )
+    # SUSEConnect created new setup files which it does not delete
+    # on deregistration. Let's add these files to the content manager
+    # such that we can handle them properly during cleanup
+    for repo in glob.glob('/etc/zypp/repos.d/*.repo'):
+        if repo not in exclude_zypp_files:
+            etc_manage(repo, as_empty_file=True)
+    for service in glob.glob('/etc/zypp/services.d/*.service'):
+        if service not in exclude_zypp_files:
+            etc_manage(service, as_empty_file=True)
+    for credential in glob.glob('/etc/zypp/credentials.d/*'):
+        if BASE_CREDENTIALS_NAME not in credential and \
+         credential not in exclude_zypp_files:
+            etc_manage(credential, as_empty_file=True)
+
     return suseconnect_type(
         returncode=returncode,
         output=output.decode(),
@@ -837,6 +941,7 @@ def get_registry_credentials(set_new):
 # ----------------------------------------------------------------------------
 def write_registry_credentials(content, set_new):
     """Update the registry credentials file with the value of 'content'."""
+    etc_manage(REGISTRY_CREDENTIALS_PATH)
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
             json.dump(content, cred_json_file)
@@ -945,6 +1050,7 @@ def get_registry_conf_file(container_path, container):
 def update_bashrc(content, mode):
     """Update the env vars for the container engines
     with the location of the config file to the bashrc local file."""
+    etc_manage(PROFILE_LOCAL_PATH)
     try:
         with open(PROFILE_LOCAL_PATH, mode) as bashrc_file:
             bashrc_file.write(content)
@@ -1229,6 +1335,7 @@ def clean_registries_conf_docker(private_registry_fqdn):
 # ----------------------------------------------------------------------------
 def write_registries_conf(registries_conf, container_path, container_name):
     """Write registries_conf content to container_path."""
+    etc_manage(container_path)
     try:
         if container_name == 'podman':
             with open(container_path, 'w') as registries_conf_file:
@@ -1860,7 +1967,7 @@ def https_only(config):
 def import_smtcert_12(smt):
     """Import the SMT certificate on SLES 12"""
     key_chain = '/etc/pki/trust/anchors'
-    if not smt.write_cert(key_chain):
+    if not smt.write_cert(key_chain, etc_content):
         return 0
     if not update_ca_chain(['update-ca-certificates']):
         return 0
@@ -2140,9 +2247,10 @@ def get_domain_name_from_region_server():
 
 
 # ----------------------------------------------------------------------------
-def remove_registration_data():
-    """Reset the instance to an unregistered state"""
-    clear_rmt_as_scc_proxy_flag()
+def deregister_from_update_infrastructure():
+    """
+    Send delete request to registration server
+    """
     smt_data_file = _get_registered_smt_file_path()
     user, password = get_credentials(
         os.sep.join([ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME])
@@ -2151,8 +2259,6 @@ def remove_registration_data():
         if not is_new_registration():
             log.info('No credentials, nothing to do server side')
         return
-
-    server_names = []
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
@@ -2168,15 +2274,25 @@ def remove_registration_data():
                     'System successfully removed from update infrastructure'
                 )
             else:
-                rmt_check_msg = 'System unknown to update infrastructure, '
-                rmt_check_msg += 'continue with local changes'
+                rmt_check_msg = 'System unknown to update infrastructure'
                 log.info(rmt_check_msg)
-        except requests.exceptions.RequestException as e:
-            log.warning('Unable to remove client registration from server')
-            log.warning(e)
-            log.info('Continue with local artifact removal')
-        server_names.append(server_name)
-        os.unlink(smt_data_file)
+        except requests.exceptions.RequestException as issue:
+            log.warning(
+                'Unable to remove client registration from server: {}'.format(issue)
+            )
+        return server_name
+
+
+# ----------------------------------------------------------------------------
+def deregister_from_SCC():
+    user, password = get_credentials(
+        os.sep.join([ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME])
+    )
+    if not user:
+        if not is_new_registration():
+            log.info('No credentials, nothing to do server side')
+        return
+    auth_creds = HTTPBasicAuth(user, password)
     if is_scc_connected():
         log.info('Removing system from SCC')
         try:
@@ -2192,7 +2308,7 @@ def remove_registration_data():
                 scc_check_msg += 'System user name: "%s". '
                 scc_check_msg += 'Local registration artifacts removed.'
                 log.info(scc_check_msg % user)
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as issue:
             scc_except_msg = 'Unable to remove client registration from SCC. '
             scc_except_msg += 'The system is most likely still tracked against'
             scc_except_msg += ' your subscription. Please inform your SCC '
@@ -2200,14 +2316,8 @@ def remove_registration_data():
             scc_except_msg += 'should be removed from SCC. Registration '
             scc_except_msg += 'artifacts removed locally.'
             log.error(scc_except_msg % user)
-            log.warning(e)
-
-        server_names.append('suse.com')
-    else:
-        log.info('No current registration server set.')
-
-    log.info('Removing repository artifacts')
-    _remove_repo_artifacts(server_names)
+            log.warning(issue)
+        return 'suse.com'
 
 
 # ----------------------------------------------------------------------------
@@ -2577,18 +2687,6 @@ def _remove_credentials(smt_server_names):
 
 
 # ----------------------------------------------------------------------------
-def _remove_repo_artifacts(repo_server_names):
-    """Remove the artifacts related to repository handling for a registration
-    """
-    _remove_credentials(repo_server_names)
-    _remove_repos(repo_server_names)
-    _remove_service(repo_server_names)
-
-    if os.path.exists('/etc/SUSEConnect'):
-        os.unlink('/etc/SUSEConnect')
-
-
-# ----------------------------------------------------------------------------
 def _remove_repos(smt_server_names):
     """Remove the repositories for the given server"""
     repo_files = glob.glob('/etc/zypp/repos.d/*')
@@ -2663,6 +2761,7 @@ def _replace_url_target(config_files, new_smt):
         with open(config_file, 'r') as cfg_file:
             content = cfg_file.read()
         if current_service_server in content:
+            etc_manage(config_file)
             with open(config_file, 'w') as new_config:
                 new_config.write(content.replace(
                     current_service_server,
@@ -2827,6 +2926,7 @@ def _set_state_file(filepath):
 # ----------------------------------------------------------------------------
 def _write_suma_conf(updated_content):
     """Update the SUMA SUMA_REGISTRY_CONF_PATH file with the new content."""
+    etc_manage(SUMA_REGISTRY_CONF_PATH)
     try:
         with open(SUMA_REGISTRY_CONF_PATH, 'w') as suma_config:
             yaml.dump(updated_content, suma_config, default_flow_style=False)
