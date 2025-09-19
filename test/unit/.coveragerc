@@ -5,7 +5,6 @@ omit =
     */cloudguestregistryauth.py
     */containerbuild_regionsrv.py
     */createregioninfo.py
-    */switchcloudguestservices.py
     */updatesmtcache.py
 
 [report]
@@ -15,5 +14,4 @@ omit =
     */cloudguestregistryauth.py
     */containerbuild_regionsrv.py
     */createregioninfo.py
-    */switchcloudguestservices.py
     */updatesmtcache.py

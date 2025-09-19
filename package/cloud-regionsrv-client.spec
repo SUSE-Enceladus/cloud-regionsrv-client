@@ -263,7 +263,6 @@ fi
 if [ "$YAST_IS_RUNNING" != "instsys" ] ; then
 # On initial install we do not need to handle existing data, only on update
 if [ "$1" -gt 1 ] ; then
-    %{_sbindir}/switchcloudguestservices
     %{_sbindir}/updatesmtcache
     %{_sbindir}/createregioninfo
 fi
@@ -310,7 +309,6 @@ fi
 %{_sbindir}/cloudguest-repo-service
 %{_sbindir}/containerbuild-regionsrv
 %{_sbindir}/createregioninfo
-%{_sbindir}/switchcloudguestservices
 %{_sbindir}/registercloudguest
 %{_sbindir}/updatesmtcache
 %{_usr}/lib/zypp/plugins/urlresolver/susecloud
