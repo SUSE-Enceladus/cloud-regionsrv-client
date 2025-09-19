@@ -462,7 +462,7 @@ def register_product(
         log_information = log_information.replace(regcode, 'XXXX')
 
     log.info('Registration: {0}'.format(log_information))
-    output, error, returncode = exec_subprocess(cmd)
+    output, error, returncode = exec_subprocess(cmd, tolog=False)
     suseconnect_type = namedtuple(
         'suseconnect_type', ['returncode', 'output', 'error']
     )
