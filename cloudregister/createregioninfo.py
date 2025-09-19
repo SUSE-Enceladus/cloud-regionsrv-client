@@ -22,11 +22,14 @@ import os
 import sys
 
 import cloudregister.registerutils as utils
+from cloudregister.defaults import (
+    FRAMEWORK_IDENTIFIER
+)
 
 
 def app():
     region_info_path = os.path.join(
-        utils.get_state_dir(), utils.FRAMEWORK_IDENTIFIER
+        utils.get_state_dir(), FRAMEWORK_IDENTIFIER
     )
 
     if os.path.exists(region_info_path):

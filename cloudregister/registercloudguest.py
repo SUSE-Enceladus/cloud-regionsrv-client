@@ -36,10 +36,14 @@ import time
 import urllib.parse
 import uuid
 
+from cloudregister.git import Git
 from cloudregister.logger import Logger
 from cloudregister.defaults import (
     LOG_FILE,
-    ZYPP_SERVICES
+    ZYPP_SERVICES,
+    DOCKER_CONFIG_PATH,
+    REGISTERED_SMT_SERVER_DATA_FILE_NAME,
+    AVAILABLE_SMT_SERVER_DATA_FILE_NAME
 )
 import cloudregister.registerutils as utils
 
@@ -125,18 +129,27 @@ def register_modules(
 
 
 # ----------------------------------------------------------------------------
-def cleanup():
-    """Remove any registration artifacts"""
-    utils.clean_all()
+def cleanup(etc_content=None):
+    """
+    Cleanup registration data. This covers sending
+    delete requests to the API servers as well as deletion of
+    cache and etc files. With etc_content provided the cleanup
+    of files in etc will be handled through git.
+    """
+    if etc_content:
+        utils.deregister_non_free_extensions()
+        utils.deregister_from_update_infrastructure()
+        utils.deregister_from_SCC()
+        utils.clean_cache()
+        etc_content.cleanup()
+    else:
+        utils.clean_all_legacy()
 
 
 # ----------------------------------------------------------------------------
-def setup_registry(registration_target, clean='registry'):
+def setup_registry(registration_target):
     """
     Run the registration process for the container registry
-
-    clean == all -> cleans repository and registry setup
-    clean == registry -> clean only registry artifacts
     """
     user, password = utils.get_credentials(
         utils.get_credentials_file(registration_target)
@@ -149,7 +162,7 @@ def setup_registry(registration_target, clean='registry'):
             'docker config file {} not found. '
             'Registration for docker skipped. '
             'Install docker to add docker support.'.format(
-                utils.DOCKER_CONFIG_PATH
+                DOCKER_CONFIG_PATH
             )
         )
 
@@ -195,17 +208,14 @@ def setup_registry(registration_target, clean='registry'):
         if utils.is_suma_instance():
             registry_setup_ok = utils.set_registry_fqdn_suma(registry_fqdn)
     if not registry_setup_ok:
-        if clean == 'all':
-            cleanup()
-        elif clean == 'registry':
-            utils.clean_registry_setup()
         log.error(
             'Registration failed(registry), see {0} for details'.format(
                 LOG_FILE
             )
         )
-        sys.exit(1)
+        return False
     log.warning('Instance registry setup done, sessions must be restarted !')
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -317,7 +327,10 @@ def register_base_product(
                 # 67: Server responded with error: see log output
                 log.error('Baseproduct registration failed')
                 log.error(error_message)
-                cleanup()
+                utils.deregister_non_free_extensions()
+                utils.deregister_from_update_infrastructure()
+                utils.deregister_from_SCC()
+                utils.clean_cache()
                 sys.exit(1)
             for smt_srv in region_smt_servers:
                 target_smt_ipv4 = registration_target.get_ipv4()
@@ -335,7 +348,11 @@ def register_base_product(
                             str((new_smt_ipv4, new_smt_ipv6))
                         )
                     )
-                    utils.remove_registration_data()
+                    utils.clear_rmt_as_scc_proxy_flag()
+                    utils.deregister_non_free_extensions()
+                    utils.deregister_from_update_infrastructure()
+                    utils.deregister_from_SCC()
+                    utils.clean_registered_smt_data_file()
                     utils.clean_hosts_file(
                         registration_target.get_domain_name()
                     )
@@ -358,7 +375,7 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
         registration_smt_cache_file_name = (
             os.path.join(
                 utils.get_state_dir(),
-                utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
+                REGISTERED_SMT_SERVER_DATA_FILE_NAME
             )
         )
 
@@ -509,7 +526,7 @@ def get_update_servers(region_smt_data, cfg):
         utils.store_smt_data(
             os.path.join(
                 utils.get_state_dir(),
-                utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+                AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
             ),
             smt_server
         )
@@ -532,6 +549,13 @@ argparse.add_argument(
     default=False,
     dest='debug',
     help='Increase verbosity of logfile information'
+)
+argparse.add_argument(
+    '--git',
+    action='store_true',
+    default=False,
+    dest='git',
+    help='Use git for content management of registration data'
 )
 argparse.add_argument(
     '-d', '--delay',
@@ -594,7 +618,7 @@ argparse.add_argument(
 )
 
 
-def main(args):
+def main(args, etc_content=None):
     global registration_returncode  # noqa: F824
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
@@ -643,7 +667,7 @@ def main(args):
 
     if args.clean_up:
         log.info('Registration clean up initiated by user')
-        cleanup()
+        cleanup(etc_content)
         sys.exit(0)
 
     if not os.path.isdir(utils.get_state_dir()):
@@ -679,7 +703,7 @@ def main(args):
             msg += 'has completed'
             log.warning(msg)
             sys.exit(1)
-        cleanup()
+        cleanup(etc_content)
         utils.set_new_registration_flag()
         utils.write_framework_identifier(cfg)
         cached_smt_servers = []
@@ -709,7 +733,7 @@ def main(args):
         )
     elif region_change:
         log.info('Region change detected, registering to new servers')
-        cleanup()
+        cleanup(etc_content)
         region_smt_servers = cached_smt_servers = []
         registration_smt = None
         utils.set_new_registration_flag()
@@ -737,8 +761,15 @@ def main(args):
 
     if registration_target_found:
         # The system is properly registered, run through the checklist now:
+        # Mark all created/modified files from the content manager as done so far
+        if etc_content:
+            etc_content.done()
+
         # 1. check/setup the container registry for this target
-        setup_registry(registration_smt)
+        if not setup_registry(registration_smt):
+            if not etc_content:
+                utils.clean_registry_setup()
+            sys.exit(1)
 
         # 2. check/setup if we got a regcode which is handled as LTSS
         if args.reg_code:
@@ -747,6 +778,10 @@ def main(args):
                 args.reg_code,
                 instance_data_filepath
             )
+
+        # Mark all created/modified files from the content manager as done
+        if etc_content:
+            etc_content.done()
 
         # All done, time to leave...
         sys.exit(0)
@@ -758,6 +793,9 @@ def main(args):
             'System already uses the update infrastructure with a '
             'registration code, nothing to do'
         )
+        # Mark all created/modified files from the content manager as done
+        if etc_content:
+            etc_content.done()
         sys.exit(0)
 
     # The system is not yet registered, Figure out which server
@@ -809,7 +847,10 @@ def main(args):
         os.unlink(instance_data_filepath)
 
     if registration_returncode:
-        cleanup()
+        utils.deregister_non_free_extensions()
+        utils.deregister_from_update_infrastructure()
+        utils.deregister_from_SCC()
+        utils.clean_cache()
         log.error(
             'Registration failed(repository), see {0} for details'.format(
                 LOG_FILE
@@ -817,10 +858,22 @@ def main(args):
         )
         sys.exit(registration_returncode)
 
+    # Mark all created/modified files from the content manager for
+    # the plain registration as done.
+    if etc_content:
+        etc_content.done()
+
     # Setup container registry
-    setup_registry(registration_target)
+    if not setup_registry(registration_target):
+        cleanup(etc_content)
+        sys.exit(1)
 
     utils.set_registration_completed_flag()
+
+    # Mark all created/modified files from the content manager as done
+    if etc_content:
+        etc_content.done()
+
     log.info('Registration succeeded')
 
     if failed_extensions:
@@ -855,4 +908,9 @@ def main(args):
 
 def app():  # pragma: no cover
     args = argparse.parse_args()
-    main(args)
+    if args.git:
+        with Git('/etc') as etc_content:
+            utils.etc_content = etc_content
+            main(args, etc_content)
+    else:
+        main(args)

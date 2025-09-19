@@ -34,6 +34,11 @@ from cloudregister.logger import Logger
 
 import cloudregister.registerutils as utils # noqa
 from cloudregister.smt import SMT # noqa
+from cloudregister.defaults import (
+    REGISTRATION_DATA_DIR,
+    ZYPP_CREDENTIALS_PATH,
+    OLD_REGISTRATION_DATA_DIR
+)
 
 test_path = '..'
 data_path = test_path + os.sep + 'data/'
@@ -56,9 +61,9 @@ class TestRegisterUtils:
            should be updated. If this test fails do not modify the test, fix the
            path definition in the code and make sure wherever it is used is
            proper."""
-        _check_dir_path(utils.OLD_REGISTRATION_DATA_DIR)
-        _check_dir_path(utils.REGISTRATION_DATA_DIR)
-        _check_dir_path(utils.ZYPP_CREDENTIALS_PATH)
+        _check_dir_path(OLD_REGISTRATION_DATA_DIR)
+        _check_dir_path(REGISTRATION_DATA_DIR)
+        _check_dir_path(ZYPP_CREDENTIALS_PATH)
 
     def test_file_name_constants(self):
         """Make sure our constants that define file names meet our
@@ -791,7 +796,7 @@ class TestRegisterUtils:
     @patch('cloudregister.registerutils.get_product_tree')
     @patch('cloudregister.registerutils.get_current_smt')
     @patch('cloudregister.registerutils.requests.get')
-    def test_clean_non_free_extensions(
+    def test_deregister_non_free_extensions(
         self,
         mock_requests_get,
         mock_get_current_smt,
@@ -871,7 +876,7 @@ class TestRegisterUtils:
             output='all OK',
             error='stderr'
         )
-        utils.clean_non_free_extensions()
+        utils.deregister_non_free_extensions()
         assert mock_register_product.call_args_list == [
             call(
                 registration_target=smt_server,
@@ -890,7 +895,7 @@ class TestRegisterUtils:
     @patch('cloudregister.registerutils.get_product_tree')
     @patch('cloudregister.registerutils.get_current_smt')
     @patch('cloudregister.registerutils.requests.get')
-    def test_clean_non_free_extensions_should_not_be_removed(
+    def test_deregister_non_free_extensions_should_not_be_removed(
         self,
         mock_requests_get,
         mock_get_current_smt,
@@ -994,7 +999,7 @@ class TestRegisterUtils:
             error='stderr'
         )
         mock_is_suma_instance.return_value = True
-        utils.clean_non_free_extensions()
+        utils.deregister_non_free_extensions()
         assert mock_register_product.call_args_list == [
             call(
                 registration_target=smt_server,
@@ -1006,158 +1011,12 @@ class TestRegisterUtils:
         assert 'No credentials entry for "SCC*"' in self._caplog.text
         assert 'Non free extension SLES-LTSS/15.4/x86_64 removed' in self._caplog.text
 
-    @patch('cloudregister.registerutils.register_product')
-    @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils.get_product_tree')
-    @patch('cloudregister.registerutils.get_current_smt')
-    @patch('cloudregister.registerutils.requests.get')
-    def test_clean_non_free_extensions_failed(
-        self,
-        mock_requests_get,
-        mock_get_current_smt,
-        mock_get_product_tree,
-        mock_get_creds,
-        mock_get_installed_products,
-        mock_register_product
-    ):
-        mock_get_installed_products.return_value = ['SLES-LTSS/15.4/x86_64']
-        response = Response()
-        response.status_code = requests.codes.ok
-        json_mock = Mock()
-        json_mock.return_value = {
-            'id': 2001,
-            'name': 'SUSE Linux Enterprise Server',
-            'identifier': 'SLES',
-            'former_identifier': 'SLES',
-            'version': '15.4',
-            'release_type': None,
-            'release_stage': 'released',
-            'arch': 'x86_64',
-            'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
-            'product_class': '30',
-            'extensions': [
-                {
-                    'id': 23,
-                    'name': 'SUSE Linux Enterprise Server LTSS',
-                    'identifier': 'SLES-LTSS',
-                    'former_identifier': 'SLES-LTSS',
-                    'version': '15.4',
-                    'release_type': None,
-                    'release_stage': 'released',
-                    'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
-                    'product_class': 'SLES15-SP4-LTSS-X86',
-                    'free': False,
-                    'repositories': [],
-                    'product_type': 'extension',
-                    'extensions': [],
-                    'recommended': False,
-                    'available': True
-                }
-            ]
-        }
-        response.json = json_mock
-        mock_requests_get.return_value = response
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="fantasy.example.com"
-             SMTregistryName=""
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_current_smt.return_value = smt_server
-        mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
-            <?xml version="1.0" encoding="UTF-8"?>
-            <product schemeversion="0">
-              <vendor>SUSE</vendor>
-              <name>SLES</name>
-              <version>15.4</version>
-              <baseversion>15</baseversion>
-              <patchlevel>4</patchlevel>
-              <release>0</release>
-              <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
-        mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
-        )
-        prod_reg_type = namedtuple(
-            'prod_reg_type', ['returncode', 'output', 'error']
-        )
-        mock_register_product.return_value = prod_reg_type(
-            returncode=1,
-            output='all OK',
-            error='stderr'
-        )
-        utils.clean_non_free_extensions()
-        assert mock_register_product.call_args_list == [
-            call(
-                registration_target=smt_server,
-                product='SLES-LTSS/15.4/x86_64',
-                de_register=True
-            )
-        ]
-        assert 'No credentials entry for "*fantasy_example_com"' in self._caplog.text
-        assert 'No credentials entry for "SCC*"' in self._caplog.text
-        assert 'Non free extension SLES-LTSS/15.4/x86_64 failed to be removed' in self._caplog.text
-
     @patch('cloudregister.registerutils.os.unlink')
     @patch('cloudregister.registerutils.get_credentials')
     @patch('cloudregister.registerutils.get_product_tree')
     @patch('cloudregister.registerutils.get_current_smt')
     @patch('cloudregister.registerutils.requests.get')
-    def test_clean_non_free_extensions_request_failed(
-        self,
-        mock_requests_get,
-        mock_get_current_smt,
-        mock_get_product_tree,
-        mock_get_creds,
-        mock_os_unlink
-    ):
-        response = Response()
-        response.status_code = requests.codes.forbidden
-        response.reason = 'Because nope'
-        response.content = str(json.dumps('no accessio')).encode()
-        mock_requests_get.return_value = response
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="fantasy.example.com"
-             SMTregistryName=""
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_current_smt.return_value = smt_server
-        mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
-            <?xml version="1.0" encoding="UTF-8"?>
-            <product schemeversion="0">
-              <vendor>SUSE</vendor>
-              <name>SLES</name>
-              <version>15.4</version>
-              <baseversion>15</baseversion>
-              <patchlevel>4</patchlevel>
-              <release>0</release>
-              <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
-        mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
-        )
-        with raises(Exception):
-            utils.clean_non_free_extensions()
-        assert mock_os_unlink.mock_calls == []
-        assert 'No matching credentials file found' in self._caplog.text
-        assert 'Unable to obtain product information' in self._caplog.text
-
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils.get_product_tree')
-    @patch('cloudregister.registerutils.get_current_smt')
-    @patch('cloudregister.registerutils.requests.get')
-    def test_clean_non_free_extensions_no_credentials(
+    def test_deregister_non_free_extensions_no_credentials(
         self,
         mock_requests_get,
         mock_get_current_smt,
@@ -1166,7 +1025,7 @@ class TestRegisterUtils:
         mock_os_unlink
     ):
         mock_get_current_smt.return_value = None
-        utils.clean_non_free_extensions()
+        utils.deregister_non_free_extensions()
         assert mock_os_unlink.mock_calls == []
 
     @patch('cloudregister.registerutils.get_register_cmd')
@@ -2868,181 +2727,6 @@ class TestRegisterUtils:
         mock_fetch_smt_data.return_value = region_smt_data
         assert utils.get_domain_name_from_region_server() == 'susecloud.net'
 
-    @patch('cloudregister.registerutils.get_domain_name_from_region_server')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils._get_registered_smt_file_path')
-    def test_remove_registration_data_no_user(
-        self,
-        mock_get_registered_smt_file_path,
-        mock_get_creds,
-        mock_get_domain_name_from_region_server
-    ):
-        mock_get_creds.return_value = None, None
-        mock_get_domain_name_from_region_server.return_value = 'foo'
-        assert utils.remove_registration_data() is None
-        assert 'No credentials, nothing to do server side' in self._caplog.text
-
-    @patch('cloudregister.registerutils._remove_credentials')
-    @patch('cloudregister.registerutils.get_domain_name_from_region_server')
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch('cloudregister.registerutils.is_scc_connected')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils._get_registered_smt_file_path')
-    def test_remove_registration_data_no_registration(
-        self,
-        mock_get_registered_smt_file_path,
-        mock_get_creds,
-        mock_is_scc_connected,
-        mock_os_path_exists,
-        mock_get_domain_name_from_region_server,
-        mock_remove_credentials
-    ):
-        mock_get_creds.return_value = 'foo', 'bar'
-        mock_is_scc_connected.return_value = False
-        mock_os_path_exists.return_value = False
-        mock_get_domain_name_from_region_server.return_value = 'foo'
-        assert utils.remove_registration_data() is None
-        assert 'No current registration server set.' in self._caplog.text
-        mock_remove_credentials.assert_called_once_with([])
-
-    @patch('cloudregister.registerutils._remove_credentials')
-    @patch('cloudregister.registerutils.is_scc_connected')
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils._remove_repo_artifacts')
-    @patch('cloudregister.registerutils.clean_hosts_file')
-    @patch('cloudregister.registerutils.requests.delete')
-    @patch('cloudregister.registerutils.get_smt_from_store')
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch('cloudregister.registerutils.HTTPBasicAuth')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils._get_registered_smt_file_path')
-    def test_remove_registration_data(
-        self,
-        mock_get_registered_smt_file_path,
-        mock_get_creds,
-        mock_http_basic_auth,
-        mock_os_path_exists,
-        mock_get_smt_from_store,
-        mock_request_delete,
-        mock_clean_hosts_file,
-        mock_remove_repo_artifacts,
-        mock_os_unlink,
-        mock_is_scc_connected,
-        mock_remove_credentials
-    ):
-        mock_get_creds.return_value = 'foo', 'bar'
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="smt-foo.susecloud.net"
-             SMTregistryName="registry-foo.susecloud.net"
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_smt_from_store.return_value = smt_server
-        mock_os_path_exists.return_value = True
-        mock_http_basic_auth.return_value = 'http basic auth'
-        response = Response()
-        response.status_code = 204
-        mock_request_delete.return_value = response
-        mock_is_scc_connected.return_value = True
-        assert utils.remove_registration_data() is None
-        assert "Clean current registration server: ('192.168.1.1', 'fc00::1')" in self._caplog.text
-        assert 'System successfully removed from update infrastructure' in self._caplog.text
-        assert 'System successfully removed from SCC' in self._caplog.text
-        assert 'Removing repository artifacts' in self._caplog.text
-
-    @patch('cloudregister.registerutils._remove_credentials')
-    @patch('cloudregister.registerutils.is_scc_connected')
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils._remove_repo_artifacts')
-    @patch('cloudregister.registerutils.clean_hosts_file')
-    @patch('cloudregister.registerutils.requests.delete')
-    @patch('cloudregister.registerutils.get_smt_from_store')
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch('cloudregister.registerutils.HTTPBasicAuth')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils._get_registered_smt_file_path')
-    def test_remove_registration_data_request_not_OK(
-        self,
-        mock_get_registered_smt_file_path,
-        mock_get_creds,
-        mock_http_basic_auth,
-        mock_os_path_exists,
-        mock_get_smt_from_store,
-        mock_request_delete,
-        mock_clean_hosts_file,
-        mock_remove_repo_artifacts,
-        mock_os_unlink,
-        mock_is_scc_connected,
-        mock_remove_credentials
-    ):
-        mock_get_creds.return_value = 'foo', 'bar'
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="smt-foo.susecloud.net"
-             SMTregistryName="registry-foo.susecloud.net"
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_smt_from_store.return_value = smt_server
-        mock_os_path_exists.return_value = True
-        mock_http_basic_auth.return_value = 'http basic auth'
-        response = Response()
-        response.status_code = 504
-        mock_request_delete.return_value = response
-        mock_is_scc_connected.return_value = True
-        assert utils.remove_registration_data() is None
-        assert 'System unknown to update infrastructure' in self._caplog.text
-        assert 'System not found in SCC. The system may still be tracked' in self._caplog.text
-        assert 'Removing repository artifacts' in self._caplog.text
-
-    @patch('cloudregister.registerutils._remove_credentials')
-    @patch('cloudregister.registerutils.is_scc_connected')
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils._remove_repo_artifacts')
-    @patch('cloudregister.registerutils.clean_hosts_file')
-    @patch('cloudregister.registerutils.requests.delete')
-    @patch('cloudregister.registerutils.get_smt_from_store')
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch('cloudregister.registerutils.HTTPBasicAuth')
-    @patch('cloudregister.registerutils.get_credentials')
-    @patch('cloudregister.registerutils._get_registered_smt_file_path')
-    def test_remove_registration_data_request_exception(
-        self,
-        mock_get_registered_smt_file_path,
-        mock_get_creds,
-        mock_http_basic_auth,
-        mock_os_path_exists,
-        mock_get_smt_from_store,
-        mock_request_delete,
-        mock_clean_hosts_file,
-        mock_remove_repo_artifacts,
-        mock_os_unlink,
-        mock_is_scc_connected,
-        mock_remove_credentials
-    ):
-        mock_get_creds.return_value = 'foo', 'bar'
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="smt-foo.susecloud.net"
-             SMTregistryName="registry-foo.susecloud.net"
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_smt_from_store.return_value = smt_server
-        mock_os_path_exists.return_value = True
-        mock_http_basic_auth.return_value = 'http basic auth'
-        response = Response()
-        response.status_code = 504
-        exception = requests.exceptions.RequestException('foo')
-        mock_request_delete.side_effect = exception
-        mock_is_scc_connected.return_value = True
-        assert utils.remove_registration_data() is None
-        assert 'Unable to remove client registration from SCC. ' in self._caplog.text
-
     @patch('cloudregister.registerutils.add_hosts_entry')
     @patch('cloudregister.registerutils.clean_hosts_file')
     def test_replace_hosts_entry(self, mock_clean_hosts_file, mock_add_hosts_entry):
@@ -3506,23 +3190,6 @@ class TestRegisterUtils:
         mock_os_unlink.assert_called_once_with(
             '/etc/zypp/credentials.d/SCCcredentials'
         )
-
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch('cloudregister.registerutils._remove_service')
-    @patch('cloudregister.registerutils._remove_repos')
-    def test_remove_artifacts(
-        self,
-        mock_remove_repos,
-        mock_remove_service,
-        mock_os_path_exists,
-        mock_os_unlink
-    ):
-        mock_os_path_exists.return_value = True
-        assert utils._remove_repo_artifacts(['foo']) is None
-        mock_remove_repos.assert_called_once_with(['foo'])
-        mock_remove_service.assert_called_once_with(['foo'])
-        mock_os_path_exists.assert_called_once_with('/etc/SUSEConnect')
 
     @patch('cloudregister.registerutils.glob.glob')
     @patch('cloudregister.registerutils._get_referenced_credentials')
@@ -4960,6 +4627,284 @@ export DOCKER_CONFIG=/etc/containers
         assert utils._matches_susecloud(
             ['foo', 'registry.susecloud.net', 'registry-azure.susecloud.net']
         ) == 'registry-azure.susecloud.net'
+
+    @patch('os.rename')
+    def test_etc_manage(self, mock_os_rename):
+        utils.etc_content = Mock()
+        utils.etc_manage('some')
+        utils.etc_content.manage.assert_called_once_with('some')
+        utils.etc_content.reset_mock()
+        utils.etc_manage('some', as_empty_file=True)
+        utils.etc_content.manage.assert_called_once_with('some')
+        assert mock_os_rename.call_args_list == [
+            call('some', 'some.new'),
+            call('some.new', 'some')
+        ]
+
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_repo_artifacts')
+    @patch('cloudregister.registerutils.clean_registry_setup')
+    @patch('cloudregister.registerutils.clean_hosts_file')
+    @patch('cloudregister.registerutils.clean_cache')
+    def test_clean_all_legacy(
+        self,
+        mock_clean_cache,
+        mock_clean_hosts_file,
+        mock_clean_registry_setup,
+        mock_clean_repo_artifacts,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions
+    ):
+        utils.clean_all_legacy()
+        mock_deregister_non_free_extensions.assert_called_once_with()
+        mock_deregister_from_update_infrastructure.assert_called_once_with()
+        mock_clean_cache.assert_called_once_with()
+        mock_clean_hosts_file.assert_called_once_with()
+        mock_clean_registry_setup.assert_called_once_with()
+        mock_clean_repo_artifacts.assert_called_once_with()
+        mock_deregister_from_SCC.assert_called_once_with()
+
+    @patch('cloudregister.registerutils.get_domain_name_from_region_server')
+    def test_clean_hosts_file_no_domain_set(
+        self, mock_get_domain_name_from_region_server
+    ):
+        with patch('builtins.open', create=True):
+            utils.clean_hosts_file()
+            mock_get_domain_name_from_region_server.assert_called_once_with()
+
+    @patch('os.path.exists')
+    @patch('os.unlink')
+    @patch('cloudregister.registerutils.is_scc_connected')
+    @patch('cloudregister.registerutils._remove_credentials')
+    @patch('cloudregister.registerutils._remove_repos')
+    @patch('cloudregister.registerutils._remove_service')
+    @patch('cloudregister.registerutils.get_smt_from_store')
+    def test_clean_repo_artifacts(
+        self,
+        mock_get_smt_from_store,
+        mock_remove_service,
+        mock_remove_repos,
+        mock_remove_credentials,
+        mock_is_scc_connected,
+        mock_os_unlink,
+        mock_os_path_exists
+    ):
+        smt = Mock()
+        smt.get_FQDN.return_value = 'some_FQDN'
+        mock_is_scc_connected.return_value = True
+        mock_os_path_exists.return_value = True
+        mock_get_smt_from_store.return_value = smt
+        utils.clean_repo_artifacts()
+        mock_remove_service.assert_called_once_with(
+            ['suse.com', 'some_FQDN']
+        )
+        mock_remove_repos.assert_called_once_with(
+            ['suse.com', 'some_FQDN']
+        )
+        mock_remove_credentials.assert_called_once_with(
+            ['suse.com', 'some_FQDN']
+        )
+
+    @patch('os.path.exists')
+    @patch('os.unlink')
+    def test_clean_registered_smt_data_file(
+        self, mock_os_unlink, mock_os_path_exists
+    ):
+        mock_os_path_exists.return_value = True
+        utils.clean_registered_smt_data_file()
+        mock_os_unlink.assert_called_once_with(
+            '/var/cache/cloudregister/currentSMTInfo.obj'
+        )
+
+    @patch('cloudregister.registerutils.get_extensions')
+    def test_deregister_non_free_extensions_failed(self, mock_get_extensions):
+        mock_get_extensions.side_effect = Exception
+        utils.deregister_non_free_extensions()
+        assert 'Deregister non free extensions failed with' in \
+            self._caplog.text
+
+    @patch('cloudregister.registerutils.get_extensions')
+    @patch('cloudregister.registerutils.get_installed_products')
+    @patch('cloudregister.registerutils.get_product_triplet')
+    @patch('cloudregister.registerutils.is_product_removable')
+    @patch('cloudregister.registerutils.register_product')
+    def test_deregister_non_free_extensions_failed_to_remove_product(
+        self,
+        mock_register_product,
+        mock_is_product_removable,
+        mock_get_product_triplet,
+        mock_get_installed_products,
+        mock_get_extensions
+    ):
+        product_type = namedtuple(
+            'product_type', ['name', 'version', 'arch']
+        )
+        extension = Mock()
+        extension.get.return_value = False
+        reg_prod = Mock()
+        reg_prod.returncode = 1
+        mock_register_product.return_value = reg_prod
+        mock_get_extensions.return_value = [extension]
+        mock_is_product_removable.return_value = True
+        mock_get_installed_products.return_value = 'some/some/some'
+        mock_get_product_triplet.return_value = product_type(
+            name='some', version='some', arch='some'
+        )
+        utils.deregister_non_free_extensions()
+        assert 'Non free extension some/some/some failed to be removed' in \
+            self._caplog.text
+
+    @patch('cloudregister.registerutils.get_product_triplet')
+    @patch('cloudregister.registerutils.get_product_tree')
+    @patch('cloudregister.registerutils.get_credentials')
+    @patch('cloudregister.registerutils.HTTPBasicAuth')
+    @patch('cloudregister.registerutils.requests.get')
+    def test_get_product_data_request_not_ok(
+        self,
+        mock_requests_get,
+        mock_HTTPBasicAuth,
+        mock_get_credentials,
+        mock_get_product_tree,
+        mock_get_product_triplet
+    ):
+        request = Mock()
+        request.status_code = 500
+        smt = Mock()
+        smt.get_FQDN.return_value = 'some_FQDN'
+        smt.get_ipv4.return_value = 'ipv4'
+        smt.get_ipv6.return_value = 'ipv6'
+        mock_get_credentials.return_value = ('user', 'pass')
+        product_type = namedtuple(
+            'product_type', ['name', 'version', 'arch']
+        )
+        mock_get_product_triplet.return_value = product_type(
+            name='some', version='some', arch='some'
+        )
+        mock_requests_get.return_value = request
+        with raises(Exception):
+            utils.get_product_data(registration_target=smt)
+        assert 'Unable to obtain product information from server' in \
+            self._caplog.text
+
+    @patch('glob.glob')
+    @patch('os.path.exists')
+    @patch('os.access')
+    @patch('cloudregister.registerutils.exec_subprocess')
+    @patch('cloudregister.registerutils.get_register_cmd')
+    @patch('cloudregister.registerutils.etc_manage')
+    def test_register_product_manage_zypper_files(
+        self,
+        mock_etc_manage,
+        mock_get_register_cmd,
+        mock_exec_subprocess,
+        mock_os_access,
+        mock_os_path_exists,
+        mock_glob
+    ):
+        glob_results = [
+            # new zypp files
+            ['some_repos'], ['some_services'], ['some_credentials'],
+            # exclude_zypp_files
+            [], [], [],
+        ]
+
+        def glob_mock(arg):
+            return glob_results.pop()
+
+        smt = Mock()
+        smt.get_FQDN.return_value = 'some_FQDN'
+        mock_get_register_cmd.return_value = 'SUSEConnect'
+        mock_os_path_exists.return_value = True
+        mock_os_access.return_value = True
+        mock_exec_subprocess.return_value = (b'', b'', 0)
+        mock_glob.side_effect = glob_mock
+
+        utils.register_product(smt)
+
+        assert mock_etc_manage.call_args_list == [
+            call('/etc/zypp/credentials.d/SCCcredentials'),
+            call('some_credentials', as_empty_file=True),
+            call('some_services', as_empty_file=True),
+            call('some_repos', as_empty_file=True)
+        ]
+
+    @patch('cloudregister.registerutils.get_credentials')
+    @patch('cloudregister.registerutils.HTTPBasicAuth')
+    @patch('cloudregister.registerutils.get_smt_from_store')
+    @patch('cloudregister.registerutils.requests.delete')
+    @patch('os.path.exists')
+    def test_deregister_from_update_infrastructure(
+        self,
+        mock_os_path_exists,
+        mock_requests_delete,
+        mock_get_smt_from_store,
+        mock_HTTPBasicAuth,
+        mock_get_credentials
+    ):
+        smt = Mock()
+        smt.get_FQDN.return_value = 'some_FQDN'
+        smt.get_ipv4.return_value = 'ipv4'
+        smt.get_ipv6.return_value = 'ipv6'
+        request = Mock()
+        mock_requests_delete.return_value = request
+        mock_get_smt_from_store.return_value = smt
+        mock_get_credentials.return_value = ('user', 'pass')
+        mock_os_path_exists.return_value = True
+
+        # test 204 = success return code
+        request.status_code = 204
+        utils.deregister_from_update_infrastructure()
+        assert 'System successfully removed from update infrastructure' in \
+            self._caplog.text
+
+        # test error request
+        request.status_code = 500
+        utils.deregister_from_update_infrastructure()
+        assert 'System unknown to update infrastructure' in \
+            self._caplog.text
+
+        # test exception
+        mock_requests_delete.side_effect = requests.exceptions.RequestException
+        utils.deregister_from_update_infrastructure()
+        assert 'Unable to remove client registration from server' in \
+            self._caplog.text
+
+    @patch('cloudregister.registerutils.HTTPBasicAuth')
+    @patch('cloudregister.registerutils.get_credentials')
+    @patch('cloudregister.registerutils.is_scc_connected')
+    @patch('cloudregister.registerutils.requests.delete')
+    def test_deregister_from_SCC(
+        self,
+        mock_requests_delete,
+        mock_is_scc_connected,
+        mock_get_credentials,
+        mock_HTTPBasicAuth
+    ):
+        request = Mock()
+        mock_requests_delete.return_value = request
+        mock_is_scc_connected.return_value = True
+        mock_get_credentials.return_value = ('user', 'pass')
+
+        # test 204 = success return code
+        request.status_code = 204
+        utils.deregister_from_SCC()
+        assert 'System successfully removed from SCC' in \
+            self._caplog.text
+
+        # test error request
+        request.status_code = 500
+        utils.deregister_from_SCC()
+        assert 'System not found in SCC' in \
+            self._caplog.text
+
+        # test exception
+        mock_requests_delete.side_effect = requests.exceptions.RequestException
+        utils.deregister_from_SCC()
+        assert 'Unable to remove client registration from SCC' in \
+            self._caplog.text
 
 
 # ---------------------------------------------------------------------------
