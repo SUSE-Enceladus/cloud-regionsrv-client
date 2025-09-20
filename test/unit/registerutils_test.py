@@ -1488,26 +1488,31 @@ class TestRegisterUtils:
 
     @patch('cloudregister.registerutils.exec_subprocess')
     def test_enable_repository(self, mock_exec_subprocess):
+        mock_exec_subprocess.return_value = (b'', b'', 0)
         utils.enable_repository('super_repo')
         mock_exec_subprocess.assert_called_once_with(
             ['zypper', 'mr', '-e', 'super_repo']
         )
+        mock_exec_subprocess.return_value = (b'', b'', -1)
+        utils.enable_repository('super_repo')
+        assert 'Unable to enable repository' in self._caplog.text
 
-    def test_exec_subprocess_exception(self):
-        assert utils.exec_subprocess(['aa']) == -1
+    @patch('subprocess.Popen')
+    def test_exec_subprocess_exception(self, mock_Popen):
+        mock_Popen.side_effect = OSError
+        assert utils.exec_subprocess(['aa']) == (b'', b'', -1)
 
-    @patch('cloudregister.registerutils.subprocess.Popen')
+    @patch('subprocess.Popen')
     def test_exec_subprocess(self, mock_popen):
         mock_process = Mock()
         mock_process.communicate = Mock(
-            return_value=[str.encode('stdout'), str.encode('stderr')]
+            return_value=[b'stdout', b'stderr']
         )
         mock_process.returncode = 1
         mock_popen.return_value = mock_process
-        assert utils.exec_subprocess(['foo'], True) == (
-            'stdout'.encode(), 'stderr'.encode(), 1
+        assert utils.exec_subprocess(['foo']) == (
+            b'stdout', b'stderr', 1
         )
-        assert utils.exec_subprocess(['foo']) == 1
 
     @patch('cloudregister.registerutils.requests.get')
     def test_fetch_smt_data_not_200_exception(
@@ -2112,7 +2117,7 @@ class TestRegisterUtils:
         mock_process.returncode = 1
         mock_popen.return_value = mock_process
         assert utils.get_installed_products() == []
-        assert 'zypper product query returned with zypper code 1' in self._caplog.text
+        assert 'zypper product query returned with zypper code: 1' in self._caplog.text
 
     @patch('cloudregister.registerutils.subprocess.Popen')
     @patch('cloudregister.registerutils.time.sleep')
@@ -3226,8 +3231,8 @@ class TestRegisterUtils:
     @patch('cloudregister.registerutils.time.sleep')
     @patch('cloudregister.registerutils.exec_subprocess')
     def test_update_ca_chain(self, mock_exec_subprocess, mock_time_sleep):
-        mock_exec_subprocess.return_value = 314
-        utils.update_ca_chain(['cmd']) == 1
+        mock_exec_subprocess.return_value = (b'', b'', 314)
+        assert utils.update_ca_chain(['cmd']) == 0
         assert 'Certificate update failed attempt 1' in self._caplog.text
         assert 'Certificate update failed attempt 2' in self._caplog.text
         assert 'Certificate update failed attempt 3' in self._caplog.text
@@ -3236,11 +3241,8 @@ class TestRegisterUtils:
             call(5),
             call(5)
         ]
-
-    @patch('cloudregister.registerutils.exec_subprocess')
-    def test_update_ca_chain_failed(self, mock_exec_subprocess):
-        mock_exec_subprocess.return_value = 0
-        utils.update_ca_chain(['cmd']) == 1
+        mock_exec_subprocess.return_value = (b'', b'', 0)
+        assert utils.update_ca_chain(['cmd']) == 1
 
     @patch('cloudregister.registerutils.is_new_registration')
     def test_update_rmt_cert_new_registration(self, mock_is_new_registration):
@@ -3866,9 +3868,8 @@ class TestRegisterUtils:
         mock_os_path_exists.return_value = [False, True]
         mock_toml_load.side_effect = toml.decoder.TomlDecodeError('msg', 'doc', 0)
         mock_json_load.side_effect = json.decoder.JSONDecodeError('msg', 'doc', 0)
-        mock_exec_subprocess.return_value = 1
+        mock_exec_subprocess.return_value = (b'', b'', 1)
         with patch('builtins.open', create=True) as mock_open:
-            mock_exec_subprocess.return_value = 1
             assert utils.prepare_registry_setup(
                 'registry-supercloud.susecloud.net', 'login', 'pass'
             ) is False
@@ -3892,7 +3893,7 @@ class TestRegisterUtils:
         mock_os_path_exists.return_value = True
         with patch('builtins.open', create=True) as mock_open:
             mock_open.side_effect = OSError('oh no ! an error')
-            mock_exec_subprocess.return_value = 1
+            mock_exec_subprocess.return_value = (b'', b'', 1)
             assert utils.prepare_registry_setup(
                 'registry-supercloud.susecloud.net',
                 'login',
@@ -4141,7 +4142,7 @@ export DOCKER_CONFIG=/etc/containers
     ):
         mock_generate_registry_auth_token.return_value = 'auth_token'
         mock_json_load.return_value = {'auths': 'bar'}
-        mock_exec_subprocess.return_value = 0
+        mock_exec_subprocess.return_value = (b'', b'', 0)
         with patch('builtins.open', create=True) as mock_open:
             assert utils.clean_registry_auth('registry-foo.susecloud.net') is None
             mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
@@ -4161,7 +4162,7 @@ export DOCKER_CONFIG=/etc/containers
     ):
         mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
         mock_get_credentials.return_value = ('SCC_login', 'password')
-        mock_exec_subprocess.return_value = 1
+        mock_exec_subprocess.return_value = (b'', b'', 1)
         with patch('builtins.open', create=True) as mock_open:
             utils.clean_registry_auth('registry-foo.susecloud.net')
             mock_open.assert_called_once_with('/etc/containers/config.json', 'r')
@@ -4443,7 +4444,7 @@ export DOCKER_CONFIG=/etc/containers
         mock_os_path_exists, mock_toml_load, mock_exec_subprocess
     ):
         mock_os_path_exists.return_value = True
-        mock_exec_subprocess.return_value = 1
+        mock_exec_subprocess.return_value = (b'', b'', 1)
         with patch('builtins.open', create=True) as mock_open:
             mock_open.side_effect = OSError('oh no !')
             assert utils.set_registries_conf_podman(
@@ -4722,7 +4723,7 @@ export DOCKER_CONFIG=/etc/containers
         mock_json_load, mock_exec_subprocess
     ):
         mock_json_load.side_effect = json.decoder.JSONDecodeError('a', 'b', 1)
-        mock_exec_subprocess.return_value = 0
+        mock_exec_subprocess.return_value = (b'', b'', 0)
         with patch('builtins.open'):
             utils.get_registry_conf_file(
                 '/etc/docker/daemon.json', 'docker'

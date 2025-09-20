@@ -2,14 +2,15 @@
 *.egg-info
 
 # Unit test / coverage reports
-.tox/
 .coverage
 .cache
-**/*/__pycache__/
-.pytest_cache
 
+# Byte-compiled / optimized / DLL files
+.pytest_cache/
+__pycache__/
+
+# packaging
 dist
-*.tar.bz2
 
 # Poetry
 poetry.lock
