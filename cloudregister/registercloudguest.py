@@ -856,4 +856,3 @@ def main(args):
 def app():  # pragma: no cover
     args = argparse.parse_args()
     main(args)
-    utils.switch_services_to_plugin()

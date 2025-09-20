@@ -2850,68 +2850,6 @@ class TestRegisterUtils:
         utils._set_state_file('foo')
         mock_path.assert_called_once_with('foo')
 
-    @patch('cloudregister.registerutils.get_available_smt_servers')
-    def test_switch_services_to_plugin_no_servers(self, mock_get_available_smt_servers):
-        mock_get_available_smt_servers.return_value = []
-        assert utils.switch_services_to_plugin() is None
-
-    @patch('cloudregister.registerutils.configparser.RawConfigParser.read')
-    @patch('cloudregister.registerutils.glob.glob')
-    @patch('cloudregister.registerutils.get_available_smt_servers')
-    def test_switch_services_to_plugin_config_parse_error(
-        self,
-        mock_get_available_smt_servers,
-        mock_glob,
-        mock_raw_config_parser_read
-    ):
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="smt-foo.susecloud.net"
-             SMTregistryName="registry-foo.susecloud.net"
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_available_smt_servers.return_value = [smt_server]
-        mock_glob.return_value = ['foo']
-        mock_raw_config_parser_read.side_effect = configparser.Error('foo')
-        utils.switch_services_to_plugin()
-        assert 'Unable to parse "foo" skipping' in self._caplog.text
-
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils.os.symlink')
-    @patch('cloudregister.registerutils.glob.glob')
-    @patch('cloudregister.registerutils.get_available_smt_servers')
-    def test_switch_services_to_plugin_unlink_service(
-        self,
-        mock_get_available_smt_servers,
-        mock_glob,
-        mock_os_symlink,
-        mock_os_unlink,
-        mock_os_path_exists
-    ):
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="smt-foo.susecloud.net"
-             SMTregistryName="registry-foo.susecloud.net"
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_available_smt_servers.return_value = [smt_server]
-        mock_glob.return_value = ['../data/service.service']
-        mock_os_path_exists.return_value = True
-        utils.switch_services_to_plugin()
-        mock_os_symlink.assert_called_once_with(
-            '/usr/sbin/cloudguest-repo-service',
-            '/usr/lib/zypp/plugins/services/Public_Cloud_Module_x86_64'
-        )
-        assert mock_os_unlink.call_args_list == [
-            call('/usr/lib/zypp/plugins/services/Public_Cloud_Module_x86_64'),
-            call('../data/service.service')
-        ]
-
     @patch('cloudregister.registerutils.fetch_smt_data')
     @patch('cloudregister.registerutils.get_config')
     def test_get_domain_name_from_region_server(
