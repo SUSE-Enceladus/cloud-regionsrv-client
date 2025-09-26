@@ -1,18 +1,10 @@
 buildroot = /
 
-python_version = 3
-python_lookup_name = python$(python_version)
-python = $(shell which $(python_lookup_name))
-
-version := $(shell \
-    $(python) -c \
-    'from cloudregister.registercloudguest import __version__; print(__version__)'\
-)
-
 clean:
 	rm -rf dist
 
-package: clean
+package: clean check test
+	$(eval version := $(shell poetry run python -c 'from cloudregister.registercloudguest import __version__; print(__version__)'))
 	# build the sdist source tarball
 	poetry build --format=sdist
 	# provide rpm source tarball
