@@ -32,6 +32,7 @@ import time
 import toml
 import yaml
 
+from unittest.mock import Mock
 from collections import namedtuple
 from lxml import etree
 from pathlib import Path
@@ -67,19 +68,7 @@ requests.packages.urllib3.disable_warnings(
 
 log = Logger.get_logger()
 
-etc_content = None
-
-
-# ----------------------------------------------------------------------------
-def etc_manage(filename, as_empty_file=False):
-    """
-    Add file to etc content manager if defined
-
-    if as_empty_file is set to True the given file will
-    be added as an empty file to the content manager
-    """
-    if etc_content:
-        etc_content.manage(filename, as_empty_file)
+etc_content = Mock()
 
 
 # ----------------------------------------------------------------------------
@@ -102,7 +91,7 @@ def add_hosts_entry(smt_server):
             smt_server.get_registry_FQDN()
         )
 
-    etc_manage('/etc/hosts')
+    etc_content.manage('/etc/hosts')
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
@@ -193,7 +182,7 @@ def clean_hosts_file(domain_name=None):
     except IndexError:
         pass
 
-    etc_manage(HOSTSFILE_PATH)
+    etc_content.manage(HOSTSFILE_PATH)
     with open(HOSTSFILE_PATH, 'wb') as hosts_file:
         for entry in new_hosts_content:
             hosts_file.write(entry)
@@ -530,7 +519,7 @@ def register_product(
         log_information = log_information.replace(regcode, 'XXXX')
 
     log.info('Registration: {0}'.format(log_information))
-    etc_manage('{}/{}'.format(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME))
+    etc_content.manage('{}/{}'.format(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME))
 
     # get list of zypp setup files existing prior
     # registration. Those files will not be taken into account
@@ -553,14 +542,14 @@ def register_product(
     # such that we can handle them properly during cleanup
     for repo in glob.glob('/etc/zypp/repos.d/*.repo'):
         if repo not in exclude_zypp_files:
-            etc_manage(repo, as_empty_file=True)
+            etc_content.manage(repo, as_empty_file=True)
     for service in glob.glob('/etc/zypp/services.d/*.service'):
         if service not in exclude_zypp_files:
-            etc_manage(service, as_empty_file=True)
+            etc_content.manage(service, as_empty_file=True)
     for credential in glob.glob('/etc/zypp/credentials.d/*'):
         if BASE_CREDENTIALS_NAME not in credential and \
          credential not in exclude_zypp_files:
-            etc_manage(credential, as_empty_file=True)
+            etc_content.manage(credential, as_empty_file=True)
 
     return suseconnect_type(
         returncode=returncode,
@@ -933,7 +922,7 @@ def get_registry_credentials(set_new):
 # ----------------------------------------------------------------------------
 def write_registry_credentials(content, set_new):
     """Update the registry credentials file with the value of 'content'."""
-    etc_manage(REGISTRY_CREDENTIALS_PATH)
+    etc_content.manage(REGISTRY_CREDENTIALS_PATH)
     try:
         with open(REGISTRY_CREDENTIALS_PATH, 'w') as cred_json_file:
             json.dump(content, cred_json_file)
@@ -1042,7 +1031,7 @@ def get_registry_conf_file(container_path, container):
 def update_bashrc(content, mode):
     """Update the env vars for the container engines
     with the location of the config file to the bashrc local file."""
-    etc_manage(PROFILE_LOCAL_PATH)
+    etc_content.manage(PROFILE_LOCAL_PATH)
     try:
         with open(PROFILE_LOCAL_PATH, mode) as bashrc_file:
             bashrc_file.write(content)
@@ -1327,7 +1316,7 @@ def clean_registries_conf_docker(private_registry_fqdn):
 # ----------------------------------------------------------------------------
 def write_registries_conf(registries_conf, container_path, container_name):
     """Write registries_conf content to container_path."""
-    etc_manage(container_path)
+    etc_content.manage(container_path)
     try:
         if container_name == 'podman':
             with open(container_path, 'w') as registries_conf_file:
@@ -2753,7 +2742,7 @@ def _replace_url_target(config_files, new_smt):
         with open(config_file, 'r') as cfg_file:
             content = cfg_file.read()
         if current_service_server in content:
-            etc_manage(config_file)
+            etc_content.manage(config_file)
             with open(config_file, 'w') as new_config:
                 new_config.write(content.replace(
                     current_service_server,
@@ -2918,7 +2907,7 @@ def _set_state_file(filepath):
 # ----------------------------------------------------------------------------
 def _write_suma_conf(updated_content):
     """Update the SUMA SUMA_REGISTRY_CONF_PATH file with the new content."""
-    etc_manage(SUMA_REGISTRY_CONF_PATH)
+    etc_content.manage(SUMA_REGISTRY_CONF_PATH)
     try:
         with open(SUMA_REGISTRY_CONF_PATH, 'w') as suma_config:
             yaml.dump(updated_content, suma_config, default_flow_style=False)

@@ -4632,14 +4632,6 @@ export DOCKER_CONFIG=/etc/containers
             ['foo', 'registry.susecloud.net', 'registry-azure.susecloud.net']
         ) == 'registry-azure.susecloud.net'
 
-    def test_etc_manage(self):
-        utils.etc_content = Mock()
-        utils.etc_manage('some')
-        utils.etc_content.manage.assert_called_once_with('some', False)
-        utils.etc_content.reset_mock()
-        utils.etc_manage('some', as_empty_file=True)
-        utils.etc_content.manage.assert_called_once_with('some', True)
-
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
@@ -4793,10 +4785,8 @@ export DOCKER_CONFIG=/etc/containers
     @patch('os.access')
     @patch('cloudregister.registerutils.exec_subprocess')
     @patch('cloudregister.registerutils.get_register_cmd')
-    @patch('cloudregister.registerutils.etc_manage')
     def test_register_product_manage_zypper_files(
         self,
-        mock_etc_manage,
         mock_get_register_cmd,
         mock_exec_subprocess,
         mock_os_access,
@@ -4821,9 +4811,10 @@ export DOCKER_CONFIG=/etc/containers
         mock_exec_subprocess.return_value = (b'', b'', 0)
         mock_glob.side_effect = glob_mock
 
+        utils.etc_content.reset_mock()
         utils.register_product(smt)
 
-        assert mock_etc_manage.call_args_list == [
+        assert utils.etc_content.manage.call_args_list == [
             call('/etc/zypp/credentials.d/SCCcredentials'),
             call('some_credentials', as_empty_file=True),
             call('some_services', as_empty_file=True),
