@@ -51,6 +51,18 @@ removed from SCC.
 Delay the process by the given number of seconds.
 .IP "--debug"
 Debug mode, increase verbosity of logfile information.
+.IP "--git"
+Use git for content management. In this mode a git repo is initialized
+for the /etc directory of the system. All files modified and/or produced
+by the registration client will be managed via the git content manager
+and the registration process runs in a context manager to allow for
+seamless cleanup in case of errors. As files are known to git in this
+mode. Also the user initiated cleanup or force registration will make
+use of the content manager to restore data to is original state. As a
+user there is also the opportunity to watch the changes done by the
+registration client via the git utility. As we can't force git to
+become part of the system, this mode is fully optional and requires
+the installation of the git package prior use.
 .IP "-e --email"
 The e-mail address associated with a subscription in SCC. Only use this option
 for BYOS instances and in conjunction with "--regcode" option.
