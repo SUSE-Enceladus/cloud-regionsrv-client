@@ -79,11 +79,7 @@ def etc_manage(filename, as_empty_file=False):
     be added as an empty file to the content manager
     """
     if etc_content:
-        if as_empty_file:
-            os.rename(filename, '{}.new'.format(filename))
-        etc_content.manage(filename)
-        if as_empty_file:
-            os.rename('{}.new'.format(filename), filename)
+        etc_content.manage(filename, as_empty_file)
 
 
 # ----------------------------------------------------------------------------

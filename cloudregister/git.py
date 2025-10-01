@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 from collections import namedtuple
 
+from tempfile import NamedTemporaryFile
 from cloudregister.logger import Logger
 from cloudregister.registerutils import (
     exec_subprocess,
@@ -42,6 +43,7 @@ class Git:
     Use git for content management of data changed by cloudregister
     """
     def __init__(self, directory):
+        self.bind_mounts = []
         self.managed_dir = directory
         self.managed_dir_git = '{}/.git'.format(directory)
         self.managed_files = {}
@@ -83,10 +85,10 @@ class Git:
     def __enter__(self):
         return self
 
-    def manage(self, filename):
+    def manage(self, filename, as_empty_file=False):
         if not self._is_managed(filename):
-            if not os.path.exists(filename):
-                self._manage_new(filename)
+            if not os.path.exists(filename) or as_empty_file:
+                self._manage_new(filename, as_empty_file)
             else:
                 self._manage_existing(filename)
 
@@ -148,24 +150,33 @@ class Git:
             return True
         return False
 
-    def _manage_new(self, filename):
+    def _manage_new(self, filename, as_empty_file=False):
         """
         Commit a net new file as empty version to the git
         """
+        failed = False
         log.info('Manage new file: {}'.format(filename))
         self.managed_files[filename] = managed_file_type(
             new=True, done=False
         )
         try:
-            with open(filename, 'w'):
-                pass
+            if os.path.exists(filename) and as_empty_file:
+                temp_filename = NamedTemporaryFile()
+                _, _, failed = exec_subprocess(
+                    ['mount', '--bind', temp_filename.name, filename]
+                )
+                self.bind_mounts.append(temp_filename.name)
+            else:
+                with open(filename, 'w'):
+                    pass
         except Exception as issue:
             raise CloudRegisterPathError(
                 'Failed to create new file: {}'.format(issue)
             )
-        stdout, stderr, failed = exec_subprocess(
-            self.git_cmd + ['add', filename]
-        )
+        if not failed:
+            stdout, stderr, failed = exec_subprocess(
+                self.git_cmd + ['add', filename]
+            )
         if not failed:
             stdout, stderr, failed = exec_subprocess(
                 self.git_cmd + [
@@ -173,6 +184,8 @@ class Git:
                     'origin:{}'.format(filename)
                 ]
             )
+        if os.path.exists(filename) and as_empty_file:
+            exec_subprocess(['umount', filename])
         if failed:
             raise CloudRegisterGitError(
                 'Failed to add managed file to git: {}:{}'.format(
@@ -218,6 +231,10 @@ class Git:
         """
         Cleanup all unfinished files
         """
+        for filename in self.bind_mounts:
+            _, _, failed = exec_subprocess(['mountpoint', '-q', filename])
+            if not failed:
+                exec_subprocess(['umount', filename])
         for filename, managed in self.managed_files.items():
             if not managed.done:
                 log.info('Cleaning up unfinished file: {}'.format(filename))

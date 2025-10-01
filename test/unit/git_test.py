@@ -57,12 +57,50 @@ class TestGit:
             )
         ]
 
-        # test context manager cleanup
+        # test context manager cleanup checkout error
         mock_is_empty.return_value = True
         with Git('/some') as some_manage:
             some_manage.managed_files['some'] = managed_file_type(
                 new=True, done=False
             )
+
+        # test context manager cleanup
+        mock_Path.reset_mock()
+        mock_is_empty.return_value = True
+        mock_exec_subprocess.reset_mock()
+        mock_exec_subprocess.return_value = (b'', b'', 0)
+        with Git('/some') as some_manage:
+            some_manage.bind_mounts = ['some']
+            some_manage.managed_files['some'] = managed_file_type(
+                new=True, done=False
+            )
+        assert mock_exec_subprocess.call_args_list == [
+            call(['git', 'init', '/some']),
+            call(
+                [
+                    'git', '--work-tree', '/some', '--git-dir', '/some/.git',
+                    'config', 'user.email', 'public-cloud-dev@susecloud.net'
+                ]
+            ),
+            call(
+                [
+                    'git', '--work-tree', '/some', '--git-dir', '/some/.git',
+                    'config', 'user.name', 'Public Cloud Team'
+                ]
+            ),
+            call(
+                ['mountpoint', '-q', 'some']
+            ),
+            call(
+                ['umount', 'some']
+            ),
+            call(
+                [
+                    'git', '--work-tree', '/some',
+                    '--git-dir', '/some/.git', 'checkout', 'some'
+                ]
+            )
+        ]
         mock_Path.return_value.unlink.assert_called_once_with()
 
         # test init exception
@@ -126,7 +164,7 @@ class TestGit:
         mock_is_managed.return_value = False
         mock_os_path_exists.return_value = False
         self.git.manage('some')
-        mock_manage_new.assert_called_once_with('some')
+        mock_manage_new.assert_called_once_with('some', False)
         mock_os_path_exists.return_value = True
         self.git.manage('some')
         mock_manage_existing.assert_called_once_with('some')
@@ -180,7 +218,9 @@ class TestGit:
         assert self.git._is_managed('/some') is True
 
     @patch('cloudregister.git.exec_subprocess')
-    def test_manage_new(self, mock_exec_subprocess):
+    @patch('os.path.exists')
+    def test_manage_new(self, mock_os_path_exists, mock_exec_subprocess):
+        mock_os_path_exists.return_value = False
         mock_exec_subprocess.return_value = (b'', b'', 0)
         with patch('builtins.open', create=True) as mock_open:
             mock_open.side_effect = Exception
@@ -213,6 +253,45 @@ class TestGit:
         with patch('builtins.open', create=True):
             with raises(CloudRegisterGitError):
                 self.git._manage_new('some')
+
+    @patch('cloudregister.git.exec_subprocess')
+    @patch('cloudregister.git.NamedTemporaryFile')
+    @patch('os.path.exists')
+    def test_manage_new_as_empty_file(
+        self, mock_os_path_exists, mock_NamedTemporaryFile,
+        mock_exec_subprocess
+    ):
+        temp_filename = Mock()
+        temp_filename.name = 'tempfile'
+        mock_NamedTemporaryFile.return_value = temp_filename
+        mock_os_path_exists.return_value = True
+        mock_exec_subprocess.return_value = (b'', b'', 0)
+        self.git._manage_new('some', as_empty_file=True)
+        assert mock_exec_subprocess.call_args_list == [
+            call(
+                ['mount', '--bind', 'tempfile', 'some']
+            ),
+            call(
+                [
+                    'git',
+                    '--work-tree', '/some',
+                    '--git-dir', '/some/.git',
+                    'add', 'some'
+                ]
+            ),
+            call(
+                [
+                    'git',
+                    '--work-tree', '/some',
+                    '--git-dir', '/some/.git',
+                    'commit', '--allow-empty', '-m',
+                    'origin:some'
+                ]
+            ),
+            call(
+                ['umount', 'some']
+            )
+        ]
 
     @patch('cloudregister.git.exec_subprocess')
     @patch.object(Git, '_known_to_git')
