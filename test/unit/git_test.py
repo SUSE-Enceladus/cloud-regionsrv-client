@@ -27,11 +27,11 @@ class TestGit:
     @patch('os.path.isdir')
     @patch('os.path.isfile')
     @patch('cloudregister.git.exec_subprocess')
-    @patch('cloudregister.git.clean_all_legacy')
+    @patch('cloudregister.git.clean_all_standard')
     @patch('cloudregister.git.Path')
     @patch.object(Git, 'is_empty')
     def setup(
-        self, mock_is_empty, mock_Path, mock_clean_all_legacy,
+        self, mock_is_empty, mock_Path, mock_clean_all_standard,
         mock_exec_subprocess, mock_os_path_isfile, mock_os_path_isdir
     ):
         mock_exec_subprocess.return_value = (b'stdout', b'stderr', 1)
@@ -39,8 +39,8 @@ class TestGit:
         mock_os_path_isfile.return_value = True
         self.git = Git('/some')
 
-        # test legacy cleanup and init
-        mock_clean_all_legacy.assert_called_once_with()
+        # test standard cleanup and init
+        mock_clean_all_standard.assert_called_once_with()
         assert mock_exec_subprocess.call_args_list == [
             call(['git', 'init', '/some']),
             call(
@@ -73,11 +73,11 @@ class TestGit:
     @patch('os.path.isdir')
     @patch('os.path.isfile')
     @patch('cloudregister.git.exec_subprocess')
-    @patch('cloudregister.git.clean_all_legacy')
+    @patch('cloudregister.git.clean_all_standard')
     @patch('cloudregister.git.Path')
     @patch.object(Git, 'is_empty')
     def setup_method(
-        self, cls, mock_is_empty, mock_Path, mock_clean_all_legacy,
+        self, cls, mock_is_empty, mock_Path, mock_clean_all_standard,
         mock_exec_subprocess, mock_os_path_isfile, mock_os_path_isdir
     ):
         self.setup()

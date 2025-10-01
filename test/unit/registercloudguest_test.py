@@ -2658,10 +2658,10 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
     @patch('cloudregister.registerutils.clean_cache')
-    @patch('cloudregister.registerutils.clean_all_legacy')
+    @patch('cloudregister.registerutils.clean_all_standard')
     def test_cleanup(
         self,
-        mock_clean_all_legacy,
+        mock_clean_all_standard,
         mock_clean_cache,
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
@@ -2676,9 +2676,9 @@ class TestRegisterCloudGuest:
         mock_clean_cache.assert_called_once_with()
         etc_content.cleanup.assert_called_once_with()
 
-        # cleanup legacy style
+        # cleanup standard style
         register_cloud_guest.cleanup()
-        mock_clean_all_legacy.assert_called_once_with()
+        mock_clean_all_standard.assert_called_once_with()
 
     @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')

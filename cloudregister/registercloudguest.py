@@ -143,7 +143,7 @@ def cleanup(etc_content=None):
         utils.clean_cache()
         etc_content.cleanup()
     else:
-        utils.clean_all_legacy()
+        utils.clean_all_standard()
 
 
 # ----------------------------------------------------------------------------

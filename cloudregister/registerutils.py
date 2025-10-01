@@ -132,16 +132,12 @@ def add_region_server_args_to_URL(api, cfg):
 
 
 # ----------------------------------------------------------------------------
-def clean_all_legacy():
+def clean_all_standard():
     """
     Clean up any registration artifacts
 
-    This is a legacy method which cleans up registration data
-    without using the git content manager. This function is kept
-    for tools not yet moved to use git and to allow transition
-    from non git based content management to git based content
-    management, e.g on package update of cloud-regionsrv-client
-    on already registered clients.
+    This is the standard method which cleans up registration data
+    without using the git content manager.
     """
     # Clean registrations via API requests
     deregister_non_free_extensions()
@@ -540,7 +536,7 @@ def register_product(
     log.info('Registration: {0}'.format(log_information))
     etc_manage('{}/{}'.format(ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME))
 
-    # get list of zypp setup files eventually existing prior
+    # get list of zypp setup files existing prior
     # registration. Those files will not be taken into account
     # for the registration client.
     exclude_zypp_files = []

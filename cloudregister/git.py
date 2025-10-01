@@ -19,7 +19,7 @@ from cloudregister.logger import Logger
 from cloudregister.registerutils import (
     exec_subprocess,
     get_state_dir,
-    clean_all_legacy
+    clean_all_standard
 )
 from cloudregister.defaults import (
     REGISTERED_SMT_SERVER_DATA_FILE_NAME
@@ -60,9 +60,9 @@ class Git:
             # The system is already registered but is not using the
             # git content manager. The origin state is therefore
             # dirty and needs to be cleaned up first with the
-            # legacy cleanup code. From there the new git based
+            # standard cleanup code. From there the new git based
             # content management can be established.
-            clean_all_legacy()
+            clean_all_standard()
 
         try:
             if not os.path.isdir(self.managed_dir_git):

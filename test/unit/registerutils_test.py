@@ -4652,7 +4652,7 @@ export DOCKER_CONFIG=/etc/containers
     @patch('cloudregister.registerutils.clean_registry_setup')
     @patch('cloudregister.registerutils.clean_hosts_file')
     @patch('cloudregister.registerutils.clean_cache')
-    def test_clean_all_legacy(
+    def test_clean_all_standard(
         self,
         mock_clean_cache,
         mock_clean_hosts_file,
@@ -4662,7 +4662,7 @@ export DOCKER_CONFIG=/etc/containers
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions
     ):
-        utils.clean_all_legacy()
+        utils.clean_all_standard()
         mock_deregister_non_free_extensions.assert_called_once_with()
         mock_deregister_from_update_infrastructure.assert_called_once_with()
         mock_clean_cache.assert_called_once_with()
