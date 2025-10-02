@@ -40,6 +40,7 @@ Patch0:         fix-for-sles12-disable-ipv6.patch
 Patch1:         fix-for-sles12-disable-registry.patch
 # PATCH-FIX-SLES12 fix-for-sles12-no-trans_update.patch
 Patch2:         fix-for-sles12-no-trans_update.patch
+Requires:       sed
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
@@ -267,6 +268,17 @@ if [ "$1" -gt 1 ] ; then
     %{_sbindir}/createregioninfo
 fi
 fi
+# replace obsolete NCCcredentials with SCCcredentials
+# the following code block is scheduled for deletion end of 2026
+for repo in /etc/zypp/repos.d/*.repo; do
+    test -f "${repo}" && sed -i "s@NCCcredentials@SCCcredentials@g" "${repo}"
+done
+if [ -f /etc/zypp/credentials.d/NCCcredentials ]; then
+    mv \
+        /etc/zypp/credentials.d/NCCcredentials \
+        /etc/zypp/credentials.d/SCCcredentials
+fi
+# enable services
 %service_add_post guestregister.service containerbuild-regionsrv.service
 
 %post license-watcher
