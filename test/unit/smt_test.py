@@ -54,7 +54,7 @@ smt_data_ipv46 = dedent('''\
 
 smt_data_no_region = dedent('''\
     <smtInfo fingerprint="00:11:22:33"
-     SMTserverIP="192.168.1.1"
+     SMTserverIP="localhost:1234"
      SMTserverName="fantasy.example.com"
      SMTregistryName="registry-fantasy.example.com"/>''')
 

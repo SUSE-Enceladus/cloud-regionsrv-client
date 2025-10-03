@@ -238,9 +238,16 @@ class SMT:
             if not srv_ip:
                 continue
             rmt_ip = srv_ip
-            # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-            if isinstance(ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address):
-                rmt_ip = '[%s]' % srv_ip
+            try:
+                # Per rfc3986 IPv6 addresses in a URI are enclosed in []
+                if isinstance(ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address):
+                    rmt_ip = '[%s]' % srv_ip
+            except ValueError:
+                # move on with the rmt_ip stored in the first place
+                # The given rmt_ip is not an IP but a name
+                # for which the following request is expected to work
+                pass
+
             health_url = 'https://%s/api/health/status' % rmt_ip
             cert_url = '%s://%s/' % (self._protocol, rmt_ip)
             check_urls[health_url] = cert_url
