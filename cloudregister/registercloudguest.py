@@ -39,7 +39,10 @@ import uuid
 from cloudregister.logger import Logger
 from cloudregister.defaults import (
     LOG_FILE,
-    ZYPP_SERVICES
+    ZYPP_SERVICES,
+    DOCKER_CONFIG_PATH,
+    REGISTERED_SMT_SERVER_DATA_FILE_NAME,
+    AVAILABLE_SMT_SERVER_DATA_FILE_NAME
 )
 import cloudregister.registerutils as utils
 
@@ -126,17 +129,18 @@ def register_modules(
 
 # ----------------------------------------------------------------------------
 def cleanup():
-    """Remove any registration artifacts"""
-    utils.clean_all()
+    """
+    Cleanup registration data. This covers sending
+    delete requests to the API servers as well as deletion of
+    cache and etc files.
+    """
+    utils.clean_all_standard()
 
 
 # ----------------------------------------------------------------------------
-def setup_registry(registration_target, clean='registry'):
+def setup_registry(registration_target):
     """
     Run the registration process for the container registry
-
-    clean == all -> cleans repository and registry setup
-    clean == registry -> clean only registry artifacts
     """
     user, password = utils.get_credentials(
         utils.get_credentials_file(registration_target)
@@ -149,7 +153,7 @@ def setup_registry(registration_target, clean='registry'):
             'docker config file {} not found. '
             'Registration for docker skipped. '
             'Install docker to add docker support.'.format(
-                utils.DOCKER_CONFIG_PATH
+                DOCKER_CONFIG_PATH
             )
         )
 
@@ -195,17 +199,14 @@ def setup_registry(registration_target, clean='registry'):
         if utils.is_suma_instance():
             registry_setup_ok = utils.set_registry_fqdn_suma(registry_fqdn)
     if not registry_setup_ok:
-        if clean == 'all':
-            cleanup()
-        elif clean == 'registry':
-            utils.clean_registry_setup()
         log.error(
             'Registration failed(registry), see {0} for details'.format(
                 LOG_FILE
             )
         )
-        sys.exit(1)
+        return False
     log.warning('Instance registry setup done, sessions must be restarted !')
+    return True
 
 
 # ----------------------------------------------------------------------------
@@ -317,7 +318,10 @@ def register_base_product(
                 # 67: Server responded with error: see log output
                 log.error('Baseproduct registration failed')
                 log.error(error_message)
-                cleanup()
+                utils.deregister_non_free_extensions()
+                utils.deregister_from_update_infrastructure()
+                utils.deregister_from_SCC()
+                utils.clean_cache()
                 sys.exit(1)
             for smt_srv in region_smt_servers:
                 target_smt_ipv4 = registration_target.get_ipv4()
@@ -335,7 +339,11 @@ def register_base_product(
                             str((new_smt_ipv4, new_smt_ipv6))
                         )
                     )
-                    utils.remove_registration_data()
+                    utils.clear_rmt_as_scc_proxy_flag()
+                    utils.deregister_non_free_extensions()
+                    utils.deregister_from_update_infrastructure()
+                    utils.deregister_from_SCC()
+                    utils.clean_registered_smt_data_file()
                     utils.clean_hosts_file(
                         registration_target.get_domain_name()
                     )
@@ -358,7 +366,7 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
         registration_smt_cache_file_name = (
             os.path.join(
                 utils.get_state_dir(),
-                utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME
+                REGISTERED_SMT_SERVER_DATA_FILE_NAME
             )
         )
 
@@ -509,7 +517,7 @@ def get_update_servers(region_smt_data, cfg):
         utils.store_smt_data(
             os.path.join(
                 utils.get_state_dir(),
-                utils.AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+                AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
             ),
             smt_server
         )
@@ -736,9 +744,10 @@ def main(args):
         inst_data_out.close()
 
     if registration_target_found:
-        # The system is properly registered, run through the checklist now:
         # 1. check/setup the container registry for this target
-        setup_registry(registration_smt)
+        if not setup_registry(registration_smt):
+            utils.clean_registry_setup()
+            sys.exit(1)
 
         # 2. check/setup if we got a regcode which is handled as LTSS
         if args.reg_code:
@@ -809,7 +818,10 @@ def main(args):
         os.unlink(instance_data_filepath)
 
     if registration_returncode:
-        cleanup()
+        utils.deregister_non_free_extensions()
+        utils.deregister_from_update_infrastructure()
+        utils.deregister_from_SCC()
+        utils.clean_cache()
         log.error(
             'Registration failed(repository), see {0} for details'.format(
                 LOG_FILE
@@ -818,9 +830,12 @@ def main(args):
         sys.exit(registration_returncode)
 
     # Setup container registry
-    setup_registry(registration_target)
+    if not setup_registry(registration_target):
+        cleanup()
+        sys.exit(1)
 
     utils.set_registration_completed_flag()
+
     log.info('Registration succeeded')
 
     if failed_extensions:

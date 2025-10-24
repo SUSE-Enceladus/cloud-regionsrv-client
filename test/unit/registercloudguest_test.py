@@ -92,19 +92,17 @@ class TestRegisterCloudGuest:
             assert register_cloud_guest.main(fake_args) is None
 
     @patch('cloudregister.registerutils.clean_hosts_file')
-    @patch('cloudregister.registerutils.clean_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('time.sleep')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registerutils.clean_framework_identifier')
     @patch('cloudregister.registerutils.clear_new_registration_flag')
     @patch('cloudregister.registerutils.clean_smt_cache')
-    @patch('cloudregister.registerutils.remove_registration_data')
-    @patch('cloudregister.registerutils.clean_registry_setup')
     def test_register_cloud_guest_cleanup(
         self,
-        mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
+        mock_clean_smt_cache,
         mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
-        mock_clean_non_free_extensions, mock_clean_hosts_file
+        mock_deregister_non_free_extensions, mock_clean_hosts_file
     ):
         fake_args = SimpleNamespace(
             clean_up=True,
@@ -120,38 +118,6 @@ class TestRegisterCloudGuest:
         )
         with raises(SystemExit):
             register_cloud_guest.main(fake_args)
-        mock_clean_reg_setup.assert_called_once()
-
-    @patch('cloudregister.registerutils.clean_non_free_extensions')
-    @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_config')
-    @patch('cloudregister.registerutils.clean_framework_identifier')
-    @patch('cloudregister.registerutils.clear_new_registration_flag')
-    @patch('cloudregister.registerutils.clean_smt_cache')
-    @patch('cloudregister.registerutils.remove_registration_data')
-    @patch('cloudregister.registerutils.clean_registry_setup')
-    def test_register_cloud_guest_cleanup_exception(
-        self,
-        mock_clean_reg_setup, mock_remove_reg_data, mock_clean_smt_cache,
-        mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
-        mock_clean_non_free_extensions
-    ):
-        fake_args = SimpleNamespace(
-            clean_up=True,
-            force_new_registration=False,
-            user_smt_ip=None,
-            user_smt_fqdn=None,
-            user_smt_fp=None,
-            email=None,
-            reg_code=None,
-            delay_time=1,
-            config_file='config_file',
-            debug=True
-        )
-        mock_clean_non_free_extensions.side_effect = Exception('oh no')
-        with raises(SystemExit):
-            register_cloud_guest.main(fake_args)
-        mock_clean_reg_setup.assert_called_once()
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -394,6 +360,91 @@ class TestRegisterCloudGuest:
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
             assert sys_exit.value.code == 0
+
+    @patch('cloudregister.registerutils.set_proxy')
+    @patch('cloudregister.registerutils.update_rmt_cert')
+    @patch('cloudregister.registerutils.has_registry_in_hosts')
+    @patch('cloudregister.registerutils.add_hosts_entry')
+    @patch('cloudregister.registerutils.clean_hosts_file')
+    @patch('cloudregister.registerutils.has_rmt_in_hosts')
+    @patch('cloudregister.registerutils.os.path.exists')
+    @patch.object(SMT, 'is_responsive')
+    @patch('cloudregister.registercloudguest.setup_ltss_registration')
+    @patch('cloudregister.registercloudguest.setup_registry')
+    @patch('cloudregister.registerutils.get_instance_data')
+    @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
+    @patch('cloudregister.registerutils.has_region_changed')
+    @patch('cloudregister.registerutils.store_smt_data')
+    @patch('cloudregister.registerutils.get_current_smt')
+    @patch('cloudregister.registerutils.set_new_registration_flag')
+    @patch('cloudregister.registerutils.has_network_access_by_ip_address')
+    @patch('cloudregister.registerutils.is_zypper_running')
+    @patch('cloudregister.registerutils.write_framework_identifier')
+    @patch('cloudregister.registerutils.get_available_smt_servers')
+    @patch('os.makedirs')
+    @patch('os.path.isdir')
+    @patch('time.sleep')
+    @patch('cloudregister.registerutils.get_state_dir')
+    @patch('cloudregister.registerutils.get_config')
+    @patch('cloudregister.registercloudguest.cleanup')
+    @patch('cloudregister.registerutils.clean_registry_setup')
+    def test_register_cloud_guest_registry_setup_failed(
+        self,
+        mock_clean_registry_setup,
+        mock_cleanup, mock_get_config,
+        mock_get_state_dir, mock_time_sleep,
+        mock_os_path_isdir, mock_os_makedirs,
+        mock_get_available_smt_servers, mock_write_framework_id,
+        mock_is_zypper_running, mock_has_network_access,
+        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_store_smt_data,
+        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_update_rmt_cert, mock_set_proxy
+    ):
+        mock_set_proxy.return_value = True
+        smt_data_ipv46 = dedent('''\
+            <smtInfo fingerprint="AA:BB:CC:DD"
+             SMTserverIP="1.2.3.5"
+             SMTserverIPv6="fc00::1"
+             SMTserverName="foo-ec2.susecloud.net"
+             SMTregistryName="registry-ec2.susecloud.net"
+             region="antarctica-1"/>''')
+
+        smt_server = SMT(etree.fromstring(smt_data_ipv46))
+        mock_get_current_smt.return_value = smt_server
+        fake_args = SimpleNamespace(
+            clean_up=False,
+            force_new_registration=True,
+            user_smt_ip='1.2.3.5',
+            user_smt_fqdn='foo-ec2.susecloud.net',
+            user_smt_fp='AA:BB:CC:DD',
+            email=None,
+            reg_code='super_reg_code',
+            delay_time=1,
+            config_file='config_file',
+            debug=True
+        )
+        mock_os_path_isdir.return_value = False
+        mock_is_zypper_running.return_value = False
+        mock_get_available_smt_servers.return_value = []
+        mock_has_network_access.return_value = True
+        mock_has_region_changed.return_value = True
+        mock_uses_rmt_as_scc_proxy.return_value = True
+        mock_get_instance_data.return_value = None
+        mock_smt_is_responsive.return_value = True
+        mock_os_path_exists.return_value = True
+        mock_update_rmt_cert.return_value = True
+        mock_has_rmt_in_hosts.return_value = False
+        mock_has_registry_in_hosts.return_value = False
+        mock_setup_registry.return_value = False
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            mock_get_state_dir.return_value = tdir
+        with raises(SystemExit) as sys_exit:
+            register_cloud_guest.main(fake_args)
+            assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.update_rmt_cert')
@@ -1037,10 +1088,19 @@ class TestRegisterCloudGuest:
     @patch('time.sleep')
     @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
-    @patch('cloudregister.registercloudguest.cleanup')
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_cache')
+    @patch('cloudregister.registerutils.clean_all_standard')
     def test_register_cloud_guest_force_baseprod_registration_failed(
         self,
-        mock_cleanup, mock_get_config,
+        mock_clean_all_standard,
+        mock_clean_cache,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions,
+        mock_get_config,
         mock_get_state_dir, mock_time_sleep,
         mock_os_path_isdir, mock_os_makedirs,
         mock_get_available_smt_servers, mock_write_framework_id,
@@ -1106,137 +1166,6 @@ class TestRegisterCloudGuest:
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
         assert 'Baseproduct registration failed' in self._caplog.text
-        assert sys_exit.value.code == 1
-
-    @patch('cloudregister.registerutils._remove_state_file')
-    @patch('cloudregister.registerutils.set_registration_completed_flag')
-    @patch('cloudregister.registerutils.set_proxy')
-    @patch.object(SMT, 'is_equivalent')
-    @patch('cloudregister.registerutils.is_registration_supported')
-    @patch('cloudregister.registercloudguest.get_responding_update_server')
-    @patch('cloudregister.registerutils.fetch_smt_data')
-    @patch('cloudregister.registerutils.remove_registration_data')
-    @patch('cloudregister.registerutils.register_product')
-    @patch('cloudregister.registerutils.import_smt_cert')
-    @patch('cloudregister.registerutils.get_installed_products')
-    @patch('cloudregister.registerutils.set_as_current_smt')
-    @patch('os.access')
-    @patch('cloudregister.registerutils.get_register_cmd')
-    @patch('cloudregister.registerutils.update_rmt_cert')
-    @patch('cloudregister.registerutils.has_registry_in_hosts')
-    @patch('cloudregister.registerutils.add_hosts_entry')
-    @patch('cloudregister.registerutils.clean_hosts_file')
-    @patch('cloudregister.registerutils.has_rmt_in_hosts')
-    @patch('cloudregister.registerutils.os.path.exists')
-    @patch.object(SMT, 'is_responsive')
-    @patch('cloudregister.registercloudguest.setup_ltss_registration')
-    @patch('cloudregister.registercloudguest.setup_registry')
-    @patch('cloudregister.registerutils.get_instance_data')
-    @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
-    @patch('cloudregister.registerutils.has_region_changed')
-    @patch('cloudregister.registerutils.store_smt_data')
-    @patch('cloudregister.registerutils.get_current_smt')
-    @patch('cloudregister.registerutils.set_new_registration_flag')
-    @patch('cloudregister.registerutils.has_network_access_by_ip_address')
-    @patch('cloudregister.registerutils.is_zypper_running')
-    @patch('cloudregister.registerutils.write_framework_identifier')
-    @patch('cloudregister.registerutils.get_available_smt_servers')
-    @patch('os.makedirs')
-    @patch('os.path.isdir')
-    @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
-    @patch('cloudregister.registerutils.get_config')
-    @patch('cloudregister.registercloudguest.cleanup')
-    def test_register_cloud_guest_force_baseprod_registration_failed_connection(
-        self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
-        mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product, mock_remove_reg_data,
-        mock_fetch_smt_data, mock_get_responding_update_server,
-        mock_is_reg_supported, mock_is_equivalent, mock_set_proxy,
-        mock_set_registration_completed_flag, mock_remove_state_file
-    ):
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="AA:BB:CC:DD"
-             SMTserverIP="1.2.3.5"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="foo-ec2.susecloud.net"
-             SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
-
-        smt_region_data = dedent('''\
-            <regionSMTdata><smtInfo fingerprint="AA:BB:CC:DD"
-             SMTserverIP="1.2.3.5"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="foo-ec2.susecloud.net"
-             SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/><smtInfo fingerprint="AA:BB:CC:DD"
-             SMTserverIP="1.2.3.6"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="foo-ec2.susecloud.net"
-             SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/></regionSMTdata>''')
-
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_current_smt.return_value = smt_server
-        fake_args = SimpleNamespace(
-            clean_up=False,
-            force_new_registration=True,
-            user_smt_ip=None,
-            user_smt_fqdn=None,
-            user_smt_fp=None,
-            email=None,
-            reg_code='super_reg_code',
-            delay_time=1,
-            config_file='config_file',
-            debug=True
-        )
-        mock_os_path_isdir.return_value = False
-        mock_is_zypper_running.return_value = False
-        mock_get_available_smt_servers.return_value = [smt_server, smt_server]
-        mock_get_responding_update_server.return_value = smt_server
-        mock_has_network_access.return_value = True
-        mock_has_region_changed.return_value = True
-        mock_uses_rmt_as_scc_proxy.return_value = False
-        mock_get_instance_data.return_value = None
-        mock_smt_is_responsive.return_value = False
-        mock_is_equivalent.return_value = False
-        mock_set_proxy.return_value = False
-        mock_os_path_exists.side_effect = [True, True]
-        mock_update_rmt_cert.return_value = True
-        mock_has_rmt_in_hosts.return_value = False
-        mock_has_registry_in_hosts.return_value = False
-        mock_os_access.return_value = True
-        mock_get_installed_products.return_value = 'foo'
-        mock_import_smt_cert.return_value = True
-        mock_remove_state_file.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        prod_reg_type = namedtuple(
-            'prod_reg_type', ['returncode', 'output', 'error']
-        )
-        mock_register_product.return_value = prod_reg_type(
-            returncode=64,
-            output='some error',
-            error='stderr'
-        )
-        mock_fetch_smt_data.return_value = etree.fromstring(smt_region_data)
-        mock_is_reg_supported.return_value = True
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
-        assert 'Baseproduct registration failed' in self._caplog.text
-        assert 'some error' in self._caplog.text
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils._remove_state_file')
@@ -1410,10 +1339,19 @@ class TestRegisterCloudGuest:
     @patch('time.sleep')
     @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
-    @patch('cloudregister.registercloudguest.cleanup')
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_cache')
+    @patch('cloudregister.registerutils.clean_all_standard')
     def test_register_cloud_guest_force_baseprod_extensions_raise(
         self,
-        mock_cleanup, mock_get_config,
+        mock_clean_all_standard,
+        mock_clean_cache,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions,
+        mock_get_config,
         mock_get_state_dir, mock_time_sleep,
         mock_os_path_isdir, mock_os_makedirs,
         mock_get_available_smt_servers, mock_write_framework_id,
@@ -2446,32 +2384,6 @@ class TestRegisterCloudGuest:
             'registry-ec2.susecloud.net'
         )
 
-    @patch('cloudregister.registercloudguest.cleanup')
-    @patch('cloudregister.registerutils.prepare_registry_setup')
-    @patch('cloudregister.registerutils.is_registry_registered')
-    @patch('cloudregister.registerutils.get_credentials_file')
-    @patch('cloudregister.registerutils.get_credentials')
-    def test_setup_clean_all(
-        self,
-        mock_get_credentials, mock_get_credentials_file,
-        mock_is_registry_registered, mock_prepare_registry_setup,
-        mock_cleanup
-    ):
-        smt_data_ipv46 = dedent('''\
-            <smtInfo fingerprint="AA:BB:CC:DD"
-             SMTserverIP="1.2.3.5"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="foo-ec2.susecloud.net"
-             SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-        mock_get_credentials.return_value = 'foo', 'bar'
-        mock_is_registry_registered.return_value = False
-        mock_prepare_registry_setup.return_value = False
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.setup_registry(smt_server, 'all')
-        assert sys_exit.value.code == 1
-
     @patch('cloudregister.registerutils.clean_registry_setup')
     @patch('cloudregister.registerutils.prepare_registry_setup')
     @patch('cloudregister.registerutils.is_registry_registered')
@@ -2494,9 +2406,7 @@ class TestRegisterCloudGuest:
         mock_get_credentials.return_value = 'foo', 'bar'
         mock_is_registry_registered.return_value = False
         mock_prepare_registry_setup.return_value = False
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.setup_registry(smt_server)
-        assert sys_exit.value.code == 1
+        assert register_cloud_guest.setup_registry(smt_server) is False
 
     @patch('cloudregister.registerutils.prepare_registry_setup')
     @patch('cloudregister.registerutils.set_registries_conf_podman')
@@ -2531,7 +2441,7 @@ class TestRegisterCloudGuest:
         mock_set_registries_conf_podman.return_value = True
         mock_set_registries_conf_docker.return_value = True
         mock_set_registry_fqdn_suma.return_value = True
-        assert register_cloud_guest.setup_registry(smt_server) is None
+        assert register_cloud_guest.setup_registry(smt_server) is True
         mock_set_registries_conf_podman.assert_called_once_with(
             'registry-ec2.susecloud.net'
         )
@@ -2574,7 +2484,7 @@ class TestRegisterCloudGuest:
         mock_prepare_registry_setup.return_value = True
         mock_set_registries_conf_podman.return_value = True
         mock_set_registry_fqdn_suma.return_value = True
-        assert register_cloud_guest.setup_registry(smt_server) is None
+        assert register_cloud_guest.setup_registry(smt_server) is True
         assert not mock_set_registries_conf_docker.called
 
     def test_get_responding_update_server_error(self):
@@ -2691,3 +2601,277 @@ class TestRegisterCloudGuest:
         assert sys_exit.value.code == 1
         assert 'LTSS registration failed' in self._caplog.text
         assert '\tnot OK' in self._caplog.text
+
+    @patch('cloudregister.registerutils.register_product')
+    @patch('cloudregister.registerutils.add_hosts_entry')
+    @patch('cloudregister.registercloudguest.cleanup')
+    @patch('cloudregister.registerutils.clear_rmt_as_scc_proxy_flag')
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_registered_smt_data_file')
+    @patch('cloudregister.registerutils.clean_hosts_file')
+    @patch('cloudregister.registerutils.clear_new_registration_flag')
+    @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
+    def test_register_base_product(
+        self,
+        mock_set_rmt_as_scc_proxy_flag,
+        mock_clear_new_registration_flag,
+        mock_clean_hosts_file,
+        mock_clean_registered_smt_data_file,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions,
+        mock_clear_rmt_as_scc_proxy_flag,
+        mock_cleanup, mock_add_hosts_entry,
+        mock_register_product
+    ):
+        prod_reg = Mock()
+        prod_reg.returncode = 0
+        prod_reg.output = 'zypper output'
+        mock_register_product.return_value = prod_reg
+        registration_target = Mock()
+        instance_data_filepath = 'some'
+        commandline_args = Mock()
+        region_smt_servers = [Mock(), Mock()]
+        # Test success case
+        register_cloud_guest.register_base_product(
+            registration_target, instance_data_filepath,
+            commandline_args, region_smt_servers
+        )
+        assert 'Baseproduct registration complete' in self._caplog.text
+        mock_clear_new_registration_flag.assert_called_once_with()
+        mock_set_rmt_as_scc_proxy_flag.assert_called_once_with()
+
+        # Test error case
+        prod_reg.returncode = 1
+        with raises(SystemExit):
+            register_cloud_guest.register_base_product(
+                registration_target, instance_data_filepath,
+                commandline_args, region_smt_servers
+            )
+            mock_deregister_non_free_extensions.assert_called_once_with()
+            mock_clear_rmt_as_scc_proxy_flag.assert_called_once_with()
+            mock_deregister_non_free_extensions.assert_called_once_with()
+            mock_deregister_from_update_infrastructure.assert_called_once_with()
+            mock_deregister_from_SCC.assert_called_once_with()
+            mock_clean_registered_smt_data_file.assert_called_once_with()
+            mock_clean_hosts_file.assert_called_once_with()
+
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_cache')
+    @patch('cloudregister.registerutils.clean_all_standard')
+    def test_cleanup(
+        self,
+        mock_clean_all_standard,
+        mock_clean_cache,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions
+    ):
+        # cleanup standard style
+        register_cloud_guest.cleanup()
+        mock_clean_all_standard.assert_called_once_with()
+
+    @patch('cloudregister.registerutils._remove_state_file')
+    @patch('cloudregister.registerutils.set_registration_completed_flag')
+    @patch('os.system')
+    @patch('cloudregister.registerutils.set_proxy')
+    @patch('cloudregister.registercloudguest.urllib.parse.urlparse')
+    @patch('cloudregister.registerutils.enable_repository')
+    @patch('cloudregister.registerutils.exec_subprocess')
+    @patch('cloudregister.registerutils.get_repo_url')
+    @patch('cloudregister.registerutils.find_repos')
+    @patch('cloudregister.registerutils.has_nvidia_support')
+    @patch('cloudregister.registercloudguest.registration_returncode', 0)
+    @patch('os.unlink')
+    @patch('cloudregister.registerutils.get_credentials_file')
+    @patch('cloudregister.registerutils.get_credentials')
+    @patch('cloudregister.registerutils.get_product_tree')
+    @patch('cloudregister.registerutils.requests.get')
+    @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
+    @patch('cloudregister.registerutils.register_product')
+    @patch('cloudregister.registerutils.import_smt_cert')
+    @patch('cloudregister.registerutils.get_installed_products')
+    @patch('cloudregister.registerutils.set_as_current_smt')
+    @patch('os.access')
+    @patch('cloudregister.registerutils.get_register_cmd')
+    @patch('cloudregister.registerutils.update_rmt_cert')
+    @patch('cloudregister.registerutils.has_registry_in_hosts')
+    @patch('cloudregister.registerutils.add_hosts_entry')
+    @patch('cloudregister.registerutils.clean_hosts_file')
+    @patch('cloudregister.registerutils.has_rmt_in_hosts')
+    @patch('cloudregister.registerutils.os.path.exists')
+    @patch.object(SMT, 'is_responsive')
+    @patch('cloudregister.registercloudguest.setup_ltss_registration')
+    @patch('cloudregister.registercloudguest.setup_registry')
+    @patch('cloudregister.registerutils.get_instance_data')
+    @patch('cloudregister.registerutils.uses_rmt_as_scc_proxy')
+    @patch('cloudregister.registerutils.has_region_changed')
+    @patch('cloudregister.registerutils.store_smt_data')
+    @patch('cloudregister.registerutils.get_current_smt')
+    @patch('cloudregister.registerutils.set_new_registration_flag')
+    @patch('cloudregister.registerutils.has_network_access_by_ip_address')
+    @patch('cloudregister.registerutils.is_zypper_running')
+    @patch('cloudregister.registerutils.write_framework_identifier')
+    @patch('cloudregister.registerutils.get_available_smt_servers')
+    @patch('os.makedirs')
+    @patch('os.path.isdir')
+    @patch('time.sleep')
+    @patch('cloudregister.registerutils.get_state_dir')
+    @patch('cloudregister.registerutils.get_config')
+    @patch('cloudregister.registercloudguest.cleanup')
+    def test_reg_cloud_baseprod_ok_setup_registry_failed(
+        self,
+        mock_cleanup, mock_get_config,
+        mock_get_state_dir, mock_time_sleep,
+        mock_os_path_isdir, mock_os_makedirs,
+        mock_get_available_smt_servers, mock_write_framework_id,
+        mock_is_zypper_running, mock_has_network_access,
+        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_store_smt_data,
+        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
+        mock_set_as_current_smt, mock_get_installed_products,
+        mock_import_smt_cert, mock_register_product,
+        mock_set_rmt_as_scc_proxy_flag,
+        mock_requests_get, mock_get_product_tree, mock_get_creds,
+        mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
+        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
+        mock_urlparse, mock_set_proxy, mock_os_system,
+        mock_set_registration_completed_flag, mock_remove_state_file
+    ):
+        smt_data_ipv46 = dedent('''\
+            <smtInfo fingerprint="AA:BB:CC:DD"
+             SMTserverIP="1.2.3.5"
+             SMTserverIPv6="fc00::1"
+             SMTserverName="foo-ec2.susecloud.net"
+             SMTregistryName="registry-ec2.susecloud.net"
+             region="antarctica-1"/>''')
+        smt_server = SMT(etree.fromstring(smt_data_ipv46))
+        mock_get_current_smt.return_value = smt_server
+        fake_args = SimpleNamespace(
+            clean_up=False,
+            force_new_registration=True,
+            user_smt_ip='fc00::1',
+            user_smt_fqdn='foo-ec2.susecloud.net',
+            user_smt_fp='AA:BB:CC:DD',
+            email=None,
+            reg_code='super_reg_code',
+            delay_time=1,
+            config_file='config_file',
+            debug=True
+        )
+        mock_os_path_isdir.return_value = False
+        mock_is_zypper_running.return_value = False
+        mock_get_available_smt_servers.return_value = []
+        mock_has_network_access.return_value = True
+        mock_has_region_changed.return_value = True
+        mock_uses_rmt_as_scc_proxy.return_value = False
+        mock_get_instance_data.return_value = None
+        mock_smt_is_responsive.return_value = True
+        mock_os_path_exists.side_effect = [False, True, True, True]
+        mock_update_rmt_cert.return_value = True
+        mock_has_rmt_in_hosts.return_value = False
+        mock_has_registry_in_hosts.return_value = False
+        mock_os_access.return_value = True
+        mock_get_installed_products.return_value = 'SLES-LTSS-FOO/15.4/x86_64'
+        mock_import_smt_cert.return_value = True
+        mock_remove_state_file.return_value = True
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            mock_get_state_dir.return_value = tdir
+        prod_reg_type = namedtuple(
+            'prod_reg_type', ['returncode', 'output', 'error']
+        )
+        mock_register_product.side_effect = [
+            prod_reg_type(
+                returncode=0,
+                output='all OK',
+                error='stderr'
+            ),
+            prod_reg_type(
+                returncode=67,
+                output='registration code',
+                error='stderr'
+            )
+        ]
+        response = Response()
+        response.status_code = requests.codes.ok
+        json_mock = Mock()
+        json_mock.return_value = {
+            'id': 2001,
+            'name': 'SUSE Linux Enterprise Server',
+            'identifier': 'SLES',
+            'former_identifier': 'SLES',
+            'version': '15.4',
+            'release_type': None,
+            'release_stage': 'released',
+            'arch': 'x86_64',
+            'friendly_name': 'SUSE Linux Enterprise Server 15 SP4 x86_64',
+            'product_class': '30',
+            'extensions': [
+                {
+                    'id': 23,
+                    'name': 'SUSE Linux Enterprise Server LTSS Foo',
+                    'identifier': 'SLES-LTSS-FOO',
+                    'former_identifier': 'SLES-LTSS-FOO',
+                    'version': '15.4',
+                    'release_type': None,
+                    'release_stage': 'released',
+                    'arch': 'x86_64',
+                    'friendly_name':
+                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'product_class': 'SLES15-SP4-LTSS-FOO-X86',
+                    'free': False,
+                    'repositories': [],
+                    'product_type': 'extension',
+                    'extensions': [],
+                    'recommended': False,
+                    'available': True
+                }
+            ]
+        }
+        response.json = json_mock
+        mock_requests_get.return_value = response
+        mock_get_creds.return_value = 'SCC_foo', 'bar'
+        base_product = dedent('''\
+            <?xml version="1.0" encoding="UTF-8"?>
+            <product schemeversion="0">
+              <vendor>SUSE</vendor>
+              <name>SLES</name>
+              <version>15.4</version>
+              <baseversion>15</baseversion>
+              <patchlevel>4</patchlevel>
+              <release>0</release>
+              <endoflife></endoflife>
+              <arch>x86_64</arch></product>''')
+        mock_get_product_tree.return_value = etree.fromstring(
+            base_product[base_product.index('<product'):]
+        )
+        mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
+        mock_has_nvidia_support.return_value = False
+        mock_find_repos.return_value = ['repo_a', 'repo_b']
+        mock_get_repo_url.return_value = (
+            'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
+            'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
+        )
+        findmnt_return = b'{"filesystems": [{"target": "/","source": ' + \
+            b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
+        mock_exec_subprocess.return_value = findmnt_return, b'', 0
+        mock_os_path_exists.reset_mock()
+        mock_os_path_exists.return_value = True
+        mock_urlparse.return_value = ParseResult(
+            scheme='https', netloc='susecloud.net:443',
+            path='/some/repo', params='',
+            query='highlight=params', fragment='url-parsing'
+        )
+        mock_set_proxy.return_value = False
+        mock_setup_registry.return_value = False
+        with raises(SystemExit) as sys_exit:
+            register_cloud_guest.main(fake_args)
+            assert sys_exit.value.code == 1
