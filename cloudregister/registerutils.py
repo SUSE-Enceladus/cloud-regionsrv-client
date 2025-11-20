@@ -144,6 +144,29 @@ def clean_cache():
 
 
 # ----------------------------------------------------------------------------
+def clean_base_credentials():
+    """
+    Delete base credential files
+    """
+    log.info('Deleting base credentials')
+    credential_file = os.path.normpath(
+        os.sep.join([ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME])
+    )
+    if os.path.isfile(credential_file):
+        log.info('Removing credential file: {}'.format(credential_file))
+        try:
+            os.unlink(credential_file)
+        except FileNotFoundError:
+            # cover potential race condition when the file
+            # could have been removed between isfile check
+            # and unlink. Unfortunately we cannot use
+            # Path.unlink(missing_ok=True) because that exists
+            # in python 3.8 for the first time and we have
+            # to support >= 3.4
+            pass
+
+
+# ----------------------------------------------------------------------------
 def clean_hosts_file(domain_name=None):
     """Remove the smt server and registry entries from the /etc/hosts file"""
     if not domain_name:
@@ -2622,15 +2645,16 @@ def _remove_credentials(smt_server_names):
     """Remove the server generated credentials"""
     log.info('Deleting locally stored credentials')
     referenced_credentials = _get_referenced_credentials(smt_server_names)
-    # Special files that may exist but may not be referenced
-    referenced_credentials += [BASE_CREDENTIALS_NAME, 'NCCcredentials']
     system_credentials = glob.glob(os.sep.join([ZYPP_CREDENTIALS_PATH, '*']))
     for system_credential in system_credentials:
         if os.path.basename(system_credential) in referenced_credentials:
-            log.info('Removing credentials: %s' % system_credential)
+            log.info(
+                'Removing credentials for server(s): {}: {}'.format(
+                    smt_server_names, system_credential
+                )
+            )
             os.unlink(system_credential)
-
-    return 1
+    clean_base_credentials()
 
 
 # ----------------------------------------------------------------------------

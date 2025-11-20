@@ -3177,6 +3177,23 @@ class TestRegisterUtils:
             smt_server
         )
 
+    @patch('os.path.isfile')
+    @patch('os.unlink')
+    def test_clean_base_credentials(
+        self, mock_os_unlink, mock_os_path_isfile
+    ):
+        mock_os_path_isfile.return_value = True
+        utils.clean_base_credentials()
+        mock_os_unlink.assert_called_once_with(
+            '/etc/zypp/credentials.d/SCCcredentials'
+        )
+        mock_os_unlink.reset_mock()
+        mock_os_unlink.side_effect = FileNotFoundError
+        utils.clean_base_credentials()
+        mock_os_unlink.assert_called_once_with(
+            '/etc/zypp/credentials.d/SCCcredentials'
+        )
+
     @patch('cloudregister.registerutils.os.unlink')
     @patch('cloudregister.registerutils._get_referenced_credentials')
     @patch('cloudregister.registerutils.glob.glob')
@@ -3188,9 +3205,10 @@ class TestRegisterUtils:
     ):
         mock_glob.return_value = ['/etc/zypp/credentials.d/SCCcredentials']
         mock_get_referenced_creds.return_value = ['SCCcredentials']
-        assert utils._remove_credentials('foo') == 1
+        utils._remove_credentials('foo')
         assert 'Deleting locally stored credentials' in self._caplog.text
-        assert 'Removing credentials: /etc/zypp/credentials.d/SCCcredentials' in self._caplog.text
+        assert 'Removing credentials for server(s): foo:' in self._caplog.text
+        assert '/etc/zypp/credentials.d/SCCcredentials' in self._caplog.text
         mock_os_unlink.assert_called_once_with(
             '/etc/zypp/credentials.d/SCCcredentials'
         )
@@ -3206,7 +3224,7 @@ class TestRegisterUtils:
     ):
         mock_glob.return_value = ['foo']
         mock_get_referenced_creds.return_value = []
-        assert utils._remove_credentials('') == 1
+        utils._remove_credentials('')
         mock_os_unlink.assert_not_called
 
     @patch('cloudregister.registerutils.glob.glob')

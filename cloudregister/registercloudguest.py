@@ -321,6 +321,10 @@ def register_base_product(
                 utils.deregister_non_free_extensions()
                 utils.deregister_from_update_infrastructure()
                 utils.deregister_from_SCC()
+                utils.clean_hosts_file(
+                    registration_target.get_domain_name()
+                )
+                utils.clean_base_credentials()
                 utils.clean_cache()
                 sys.exit(1)
             for smt_srv in region_smt_servers:
