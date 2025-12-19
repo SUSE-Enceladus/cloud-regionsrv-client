@@ -178,17 +178,17 @@ def setup_registry(registration_target):
                         LOG_FILE
                     )
                 )
+                # TODO, we probably do not want to exit here, we do not have
+                # clear documented decision tree.
                 sys.exit(1)
             elif docker_setup_ok is True:
                 log.info('Successfully added docker to the registry setup')
         log.info(
             'Instance is setup to access container registry, nothing to do'
         )
+        # Podman registry data is already set up, nothing to do
         return True
-    log.info(
-        'Adding registry setup to instance, all existing shell '
-        'sessions must be restarted to use the registry.'
-    )
+    log.info('Adding registry setup to instance')
     registry_setup_ok = False
     if utils.prepare_registry_setup(registry_fqdn, user, password):
         log.info('Adding podman support')
@@ -205,7 +205,8 @@ def setup_registry(registration_target):
             )
         )
         return False
-    log.warning('Instance registry setup done, sessions must be restarted !')
+    log.info('Instance registry setup completed, '
+             'all existing shell sessions require a restart !')
     return True
 
 
