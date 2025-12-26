@@ -91,7 +91,9 @@ def add_hosts_entry(smt_server):
     with open('/etc/hosts', 'a') as hosts_file:
         hosts_file.write(smt_hosts_entry_comment)
         hosts_file.write(entry)
-    log.info('Modified /etc/hosts, added: %s' % entry)
+    log.debug(
+        'Modified /etc/hosts, added: {}'.format(entry)
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -535,7 +537,7 @@ def register_product(
         # registration codes should not end up in the log
         log_information = log_information.replace(regcode, 'XXXX')
 
-    log.info('Registration: {0}'.format(log_information))
+    log.debug('Registration: {0}'.format(log_information))
 
     # perform registration
     output, error, returncode = exec_subprocess(cmd, tolog=False)
@@ -590,7 +592,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
     else:
         # Get the API to use
         api = cfg.get('server', 'api')
-        log.info('Using API: %s' % api)
+        log.debug('Using API: %s' % api)
         # Add regionserver arguments
         api = add_region_server_args_to_URL(api, cfg)
         # Get the location of the cert files for the region servers
@@ -651,19 +653,25 @@ def fetch_smt_data(cfg, proxies, quiet=False):
             request_timeout = 15/retry_cnt
             retry_timeout = int(20/retry_cnt)
             if not quiet:
-                log.info(
-                    'Getting update server information, attempt %d' % retry_cnt
+                log.debug(
+                    'Getting update server information, attempt {}'.format(
+                        retry_cnt
+                    )
                 )
             for srv in region_servers:
                 srvName = str(srv)
                 if not quiet:
-                    log.info('\tUsing region server: %s' % srvName)
+                    log.debug(
+                        '\tUsing region server: {}'.format(srvName)
+                    )
                 certFile = os.path.normpath(
                     os.sep.join([cert_dir, srvName + '.pem'])
                 )
                 if not os.path.isfile(certFile):
-                    log.info(
-                        '\tNo cert found: %s skip this server' % certFile
+                    log.debug(
+                        '\tNo cert found: {} skip this server'.format(
+                            certFile
+                        )
                     )
                     continue
                 try:
@@ -707,7 +715,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                 # No message on the last go around
                 if attempt + 1 < max_attempts:
                     log_msg = 'Waiting %d seconds before next attempt'
-                    log.info(log_msg % retry_timeout)
+                    log.debug(log_msg % retry_timeout)
                     time.sleep(retry_timeout)
         else:
             err_msg = 'Request not answered by any server '
@@ -921,7 +929,7 @@ def write_registry_credentials(content, set_new):
         message = 'Credentials for the registry {} in {}'.format(
             action_done, REGISTRY_CREDENTIALS_PATH
         )
-        log.info(message)
+        log.debug(message)
         return True
     except Exception as error:
         action_done = 'add' if set_new else 'remove'
@@ -1025,7 +1033,9 @@ def update_bashrc(content, mode):
     try:
         with open(PROFILE_LOCAL_PATH, mode) as bashrc_file:
             bashrc_file.write(content)
-        log.info('%s updated' % PROFILE_LOCAL_PATH)
+        log.debug(
+            '{} updated'.format(PROFILE_LOCAL_PATH)
+        )
         return True
     except OSError as error:
         log.error('Could not update %s: %s' % (PROFILE_LOCAL_PATH, error))
@@ -1313,7 +1323,9 @@ def write_registries_conf(registries_conf, container_path, container_name):
         if container_name == 'docker':
             with open(container_path, 'w') as registries_conf_file:
                 json.dump(registries_conf, registries_conf_file)
-        log.info('File %s updated' % container_path)
+        log.debug(
+            'File {} updated'.format(container_path)
+        )
         return True
     except IOError as error:
         log.info(str(error))
@@ -1351,12 +1363,16 @@ def get_credentials_file(update_server, service_name=None):
     for entry in credential_names:
         cred_files = glob.glob(os.sep.join([credentials_loc, entry]))
         if not cred_files:
-            log.info('No credentials entry for "%s"' % entry)
+            log.debug(
+                'No credentials entry for "{}"'.format(entry)
+            )
             continue
         if len(cred_files) > 1:
             log.warning(
-                'Found multiple credentials for "%s" entry and '
-                'hoping for the best' % service_name)
+                'Found multiple credentials for "{}" entry'.format(
+                    service_name
+                )
+            )
         credentials_file = cred_files[0]
         break
 
@@ -2323,7 +2339,7 @@ def switch_smt_service(smt):
 # ----------------------------------------------------------------------------
 def update_ca_chain(cmd_w_args_lst):
     """Update the CA chain using the given command with arguments"""
-    log.info('Updating CA certificates: %s' % cmd_w_args_lst[0])
+    log.debug('Updating CA certificates: %s' % cmd_w_args_lst[0])
     retry_attempts = 3
     for attempt in range(retry_attempts):
         _, _, failed = exec_subprocess(cmd_w_args_lst)
@@ -2351,7 +2367,7 @@ def update_rmt_cert(server):
             'http_proxy': os.environ.get('http_proxy'),
             'https_proxy': os.environ.get('https_proxy')
         }
-    log.info('Check for cert update')
+    log.debug('Check for cert update')
     region_rmt_server_data = fetch_smt_data(get_config(), proxies, True)
     region_rmt_servers = []
     for child in region_rmt_server_data:
@@ -2362,9 +2378,9 @@ def update_rmt_cert(server):
         if (region_ipv4 == target_ipv4) and (region_ipv6 == target_ipv6):
             if region_rmt_server != server:
                 import_smt_cert(region_rmt_server)
-                log.info('Update server cert updated')
+                log.debug('Update server cert updated')
                 return True
-    log.info('No cert change')
+    log.debug('No cert change')
     return False
 
 
@@ -2471,7 +2487,7 @@ def _check_ip_access(ips_addresses):
             return True
 
     if not ips_addresses:
-        log.info('No IP addresses available')
+        log.debug('No IP addresses available')
 
     return False
 
@@ -2515,7 +2531,7 @@ def _get_framework_plugin(cfg):
             except Exception:
                 msg = 'Configured instanceArgs module could not be loaded. '
                 msg += 'Continuing without additional arguments.'
-                log.warning(msg)
+                log.debug(msg)
 
     return mod
 
@@ -2814,7 +2830,7 @@ def set_registries_conf_podman(private_registry_fqdn):
         registries_conf['unqualified-search-registries'] = \
             unqualified_search_reg
         registries_conf['registry'] = registry_mirrors
-        log.info(
+        log.debug(
             'Content for {0} has changed, updating the file'.format(
                 REGISTRIES_CONF_PATH
             )
@@ -2899,7 +2915,9 @@ def _write_suma_conf(updated_content):
     try:
         with open(SUMA_REGISTRY_CONF_PATH, 'w') as suma_config:
             yaml.dump(updated_content, suma_config, default_flow_style=False)
-        log.info('%s updated' % SUMA_REGISTRY_CONF_PATH)
+        log.debug(
+            '{} updated'.format(SUMA_REGISTRY_CONF_PATH)
+        )
         return True
     except IOError as error:
         log.info(str(error))

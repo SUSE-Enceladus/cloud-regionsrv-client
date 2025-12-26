@@ -201,7 +201,7 @@ class SMT:
     # --------------------------------------------------------------------
     def write_cert(self, target_dir):
         """Write the certificate to the given directory"""
-        logging.info('Writing SMT rootCA: %s' % target_dir)
+        logging.debug('Writing SMT rootCA: %s' % target_dir)
         cert = self.get_cert()
         certs_to_write = []
         ipv4 = self.get_ipv4()
@@ -300,7 +300,7 @@ class SMT:
                         logging.warning('Server %s is unreachable' % ip)
                     if cert_res:
                         if cert_res.status_code == 200:
-                            logging.info(
+                            logging.debug(
                                 'Request to %s%s succeeded' %
                                 (cert_url, cert_name)
                             )
