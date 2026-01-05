@@ -1481,11 +1481,11 @@ def get_instance_data(config):
                     warn_msg += 'in registration failure.'
                     log.warning(warn_msg)
 
+    inst_data = instance_data.decode()
     # Marker for the server to not return https:// formatted
     # service and repo information
-    inst_data = instance_data.decode()
-
-    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
+    repo_format = '<repoformat>plugin:susecloud</repoformat>\n'
+    return inst_data + repo_format
 
 
 # ----------------------------------------------------------------------------
