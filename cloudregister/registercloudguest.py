@@ -638,7 +638,7 @@ def main(args):
         log.error(msg)
         sys.exit(1)
 
-        # Specifying reg code only works, but an e-mail requires a reg code
+    # Specifying reg code only works, but an e-mail requires a reg code
     if (args.email and not args.reg_code):
         msg = '--email and --regcode must be used together'
         log.error(msg)
