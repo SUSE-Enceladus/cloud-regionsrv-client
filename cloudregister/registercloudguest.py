@@ -607,6 +607,7 @@ argparse.add_argument(
 
 
 def main(args):
+    log.info('registercloudguest {}'.format(__version__))
     global registration_returncode  # noqa: F824
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
