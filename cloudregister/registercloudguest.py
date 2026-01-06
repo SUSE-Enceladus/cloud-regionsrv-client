@@ -734,7 +734,7 @@ def main(args):
     # Check if the target RMT for the registration is alive or if we can
     # find a server that is alive in this region
     registration_smt, registration_target_found = \
-        find_alive_registration_target( 
+        find_alive_registration_target(
             registration_smt, region_smt_servers
         )
 
