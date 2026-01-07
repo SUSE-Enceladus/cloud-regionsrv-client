@@ -205,8 +205,10 @@ def setup_registry(registration_target):
             )
         )
         return False
-    log.info('Instance registry setup completed, '
-             'all existing shell sessions require a restart !')
+    log.info(
+        'Instance registry setup completed, '
+        'all existing shell sessions require a restart !'
+    )
     return True
 
 
