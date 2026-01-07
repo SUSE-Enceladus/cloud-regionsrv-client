@@ -880,4 +880,12 @@ def main(args):
 
 def app():  # pragma: no cover
     args = argparse.parse_args()
-    main(args)
+    if utils.is_registration_running():
+        log.debug('registercloudguest is already running')
+        sys.exit(0)
+    else:
+        utils.lock_registration()
+        try:
+            main(args)
+        finally:
+            utils.unlock_registration()

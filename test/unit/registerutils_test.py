@@ -77,6 +77,7 @@ class TestRegisterUtils:
         _check_file_name(utils.FRAMEWORK_IDENTIFIER)
         _check_file_name(utils.NEW_REGISTRATION_MARKER)
         _check_file_name(utils.REGISTRATION_COMPLETED_MARKER)
+        _check_file_name(utils.REGISTRATION_PROC_LOCK_FILE_NAME)
         _check_file_name(utils.REGISTERED_SMT_SERVER_DATA_FILE_NAME)
         _check_file_name(utils.RMT_AS_SCC_PROXY_MARKER)
 
@@ -107,6 +108,16 @@ class TestRegisterUtils:
 
         utils.HOSTSFILE_PATH = '/etc/hosts'
         utils.PROFILE_LOCAL_PATH = '/etc/profile.local'
+
+    @patch('os.path.exists')
+    def test_is_registration_running_running(self, mock_os_path_exists):
+        mock_os_path_exists.return_value = True
+        assert utils.is_registration_running() is True
+
+    @patch('os.path.exists')
+    def test_is_registration_running_not_running(self, mock_os_path_exists):
+        mock_os_path_exists.return_value = False
+        assert utils.is_registration_running() is False
 
     @patch('os.path.exists')
     def test_get_available_smt_servers_no_cache(self, path_exists):
@@ -154,8 +165,8 @@ class TestRegisterUtils:
 
     @patch('cloudregister.registerutils.get_zypper_command')
     def test_get_zypper_target_root_set_R_short(self, zypp_cmd):
-        """Test behavior when zypper is "running" and has root set using -R and no
-           other args"""
+        """Test behavior when zypper is "running" and has root set
+           using -R and no other args"""
         zypp_cmd.return_value = '-R /foobar'
         assert utils.get_zypper_target_root() == '/foobar'
 
@@ -2631,6 +2642,13 @@ class TestRegisterUtils:
         mock_get_zypper_pid.return_value = 42
         assert utils.is_zypper_running()
 
+    @patch('cloudregister.registerutils._set_state_file')
+    def test_lock_registration(self, mock_set_flag):
+        utils.lock_registration()
+        mock_set_flag.assert_called_once_with(
+            '/var/cache/cloudregister/registercloudguest.lock'
+        )
+
     @patch('cloudregister.registerutils.get_state_dir')
     def test_refresh_zypper_pid_cache(self, mock_get_state_dir):
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -4872,6 +4890,13 @@ export DOCKER_CONFIG=/etc/containers
         utils.deregister_from_SCC()
         assert 'Unable to remove client registration from SCC' in \
             self._caplog.text
+
+    @patch('cloudregister.registerutils._remove_state_file')
+    def test_unlock_registration(self, mock_remove_state):
+        utils.unlock_registration()
+        mock_remove_state.assert_called_once_with(
+            '/var/cache/cloudregister/registercloudguest.lock'
+        )
 
 
 # ---------------------------------------------------------------------------

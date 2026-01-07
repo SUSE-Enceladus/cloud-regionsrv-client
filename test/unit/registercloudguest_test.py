@@ -100,9 +100,9 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.clean_smt_cache')
     def test_register_cloud_guest_cleanup(
         self,
-        mock_clean_smt_cache,
-        mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
-        mock_deregister_non_free_extensions, mock_clean_hosts_file
+        mock_clean_smt_cache, mock_clear_reg_flag, mock_framework_id,
+        mock_get_config, mock_time_sleep, mock_deregister_non_free_extensions,
+        mock_clean_hosts_file
     ):
         fake_args = SimpleNamespace(
             clean_up=True,
@@ -316,9 +316,11 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_set_proxy
     ):
         smt_data_ipv46 = dedent('''\
@@ -399,9 +401,11 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_set_proxy
     ):
         mock_set_proxy.return_value = True
@@ -482,9 +486,11 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_set_proxy
     ):
         mock_set_proxy.return_value = True
@@ -567,9 +573,11 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_set_proxy, mock_smt_is_equivalent,
         mock_has_ipv6_access, mock_replace_hosts_entry
     ):
@@ -736,9 +744,11 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
         mock_set_as_current_smt, mock_set_proxy
     ):
@@ -824,11 +834,14 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_is_registration_supported, mock_set_proxy
+        mock_set_as_current_smt, mock_is_registration_supported,
+        mock_set_proxy
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -913,10 +926,12 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration, mock_smt_is_responsive,
+        mock_os_path_exists, mock_has_rmt_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts, mock_update_rmt_cert,
+        mock_get_register_cmd, mock_os_access,
         mock_set_as_current_smt, mock_get_installed_products,
         mock_set_proxy
     ):
@@ -1108,12 +1123,14 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
         mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product, mock_set_proxy
+        mock_import_smt_cert, mock_register_product, mock_set_proxy,
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1216,14 +1233,17 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
         mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product, mock_set_rmt_as_scc_proxy_flag,
+        mock_import_smt_cert, mock_register_product,
+        mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_set_proxy, mock_remove_state_file
+        mock_get_creds_file, mock_set_proxy, mock_remove_state_file,
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1359,9 +1379,11 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
+        mock_clean_hosts_file, mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
         mock_set_as_current_smt, mock_get_installed_products,
         mock_import_smt_cert, mock_register_product,
@@ -1538,7 +1560,8 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
@@ -1547,8 +1570,9 @@ class TestRegisterCloudGuest:
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
         mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag
+        mock_find_repos, mock_get_repo_url, mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag,
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1734,7 +1758,8 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
@@ -1743,8 +1768,9 @@ class TestRegisterCloudGuest:
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
         mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag
+        mock_find_repos, mock_get_repo_url, mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag,
     ):
         smt_data_ipv46 = dedent('''\
             <smtInfo fingerprint="AA:BB:CC:DD"
@@ -1866,6 +1892,7 @@ class TestRegisterCloudGuest:
             query='highlight=params', fragment='url-parsing'
         )
         mock_set_proxy.return_value = False
+
         assert register_cloud_guest.main(fake_args) is None
         assert 'Forced new registration' in self._caplog.text
         assert 'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"' in self._caplog.text
@@ -1931,7 +1958,8 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
@@ -1940,7 +1968,8 @@ class TestRegisterCloudGuest:
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
         mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
+        mock_find_repos, mock_get_repo_url, mock_exec_subprocess,
+        mock_enable_repo,
         mock_urlparse, mock_set_proxy, mock_os_system,
         mock_set_registration_completed_flag, mock_remove_state_file
     ):
@@ -2136,7 +2165,8 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
@@ -2145,9 +2175,11 @@ class TestRegisterCloudGuest:
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
         mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
+        mock_find_repos, mock_get_repo_url, mock_exec_subprocess,
+        mock_enable_repo,
         mock_urlparse, mock_fetch_smt_data,
-        mock_is_reg_supported, mock_get_responding_update_server, mock_set_proxy
+        mock_is_reg_supported, mock_get_responding_update_server,
+        mock_set_proxy
     ):
         mock_set_proxy.return_value = False
         smt_data_ipv46 = dedent('''\
@@ -2733,7 +2765,8 @@ class TestRegisterCloudGuest:
         mock_set_new_registration_flag, mock_get_current_smt,
         mock_store_smt_data,
         mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
+        mock_get_instance_data, mock_setup_registry,
+        mock_setup_ltss_registration,
         mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
         mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
         mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
@@ -2742,7 +2775,8 @@ class TestRegisterCloudGuest:
         mock_set_rmt_as_scc_proxy_flag,
         mock_requests_get, mock_get_product_tree, mock_get_creds,
         mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
+        mock_find_repos, mock_get_repo_url, mock_exec_subprocess,
+        mock_enable_repo,
         mock_urlparse, mock_set_proxy, mock_os_system,
         mock_set_registration_completed_flag, mock_remove_state_file
     ):

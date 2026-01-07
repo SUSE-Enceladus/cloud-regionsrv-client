@@ -49,6 +49,7 @@ from cloudregister.defaults import (
     REGISTRATION_COMPLETED_MARKER,
     REGISTRATION_DATA_DIR,
     REGISTERED_SMT_SERVER_DATA_FILE_NAME,
+    REGISTRATION_PROC_LOCK_FILE_NAME,
     RMT_AS_SCC_PROXY_MARKER,
     REGISTRY_CREDENTIALS_PATH,
     PROFILE_LOCAL_PATH,
@@ -143,6 +144,7 @@ def clean_cache():
     clean_framework_identifier()
     clear_registration_completed_flag()
     clean_registered_smt_data_file()
+    unlock_registration()
 
 
 # ----------------------------------------------------------------------------
@@ -469,6 +471,22 @@ def get_register_cmd():
                 break
 
     return register_cmd
+
+
+# ----------------------------------------------------------------------------
+def is_registration_running():
+    """Check if registercloudguest is already running"""
+    return os.path.exists(
+        os.sep.join([get_state_dir(), REGISTRATION_PROC_LOCK_FILE_NAME])
+    )
+
+
+# ----------------------------------------------------------------------------
+def lock_registration():
+    """Set the process lock for registercloudguest"""
+    _set_state_file(
+        os.sep.join([get_state_dir(), REGISTRATION_PROC_LOCK_FILE_NAME])
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -2902,6 +2920,13 @@ def set_registry_fqdn_suma(private_registry_fqdn):
 
     # the registry value inside the file has the update server registry FQDN
     return True
+
+
+# ----------------------------------------------------------------------------
+def unlock_registration():
+    """Remove the lock file for the registration process"""
+    proc_lock = os.sep.join([get_state_dir(), REGISTRATION_PROC_LOCK_FILE_NAME])
+    return _remove_state_file(proc_lock)
 
 
 # ----------------------------------------------------------------------------

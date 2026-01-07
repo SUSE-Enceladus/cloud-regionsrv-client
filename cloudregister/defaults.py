@@ -36,6 +36,7 @@ FRAMEWORK_IDENTIFIER = 'framework_info'
 NEW_REGISTRATION_MARKER = 'newregistration'
 REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
+REGISTRATION_PROC_LOCK_FILE_NAME = 'registercloudguest.lock'
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 SUSE_REGISTRY = 'registry.suse.com'
 REGSHARING_SYNC_TIME = 30

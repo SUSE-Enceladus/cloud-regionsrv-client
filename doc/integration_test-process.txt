@@ -36,6 +36,8 @@ After installing the test package with "zypper in"
     - does not exists or has no reference to susecloud
   + cat /etc/containers/registries.conf
     - does not exists or has no reference to susecloud
+  + ls /var/cache/cloudregister/*.lock
+    - does not exist
 - registercloudguest
   + no error
   + success message on stdout
