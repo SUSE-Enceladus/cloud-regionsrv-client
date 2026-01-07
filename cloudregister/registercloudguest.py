@@ -359,6 +359,7 @@ def register_base_product(
         else:
             log.info('Baseproduct registration complete')
             base_registered = True
+            registration_returncode = 0
             utils.clear_new_registration_flag()
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
