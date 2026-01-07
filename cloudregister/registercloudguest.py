@@ -611,6 +611,7 @@ argparse.add_argument(
 
 
 def main(args):
+    log.info('registercloudguest {}'.format(__version__))
     global registration_returncode  # noqa: F824
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
@@ -642,7 +643,7 @@ def main(args):
         log.error(msg)
         sys.exit(1)
 
-        # Specifying reg code only works, but an e-mail requires a reg code
+    # Specifying reg code only works, but an e-mail requires a reg code
     if (args.email and not args.reg_code):
         msg = '--email and --regcode must be used together'
         log.error(msg)
@@ -736,9 +737,10 @@ def main(args):
 
     # Check if the target RMT for the registration is alive or if we can
     # find a server that is alive in this region
-    registration_smt, registration_target_found = find_alive_registration_target(  # noqa: E501
-        registration_smt, region_smt_servers
-    )
+    registration_smt, registration_target_found = \
+        find_alive_registration_target(
+            registration_smt, region_smt_servers
+        )
 
     # Check if we need to send along any instance data
     instance_data_filepath = ''

@@ -807,11 +807,12 @@ def get_activations():
 def get_available_smt_servers():
     """Return a list of available SMT servers"""
     available_smt_servers = []
-    if not os.path.exists(get_state_dir()):
+    state_dir = get_state_dir()
+    if not os.path.exists(state_dir):
         return available_smt_servers
     smt_data_files = glob.glob(
         os.sep.join(
-            [get_state_dir(),
+            [state_dir,
              AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*']
         )
     )
@@ -1496,11 +1497,11 @@ def get_instance_data(config):
                     warn_msg += 'in registration failure.'
                     log.warning(warn_msg)
 
+    inst_data = instance_data.decode()
     # Marker for the server to not return https:// formatted
     # service and repo information
-    inst_data = instance_data.decode()
-
-    return inst_data + '<repoformat>plugin:susecloud</repoformat>\n'
+    repo_format = '<repoformat>plugin:susecloud</repoformat>\n'
+    return inst_data + repo_format
 
 
 # ----------------------------------------------------------------------------
