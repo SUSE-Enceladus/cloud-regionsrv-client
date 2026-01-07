@@ -236,8 +236,8 @@ def test_get_cert(
     mock_get_fingerprint.return_value = x509.get_fingerprint('sha1')
     smt = SMT(etree.fromstring(smt_data_ipv46))
     assert smt.get_cert() == response.text
-    assert mock_logging.info.called
-    mock_logging.info.assert_called_with(
+    assert mock_logging.debug.called
+    mock_logging.debug.assert_called_with(
         'Request to http://[fc00::1]/smt.crt succeeded'
     )
 
