@@ -30,9 +30,7 @@ urllib3.disable_warnings()
 
 loglevel = os.getenv("CONTAINER_BUILD_LOGLEVEL", "INFO")
 
-logging.basicConfig(level=loglevel,
-                    format='%(levelname)s: %(message)s'
-                    )
+logging.basicConfig(level=loglevel, format='%(levelname)s: %(message)s')
 
 LOG = logging.getLogger('containerbuild-regionsrv')
 
@@ -48,7 +46,9 @@ class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
         Returns the instance data as retrieved from the SMT server.
         """
 
-        instance_data = bytes(utils.get_instance_data(utils.get_config()), 'utf-8')
+        instance_data = bytes(
+            utils.get_instance_data(utils.get_config()), 'utf-8'
+        )
         return base64.b64encode(instance_data).decode()
 
     def get_credentials(self):
@@ -86,7 +86,7 @@ class ContainerBuildTCPServer(socketserver.BaseRequestHandler):
                 'server-ip': smt.get_ipv4(),
                 'username': username,
                 'password': password,
-                'ca': smt.get_cert()
+                'ca': smt.get_cert(),
             }
 
         self.request.sendall(bytes(json.dumps(resp), 'utf-8'))

@@ -53,17 +53,16 @@ def maybe_drop_registration(license_type):
             # There is no target registration server, nothing to do
             return
         if not utils.uses_rmt_as_scc_proxy():
-            log.info(
-                'Detected flavor change to BYOS, clean up registration')
+            log.info('Detected flavor change to BYOS, clean up registration')
             utils.clean_all_standard()
             utils.exec_subprocess(['systemctl', 'disable', SERVICE_NAME])
 
 
 def maybe_register_system(license_type):
     """Register the system if needed handle the folowing cases
-       - System is not registered at all
-       - System is registered as BYOS to update server
-       - System is registered to SCC
+    - System is not registered at all
+    - System is registered as BYOS to update server
+    - System is registered to SCC
     """
     if license_type == 'PAYG':
         current_target = utils.get_current_smt()
@@ -73,21 +72,22 @@ def maybe_register_system(license_type):
             # a registration code. Now that the system is PAYG we have to
             # clean up that registration
             utils.clean_all_standard()
-            log.info(base_msg.format(
-                status='removed registration to update infra as BYOS')
+            log.info(
+                base_msg.format(
+                    status='removed registration to update infra as BYOS'
+                )
             )
             current_target = None
         if not current_target and utils.is_scc_connected():
             # The system is registered to the SUSE Customer center. Now
             # that the system is PAYG we have to clean up that registration
             utils.clean_all_standard()
-            log.info(base_msg.format(
-                status='removed registration to SCC as BYOS')
+            log.info(
+                base_msg.format(status='removed registration to SCC as BYOS')
             )
             current_target = None
-        if (
-                not current_target or not
-                utils.is_registered(current_target.get_FQDN())
+        if not current_target or not utils.is_registered(
+            current_target.get_FQDN()
         ):
             # The system is not registered to the update infrastructure
             log.info(base_msg.format(status='registering'))
@@ -95,9 +95,7 @@ def maybe_register_system(license_type):
             utils.exec_subprocess(['systemctl', 'enable', SERVICE_NAME])
             return
         # Everything is as it is expected to be
-        log.info(base_msg.format(
-            status='already registered, nothing to do')
-        )
+        log.info(base_msg.format(status='already registered, nothing to do'))
 
 
 def app():

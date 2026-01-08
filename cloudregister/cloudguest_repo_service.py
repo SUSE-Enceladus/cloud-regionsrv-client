@@ -24,10 +24,7 @@ from lxml import etree
 from requests.auth import HTTPBasicAuth
 
 from cloudregister.logger import Logger
-from cloudregister.defaults import (
-    LOG_FILE,
-    REGISTRATION_DATA_DIR
-)
+from cloudregister.defaults import LOG_FILE, REGISTRATION_DATA_DIR
 import cloudregister.registerutils as utils
 
 log_instance = Logger()
@@ -63,10 +60,7 @@ def print_repo_data(update_server, activation, available_repos):
 
     product_info = service_info.get('product')
     credentials_file = os.path.basename(
-        utils.get_credentials_file(
-            update_server,
-            service_name
-        )
+        utils.get_credentials_file(update_server, service_name)
     )
     for repo in product_info.get('repositories'):
         name = repo.get('name')
@@ -113,7 +107,7 @@ def app():
     res = requests.get(
         'https://%s/repo/repoindex.xml' % update_server.get_FQDN(),
         auth=auth_creds,
-        headers=headers
+        headers=headers,
     )
     if not res.status_code == 200:
         log.info('[Repo-Service] Unable to retrieve update server repo data')
@@ -140,6 +134,4 @@ def app():
         sys.exit(1)
 
     for activation in product_activations:
-        print_repo_data(
-            update_server, activation, available_repos
-        )
+        print_repo_data(update_server, activation, available_repos)

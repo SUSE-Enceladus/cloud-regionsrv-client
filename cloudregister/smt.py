@@ -12,7 +12,7 @@
 # License along with this library.
 
 """Class to hold the information we need to connect and identify an SMT
-   server."""
+server."""
 
 import ipaddress
 import logging
@@ -24,6 +24,7 @@ from M2Crypto import X509
 
 class SMT:
     """Store smt information"""
+
     def __init__(self, smtXMLNode, https_only=False):
         self._ipv4 = None
         try:
@@ -62,12 +63,12 @@ class SMT:
         if not isinstance(other_smt, SMT):
             return False
         if (
-                self.get_ipv4() == other_smt.get_ipv4() and
-                self.get_ipv6() == other_smt.get_ipv6() and
-                self.get_FQDN() == other_smt.get_FQDN() and
-                self.get_registry_FQDN() == other_smt.get_registry_FQDN() and
-                self.get_fingerprint() == other_smt.get_fingerprint() and
-                self.get_region() == other_smt.get_region()
+            self.get_ipv4() == other_smt.get_ipv4()
+            and self.get_ipv6() == other_smt.get_ipv6()
+            and self.get_FQDN() == other_smt.get_FQDN()
+            and self.get_registry_FQDN() == other_smt.get_registry_FQDN()
+            and self.get_fingerprint() == other_smt.get_fingerprint()
+            and self.get_region() == other_smt.get_region()
         ):
             return True
 
@@ -144,13 +145,12 @@ class SMT:
     # --------------------------------------------------------------------
     def is_equivalent(self, smt_server):
         """Have both an ipv4 address and/or both an ipv6 address and they
-           are in the same region they are interchangeable and considered
-           equivalent"""
+        are in the same region they are interchangeable and considered
+        equivalent"""
         if (
-                ((self.get_ipv4() and smt_server.get_ipv4()) or
-                 (self.get_ipv6() and smt_server.get_ipv6())) and
-                self.get_region() == smt_server.get_region()
-        ):
+            (self.get_ipv4() and smt_server.get_ipv4())
+            or (self.get_ipv6() and smt_server.get_ipv6())
+        ) and self.get_region() == smt_server.get_region():
             return True
 
         return False
@@ -189,9 +189,9 @@ class SMT:
     # --------------------------------------------------------------------
     def set_protocol(self, protocol):
         """Method to set the protocol to use for certain queries.
-           http and https are allowed. This is used to update
-           cached server data to provide an upgrade path for systems
-           that want to switch to https only."""
+        http and https are allowed. This is used to update
+        cached server data to provide an upgrade path for systems
+        that want to switch to https only."""
 
         if protocol not in ('http', 'https'):
             return
@@ -240,7 +240,9 @@ class SMT:
             rmt_ip = srv_ip
             try:
                 # Per rfc3986 IPv6 addresses in a URI are enclosed in []
-                if isinstance(ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address):
+                if isinstance(
+                    ipaddress.ip_address(rmt_ip), ipaddress.IPv6Address
+                ):
                     rmt_ip = '[%s]' % srv_ip
             except ValueError:
                 # move on with the rmt_ip stored in the first place
@@ -257,7 +259,7 @@ class SMT:
     # --------------------------------------------------------------------
     def _is_cert_valid(self, cert):
         """Verify that the fingerprint of the given cert matches the
-           expected fingerprint"""
+        expected fingerprint"""
         try:
             x509 = X509.load_cert_string(str(cert))
             x509_fingerprint = x509.get_fingerprint('sha1')
@@ -301,12 +303,12 @@ class SMT:
                     if cert_res:
                         if cert_res.status_code == 200:
                             logging.debug(
-                                'Request to %s%s succeeded' %
-                                (cert_url, cert_name)
+                                'Request to %s%s succeeded'
+                                % (cert_url, cert_name)
                             )
                             return cert_res
 
                         logging.warning(
-                            'Request to %s%s failed: %s' %
-                            (cert_url, cert_name, cert_res.status_code)
+                            'Request to %s%s failed: %s'
+                            % (cert_url, cert_name, cert_res.status_code)
                         )

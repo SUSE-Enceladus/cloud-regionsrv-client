@@ -23,9 +23,7 @@ The script is used in a sudo rule to allow its use by a non root user
 import os
 import sys
 
-from cloudregister.registerutils import (
-    get_activations, exec_subprocess
-)
+from cloudregister.registerutils import get_activations, exec_subprocess
 
 
 def app():
