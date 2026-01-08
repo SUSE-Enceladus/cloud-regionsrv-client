@@ -15,11 +15,14 @@
 server."""
 
 import ipaddress
-import logging
 import os
 import requests
 
 from M2Crypto import X509
+
+from cloudregister.logger import Logger
+
+log = Logger.get_logger()
 
 
 class SMT:
@@ -28,29 +31,29 @@ class SMT:
     def __init__(self, smtXMLNode, https_only=False):
         self._ipv4 = None
         try:
-            self._ipv4 = smtXMLNode.attrib['SMTserverIP']
+            self._ipv4 = smtXMLNode.attrib["SMTserverIP"]
         except KeyError:
             pass
         self._ipv6 = None
         try:
-            self._ipv6 = smtXMLNode.attrib['SMTserverIPv6']
+            self._ipv6 = smtXMLNode.attrib["SMTserverIPv6"]
         except KeyError:
             pass
         try:
-            self._region = smtXMLNode.attrib['region']
+            self._region = smtXMLNode.attrib["region"]
         except KeyError:
-            self._region = 'unknown'
+            self._region = "unknown"
         try:
-            self._registry_fqdn = smtXMLNode.attrib['SMTregistryName']
+            self._registry_fqdn = smtXMLNode.attrib["SMTregistryName"]
         except KeyError:
-            self._registry_fqdn = ''
-        self._fqdn = smtXMLNode.attrib['SMTserverName']
-        self._fingerprint = smtXMLNode.attrib['fingerprint']
+            self._registry_fqdn = ""
+        self._fqdn = smtXMLNode.attrib["SMTserverName"]
+        self._fingerprint = smtXMLNode.attrib["fingerprint"]
         self._cert = None
-        self._cert_names = ('smt.crt', 'rmt.crt')
-        self._protocol = 'http'
+        self._cert_names = ("smt.crt", "rmt.crt")
+        self._protocol = "http"
         if https_only:
-            self._protocol = 'https'
+            self._protocol = "https"
         self._check_urls = self._form_srv_check_urls()
         # disable InsecureRequestWarning
         # as verification is disabled for the https request
@@ -93,7 +96,7 @@ class SMT:
     # --------------------------------------------------------------------
     def get_domain_name(self):
         """Return the domain name for the server."""
-        return self._fqdn.split('.', 1)[-1]
+        return self._fqdn.split(".", 1)[-1]
 
     # --------------------------------------------------------------------
     def get_fingerprint(self):
@@ -108,12 +111,12 @@ class SMT:
     # --------------------------------------------------------------------
     def get_registry_FQDN(self):
         """Return the fully qualified domain registry name"""
-        return self._registry_fqdn if hasattr(self, '_registry_fqdn') else ''
+        return self._registry_fqdn if hasattr(self, "_registry_fqdn") else ""
 
     # --------------------------------------------------------------------
     def get_name(self):
         """Return the name"""
-        return self._fqdn.split('.', 1)[0]
+        return self._fqdn.split(".", 1)[0]
 
     # --------------------------------------------------------------------
     def get_ipv4(self):
@@ -122,7 +125,7 @@ class SMT:
         # member. When the SMT object is restored from an old pickeled
         # file the _ip member gets created while the _ipv4 member does
         # not exist. Handle this transition properly.
-        if hasattr(self, '_ip'):
+        if hasattr(self, "_ip"):
             self._ipv4 = self._ip
         return self._ipv4
 
@@ -133,7 +136,7 @@ class SMT:
         # member. When the SMT object is restored from an old pickeled
         # file the _ipv6 member does not exist. Handle this transition
         # properly.
-        if not hasattr(self, '_ipv6'):
+        if not hasattr(self, "_ipv6"):
             return None
         return self._ipv6
 
@@ -168,7 +171,7 @@ class SMT:
                 response = requests.get(health_url, timeout=2, verify=False)
                 if response.status_code == 200:
                     status = response.json()
-                    return status.get('state') == 'online'
+                    return status.get("state") == "online"
                 elif response.status_code == 404:
                     cert_url = self._check_urls.get(health_url)
                     # We are pointing to an SMT server, the health status API
@@ -193,7 +196,7 @@ class SMT:
         cached server data to provide an upgrade path for systems
         that want to switch to https only."""
 
-        if protocol not in ('http', 'https'):
+        if protocol not in ("http", "https"):
             return
 
         self._protocol = protocol
@@ -201,16 +204,16 @@ class SMT:
     # --------------------------------------------------------------------
     def write_cert(self, target_dir):
         """Write the certificate to the given directory"""
-        logging.debug('Writing SMT rootCA: %s' % target_dir)
+        log.debug("Writing SMT rootCA: %s" % target_dir)
         cert = self.get_cert()
         certs_to_write = []
         ipv4 = self.get_ipv4()
         if ipv4:
-            certs_to_write.append(ipv4.replace('.', '_'))
+            certs_to_write.append(ipv4.replace(".", "_"))
         ipv6 = self.get_ipv6()
         if ipv6:
-            certs_to_write.append(ipv6.replace(':', '_'))
-        ca_file_path = os.path.join(target_dir, 'registration_server_%s.pem')
+            certs_to_write.append(ipv6.replace(":", "_"))
+        ca_file_path = os.path.join(target_dir, "registration_server_%s.pem")
         # We write the cert twice one time with the IPv4 as identifier and
         # one time with the IPv6 as identifier. This is not an indication that
         # the update server can be reached over both protocols.
@@ -219,11 +222,11 @@ class SMT:
         # we write here with the known pattern.
         for cert_name in certs_to_write:
             try:
-                with open(ca_file_path % cert_name, 'w') as smt_ca_file:
+                with open(ca_file_path % cert_name, "w") as smt_ca_file:
                     smt_ca_file.write(cert)
             except IOError:
-                errMsg = 'Could not store update server certificate'
-                logging.error(errMsg)
+                errMsg = "Could not store update server certificate"
+                log.error(errMsg)
                 return 0
 
         return 1
@@ -250,8 +253,8 @@ class SMT:
                 # for which the following request is expected to work
                 pass
 
-            health_url = 'https://%s/api/health/status' % rmt_ip
-            cert_url = '%s://%s/' % (self._protocol, rmt_ip)
+            health_url = "https://%s/api/health/status" % rmt_ip
+            cert_url = "%s://%s/" % (self._protocol, rmt_ip)
             check_urls[health_url] = cert_url
 
         return check_urls
@@ -262,15 +265,15 @@ class SMT:
         expected fingerprint"""
         try:
             x509 = X509.load_cert_string(str(cert))
-            x509_fingerprint = x509.get_fingerprint('sha1')
+            x509_fingerprint = x509.get_fingerprint("sha1")
         except Exception:
-            errMsg = 'Could not read X509 fingerprint from cert'
-            logging.error(errMsg)
+            errMsg = "Could not read X509 fingerprint from cert"
+            log.error(errMsg)
             return False
 
-        if x509_fingerprint != self.get_fingerprint().replace(':', ''):
-            errMsg = 'Fingerprint could not be verified'
-            logging.error(errMsg)
+        if x509_fingerprint != self.get_fingerprint().replace(":", ""):
+            errMsg = "Fingerprint could not be verified"
+            log.error(errMsg)
             return False
 
         return True
@@ -291,24 +294,23 @@ class SMT:
                         )
                     except Exception:
                         # No response from server
-
-                        logging.warning('+' * 20)
+                        log.debug("+" * 20)
                         # Extract the IP address we tried
-                        ip = 'unkown'
-                        if '[' in cert_url:
+                        ip = "unkown"
+                        if "[" in cert_url:
                             ip = self.get_ipv6()
                         else:
                             ip = self.get_ipv4()
-                        logging.warning('Server %s is unreachable' % ip)
+                        log.debug("Server %s is unreachable" % ip)
                     if cert_res:
                         if cert_res.status_code == 200:
-                            logging.debug(
+                            log.debug(
                                 'Request to %s%s succeeded'
                                 % (cert_url, cert_name)
                             )
                             return cert_res
 
-                        logging.warning(
-                            'Request to %s%s failed: %s'
+                        log.debug(
+                            "Request to %s%s failed: %s"
                             % (cert_url, cert_name, cert_res.status_code)
                         )
