@@ -36,6 +36,7 @@ import time
 import urllib.parse
 import uuid
 
+from cloudregister.lock import Lock
 from cloudregister.logger import Logger
 from cloudregister.defaults import (
     AVAILABLE_SMT_SERVER_DATA_FILE_NAME,
@@ -868,4 +869,10 @@ def main(args):
 
 def app():  # pragma: no cover
     args = argparse.parse_args()
-    main(args)
+    lock = Lock()
+    try:
+        fd = lock.acquire()
+        if not fd == Lock.sameProcess():
+            main(args)
+    finally:
+        lock.release(fd)
