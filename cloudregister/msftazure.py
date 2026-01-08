@@ -24,9 +24,7 @@ import urllib.error
 extensionConfigRx = re.compile(
     r'.*<ExtensionsConfig>(.*?)</ExtensionsConfig>.*', re.S | re.M
 )
-locationRx = re.compile(
-    r'.*<Location>(.*?)</Location>.*', re.S | re.M
-)
+locationRx = re.compile(r'.*<Location>(.*?)</Location>.*', re.S | re.M)
 
 
 def generateRegionSrvArgs():
@@ -41,10 +39,7 @@ def generateRegionSrvArgs():
     zone_response = None
     try:
         zone_response = requests.get(
-            meta_data_url + zone_info,
-            headers=headers,
-            params=params,
-            timeout=5
+            meta_data_url + zone_info, headers=headers, params=params, timeout=5
         )
     except requests.exceptions.RequestException:
         msg = 'Unable to determine instance placement from metadata '
@@ -63,14 +58,14 @@ def generateRegionSrvArgs():
         resolver = dns.resolver.get_default_resolver()
         for nameserver in resolver.nameservers:
             wireServer = 'http://%s/' % nameserver
-            headers = {"x-ms-agent-name": "WALinuxAgent",
-                       "x-ms-version": "2012-11-30"}
+            headers = {
+                "x-ms-agent-name": "WALinuxAgent",
+                "x-ms-version": "2012-11-30",
+            }
             try:
                 goalStateInfo = 'machine/?comp=goalstate'
                 goalStatResp = requests.get(
-                    wireServer + goalStateInfo,
-                    headers=headers,
-                    timeout=15
+                    wireServer + goalStateInfo, headers=headers, timeout=15
                 )
             except requests.exceptions.RequestException:
                 msg = 'Could not retrieve goal state XML from %s' % nameserver
@@ -89,9 +84,7 @@ def generateRegionSrvArgs():
             )
             try:
                 extensionsResp = requests.get(
-                    extensionsURI,
-                    headers=headers,
-                    timeout=15
+                    extensionsURI, headers=headers, timeout=15
                 )
             except requests.exceptions.RequestException:
                 msg = 'Could not get extensions information from "%s"'

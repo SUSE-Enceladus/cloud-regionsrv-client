@@ -34,8 +34,9 @@ def generateRegionSrvArgs():
         try:
             country, region, zone = zoneResp.text.split('/')[-1].split('-')
         except Exception:
-            logging.warning('Unable to form region string from text: %s'
-                            % zoneResp.text)
+            logging.warning(
+                'Unable to form region string from text: %s' % zoneResp.text
+            )
             return
     else:
         logging.warning('Unable to get zone metadata')

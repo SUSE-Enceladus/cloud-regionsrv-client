@@ -82,6 +82,7 @@ flake8 = ">=4.0.0"
 [tool.poetry.group.development]
 [tool.poetry.group.development.dependencies]
 bumpversion = "*"
+black = "*"
 
 [build-system]
 requires = ["poetry-core>=1.2.4"]

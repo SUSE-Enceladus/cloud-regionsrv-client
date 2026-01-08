@@ -20,13 +20,12 @@ class Logger:
     """
     Setup logging for stdout, stderr and logfile
     """
+
     def __init__(self):
         # change log level to NOTSET for init
         logging.getLogger().setLevel(logging.NOTSET)
 
-        formatter = logging.Formatter(
-            '%(asctime)s: %(levelname)s: %(message)s'
-        )
+        formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s')
 
         # Add stdout handler, with level INFO
         console = logging.StreamHandler(sys.stdout)

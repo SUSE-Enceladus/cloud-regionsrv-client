@@ -21,7 +21,7 @@ import os
 import cloudregister.registerutils as utils
 from cloudregister.defaults import (
     OLD_REGISTRATION_DATA_DIR,
-    REGISTRATION_DATA_DIR
+    REGISTRATION_DATA_DIR,
 )
 
 from cloudregister import smt
@@ -37,7 +37,7 @@ def app():
         os.system(
             'mv {} {}'.format(
                 OLD_REGISTRATION_DATA_DIR,
-                os.sep.join(REGISTRATION_DATA_DIR.split(os.sep)[:-2])
+                os.sep.join(REGISTRATION_DATA_DIR.split(os.sep)[:-2]),
             )
         )
 
@@ -48,7 +48,7 @@ def app():
     if utils.set_proxy():
         proxies = {
             'http_proxy': os.environ.get('http_proxy'),
-            'https_proxy': os.environ.get('https_proxy')
+            'https_proxy': os.environ.get('https_proxy'),
         }
     cfg = utils.get_config()
     region_rmt_data = utils.fetch_smt_data(cfg, proxies, True)
