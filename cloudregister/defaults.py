@@ -15,15 +15,15 @@
 LOG_FILE = '/var/log/cloudregister'
 
 # etc content
-ZYPP_SERVICES = '/etc/zypp/services.d'
+BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
+DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 HOSTSFILE_PATH = '/etc/hosts'
-REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 PROFILE_LOCAL_PATH = '/etc/profile.local'
 REGISTRIES_CONF_PATH = '/etc/containers/registries.conf'
-DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
+REGISTRY_CREDENTIALS_PATH = '/etc/containers/config.json'
 SUMA_REGISTRY_CONF_PATH = '/etc/uyuni/uyuni-tools.yaml'
-BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 ZYPP_CREDENTIALS_PATH = '/etc/zypp/credentials.d'
+ZYPP_SERVICES = '/etc/zypp/services.d'
 
 # var content
 OLD_REGISTRATION_DATA_DIR = '/var/lib/cloudregister'
@@ -34,8 +34,8 @@ AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 BASE_CREDENTIALS_NAME = 'SCCcredentials'
 FRAMEWORK_IDENTIFIER = 'framework_info'
 NEW_REGISTRATION_MARKER = 'newregistration'
-REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
+REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
+REGSHARING_SYNC_TIME = 30
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 SUSE_REGISTRY = 'registry.suse.com'
-REGSHARING_SYNC_TIME = 30
