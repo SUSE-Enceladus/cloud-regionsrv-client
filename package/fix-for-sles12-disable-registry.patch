@@ -1,8 +1,8 @@
 diff --git a/cloudregister/registercloudguest.py b/cloudregister/registercloudguest.py
-index 398a169..5d345d1 100644
+index fc16c4e..0df0871 100644
 --- a/cloudregister/registercloudguest.py
 +++ b/cloudregister/registercloudguest.py
-@@ -142,6 +142,8 @@ def setup_registry(registration_target):
+@@ -154,6 +154,8 @@ def setup_registry(registration_target):
      """
      Run the registration process for the container registry
      """
@@ -12,7 +12,7 @@ index 398a169..5d345d1 100644
          utils.get_credentials_file(registration_target)
      )
 diff --git a/cloudregister/registerutils.py b/cloudregister/registerutils.py
-index 371d2aa..ee65904 100644
+index 21e55d0..09c85eb 100644
 --- a/cloudregister/registerutils.py
 +++ b/cloudregister/registerutils.py
 @@ -29,7 +29,8 @@ import stat
@@ -25,48 +25,42 @@ index 371d2aa..ee65904 100644
  import yaml
  
  from collections import namedtuple
-@@ -82,11 +83,12 @@ def add_hosts_entry(smt_server):
+@@ -82,8 +83,9 @@ def add_hosts_entry(smt_server):
          smt_server.get_FQDN(),
-         smt_server.get_name()
+         smt_server.get_name(),
      )
 -    if smt_server.get_registry_FQDN():
--        entry += '%s\t%s\n' % (
--            smt_ip,
--            smt_server.get_registry_FQDN()
--        )
+-        entry += '%s\t%s\n' % (smt_ip, smt_server.get_registry_FQDN())
 +    # Disabled on SLE12
 +    # if smt_server.get_registry_FQDN():
-+    #     entry += '%s\t%s\n' % (
-+    #         smt_ip,
-+    #         smt_server.get_registry_FQDN()
-+    #     )
++    #     entry += '%s\t%s\n' % (smt_ip, smt_server.get_registry_FQDN())
  
      with open('/etc/hosts', 'a') as hosts_file:
          hosts_file.write(smt_hosts_entry_comment)
-@@ -967,6 +969,8 @@ def set_container_engines_env_vars():
+@@ -980,6 +982,8 @@ def set_container_engines_env_vars():
  
  # ----------------------------------------------------------------------------
  def get_registry_conf_file(container_path, container):
 +    # Disabled on SLE12
-+    return None
++    # return None
      registries_conf = {}
      try:
          with open(container_path, 'r') as registries_conf_file:
-@@ -1013,6 +1017,8 @@ def update_bashrc(content, mode):
+@@ -1025,6 +1029,8 @@ def update_bashrc(content, mode):
  # ----------------------------------------------------------------------------
  def clean_registry_setup():
      """Remove the data previously set to make the registry work."""
 +    # Disabled on SLE12
-+    return None
++    # return None
      smt = get_smt_from_store(_get_registered_smt_file_path())
      private_registry_fqdn = smt.get_registry_FQDN() if smt else ''
      clean_registry_auth(private_registry_fqdn)
-@@ -1283,6 +1289,8 @@ def clean_registries_conf_docker(private_registry_fqdn):
+@@ -1294,6 +1300,8 @@ def clean_registries_conf_docker(private_registry_fqdn):
  # ----------------------------------------------------------------------------
  def write_registries_conf(registries_conf, container_path, container_name):
      """Write registries_conf content to container_path."""
 +    # Disabled on SLE12
-+    return None
++    # return None
      try:
          if container_name == 'podman':
              with open(container_path, 'w') as registries_conf_file:

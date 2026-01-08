@@ -35,8 +35,7 @@ def generateRegionSrvArgs():
             imds_addr = '[%s]' % imds_ip
         try:
             token_resp = requests.put(
-                token_url % imds_addr,
-                headers=token_header
+                token_url % imds_addr, headers=token_header
             )
             if token_resp.status_code == 200:
                 zone_req_header = {'X-aws-ec2-metadata-token': token_resp.text}
