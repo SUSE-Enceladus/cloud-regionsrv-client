@@ -21,6 +21,9 @@ check: setup
 	poetry run flake8 --statistics -j auto --count test/unit
 	poetry run flake8 --statistics -j auto --count usr/lib/zypp/plugins/urlresolver
 
+black:
+	poetry run black --skip-string-normalization --line-length 80 cloudregister
+
 test: setup
 	# unit tests
 	poetry run bash -c 'pushd test/unit && pytest \
