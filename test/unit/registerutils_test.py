@@ -1151,8 +1151,10 @@ class TestRegisterUtils:
     @patch('cloudregister.registerutils.os.access')
     @patch('cloudregister.registerutils.os.path.exists')
     @patch('cloudregister.registerutils.exec_subprocess')
+    @patch('time.sleep')
     def test_register_product_packmgr_lock(
         self,
+        mock_time_sleep,
         mock_exec, mock_os_path_exists,
         mock_os_access, mock_get_register_cmd
     ):
