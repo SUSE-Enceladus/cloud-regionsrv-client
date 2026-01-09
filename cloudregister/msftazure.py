@@ -13,27 +13,28 @@
 
 import dns.resolver
 import html
-import logging
 import requests
 import re
 import urllib.request
 import urllib.parse
 import urllib.error
 
+from cloudregister.logger import Logger
 
 extensionConfigRx = re.compile(
-    r'.*<ExtensionsConfig>(.*?)</ExtensionsConfig>.*', re.S | re.M
+    r".*<ExtensionsConfig>(.*?)</ExtensionsConfig>.*", re.S | re.M
 )
-locationRx = re.compile(r'.*<Location>(.*?)</Location>.*', re.S | re.M)
+locationRx = re.compile(r".*<Location>(.*?)</Location>.*", re.S | re.M)
+log = Logger.get_logger()
 
 
 def generateRegionSrvArgs():
     """
     Generate arguments to be sent to the region server.
     """
-    meta_data_url = 'http://169.254.169.254/metadata/instance/'
-    zone_info = 'compute/location'
-    headers = {'Metadata': 'true'}
+    meta_data_url = "http://169.254.169.254/metadata/instance/"
+    zone_info = "compute/location"
+    headers = {"Metadata": "true"}
     params = {"format": "text", "api-version": "2017-04-02"}
 
     zone_response = None
@@ -42,42 +43,42 @@ def generateRegionSrvArgs():
             meta_data_url + zone_info, headers=headers, params=params, timeout=5
         )
     except requests.exceptions.RequestException:
-        msg = 'Unable to determine instance placement from metadata '
+        msg = "Unable to determine instance placement from metadata "
         msg += 'server "%s"'
-        logging.warning(msg % (meta_data_url + zone_info))
+        log.debug(msg % (meta_data_url + zone_info))
 
     if zone_response:
         if zone_response.status_code == 200:
-            return 'regionHint=' + zone_response.text.lower()
+            return "regionHint=" + zone_response.text.lower()
         else:
-            logging.warning('Unable to get availability zone metadata')
-            logging.warning('\tReturn code: %d' % zone_response.status_code)
-            logging.warning('\tMessage: %s' % zone_response.text)
+            log.debug("Unable to get availability zone metadata")
+            log.debug("\tReturn code: %d" % zone_response.status_code)
+            log.debug("\tMessage: %s" % zone_response.text)
     else:
-        logging.info('Falling back to XML data from wire server')
+        log.debug("Falling back to XML data from wire server")
         resolver = dns.resolver.get_default_resolver()
         for nameserver in resolver.nameservers:
-            wireServer = 'http://%s/' % nameserver
+            wireServer = "http://%s/" % nameserver
             headers = {
                 "x-ms-agent-name": "WALinuxAgent",
                 "x-ms-version": "2012-11-30",
             }
             try:
-                goalStateInfo = 'machine/?comp=goalstate'
+                goalStateInfo = "machine/?comp=goalstate"
                 goalStatResp = requests.get(
                     wireServer + goalStateInfo, headers=headers, timeout=15
                 )
             except requests.exceptions.RequestException:
-                msg = 'Could not retrieve goal state XML from %s' % nameserver
-                logging.warning(msg)
+                msg = "Could not retrieve goal state XML from %s" % nameserver
+                log.debug(msg)
                 continue
             if not goalStatResp.status_code == 200:
-                msg = '%s error for goal state request: %s'
-                logging.warning(msg % (nameserver, goalStatResp.status_code))
+                msg = "%s error for goal state request: %s"
+                log.debug(msg % (nameserver, goalStatResp.status_code))
                 continue
             match = extensionConfigRx.match(goalStatResp.text)
             if not match:
-                logging.warning('No "<ExtensionsConfig>" in goal state XML')
+                log.debug('No "<ExtensionsConfig>" in goal state XML')
                 continue
             extensionsURI = urllib.parse.unquote(
                 html.unescape(match.groups()[0])
@@ -88,19 +89,19 @@ def generateRegionSrvArgs():
                 )
             except requests.exceptions.RequestException:
                 msg = 'Could not get extensions information from "%s"'
-                logging.warning(msg % extensionsURI)
+                log.debug(msg % extensionsURI)
                 continue
             if not extensionsResp.status_code == 200:
-                msg = 'Extensions request failed with: %s'
-                logging.warning(msg % extensionsResp.status_code)
+                msg = "Extensions request failed with: %s"
+                log.debug(msg % extensionsResp.status_code)
                 continue
             match = locationRx.match(extensionsResp.text)
             if not match:
-                logging.warning('No "<Location>" in extensions XML')
+                log.debug('No "<Location>" in extensions XML')
                 continue
             location = match.groups()[0]
 
-            return 'regionHint=' + location.lower()
+            return "regionHint=" + location.lower()
 
         msg = 'Could not determine location from any of the endpoints: "%s"'
-        logging.warning(msg % resolver.nameservers)
+        log.debug(msg % resolver.nameservers)
