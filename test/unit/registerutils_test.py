@@ -900,7 +900,7 @@ class TestRegisterUtils:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
@@ -1028,7 +1028,7 @@ class TestRegisterUtils:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
@@ -1411,7 +1411,7 @@ class TestRegisterUtils:
               <arch>x86_64</arch></product>'''
         )
         expected_tree = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_path_isfile.return_value = True
         with patch('builtins.open', mock_open(read_data=base_product)):

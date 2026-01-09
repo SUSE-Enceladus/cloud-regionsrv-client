@@ -1512,7 +1512,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_set_proxy.return_value = False
         with raises(SystemExit) as sys_exit:
@@ -1714,7 +1714,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_set_proxy.return_value = False
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
@@ -1918,7 +1918,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         mock_has_nvidia_support.return_value = True
@@ -2147,7 +2147,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         mock_has_nvidia_support.return_value = True
@@ -2381,7 +2381,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         mock_has_nvidia_support.return_value = False
@@ -2619,7 +2619,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         mock_has_nvidia_support.return_value = True
@@ -2935,7 +2935,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
@@ -2979,7 +2979,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
@@ -3273,7 +3273,7 @@ class TestRegisterCloudGuest:
               <arch>x86_64</arch></product>'''
         )
         mock_get_product_tree.return_value = etree.fromstring(
-            base_product[base_product.index('<product'):]
+            base_product[base_product.index('<product') :]
         )
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         mock_has_nvidia_support.return_value = False
