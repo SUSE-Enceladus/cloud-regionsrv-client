@@ -78,7 +78,7 @@ def generateRegionSrvArgs():
         if not region_resp.status_code == 200:
             log.debug('Unable to get region metadata')
             log.debug('\tReturn code: {}'.format(region_resp.status_code))
-            log.debug('\tMessage: %s' % region_resp.text)
+            log.debug('\tMessage: {}'.format(region_resp.text))
             if imds_ip == imds_ips[-1]:
                 return
 
