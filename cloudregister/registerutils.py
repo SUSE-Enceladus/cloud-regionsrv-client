@@ -59,6 +59,7 @@ from cloudregister.defaults import (
     SUSE_REGISTRY,
     REGSHARING_SYNC_TIME,
     ZYPP_CREDENTIALS_PATH,
+    ZYPPER_IS_LOCKED,
 )
 
 requests.packages.urllib3.disable_warnings(
@@ -536,10 +537,21 @@ def register_product(
     log.debug('Registration: {0}'.format(log_information))
 
     # perform registration
-    output, error, returncode = exec_subprocess(cmd, tolog=False)
-    suseconnect_type = namedtuple(
-        'suseconnect_type', ['returncode', 'output', 'error']
-    )
+    returncode = ZYPPER_IS_LOCKED
+    retry_cnt = 3
+    back_off = 0
+    while returncode == ZYPPER_IS_LOCKED and retry_cnt > 0:
+        output, error, returncode = exec_subprocess(cmd, tolog=False)
+        suseconnect_type = namedtuple(
+            'suseconnect_type', ['returncode', 'output', 'error']
+        )
+        if returncode == ZYPPER_IS_LOCKED:
+            # 40 is an arbitrary time selection
+            wait_time = 40 - back_off
+            log.debug('zypper locked, waiting {} seconds'.format(wait_time))
+            time.sleep(wait_time)
+            back_off = retry_cnt * 5
+            retry_cnt -= 1
 
     return suseconnect_type(
         returncode=returncode, output=output.decode(), error=error.decode()

@@ -38,11 +38,18 @@ import uuid
 
 from cloudregister.logger import Logger
 from cloudregister.defaults import (
-    LOG_FILE,
-    ZYPP_SERVICES,
-    DOCKER_CONFIG_PATH,
-    REGISTERED_SMT_SERVER_DATA_FILE_NAME,
     AVAILABLE_SMT_SERVER_DATA_FILE_NAME,
+    DOCKER_CONFIG_PATH,
+    LIBZYPP_ERROR,
+    LOG_FILE,
+    REGISTERED_SMT_SERVER_DATA_FILE_NAME,
+    SERVER_ACCESS_ERROR,
+    SERVER_CONNECTION_REFUSED,
+    SERVER_GENERAL_ERROR,
+    SERVER_RESPONSE_ERROR,
+    ZYPP_SERVICES,
+    ZYPPER_IS_LOCKED,
+    ZYPPER_UNKNOWN_ERROR,
 )
 import cloudregister.registerutils as utils
 
@@ -96,37 +103,54 @@ def register_modules(
         version = extension.get('version')
         triplet = '/'.join((identifier, version, arch))
         if triplet in products and triplet not in registered:
-            registered.append(triplet)
-
             prod_reg = utils.register_product(
                 registration_target=registration_target,
                 regcode=regcode,
                 product=triplet,
                 instance_data_filepath=instance_data_filepath,
             )
-
+            # ZYPPER_IS_LOCKED triggers a wait loop in the registration
+            # function. If we ens up here with his exit code we consider
+            # it a failure
+            reg_fail_codes = (
+                LIBZYPP_ERROR,
+                SERVER_ACCESS_ERROR,
+                SERVER_CONNECTION_REFUSED,
+                SERVER_GENERAL_ERROR,
+                SERVER_RESPONSE_ERROR,
+                ZYPPER_IS_LOCKED,
+                ZYPPER_UNKNOWN_ERROR,
+            )
             if prod_reg.returncode:
                 registration_returncode = prod_reg.returncode
                 # Older versions of SUSEConnect wrote error messages to stdout
                 error_message = prod_reg.output
                 if not error_message:
                     error_message = prod_reg.error
-                if registration_returncode == 67 and (
+                if registration_returncode in reg_fail_codes and (
                     'registration code' in error_message.lower()
                     or 'system credentials' in error_message.lower()
                 ):
-                    # SUSEConnect sets the following exit codes:
-                    # 0:  Registration successful
-                    # 64: Connection refused
-                    # 65: Access error, e.g. files not readable
-                    # 66: Parser error: Server JSON response was not parseable
-                    # 67: Server responded with error: see log output
+                    log.error(
+                        '\tModule registration unsuccesful: {}'.format(
+                            error_message
+                        )
+                    )
                     failed.append(triplet)
-                    # the registration should not be considered failed
-                    # because of extra modules registered
+                    # Module registration is a best effort approach. We
+                    # do not fail the system registration if we end up
+                    # missing a specific module, it can always be added
+                    # later.
                     registration_returncode = 0
                 else:
-                    log.error('\tRegistration failed: %s' % error_message)
+                    # Zypper sets codes that do not indicate registration
+                    # failure but the registration is not clean
+                    warn_msg = '\tModule registration status for '
+                    warn_msg += '{} undetermined'.format(triplet)
+                    log.warning(warn_msg)
+            else:
+                log.info('Registration of {} succeeded'.format(triplet))
+                registered.append(triplet)
 
         register_modules(
             extension.get('extensions'),
@@ -312,20 +336,14 @@ def register_base_product(
             error_message = prod_reg.output
             failed_smts.append(registration_target.get_ipv4())
             if len(failed_smts) == len(region_smt_servers) or (
-                registration_returncode == 67
+                registration_returncode == SERVER_GENERAL_ERROR
                 and 'registration code' in error_message.lower()
                 and args.reg_code
             ):
-                # there are no more RMT servers to try to register to or
+                # there are no more RMT servers to try or
                 # registration failed because of an invalid reg code
-                # and that SCC response will not change, independently
+                # and the SCC response will not change, independently
                 # of the RMT sibling selected
-                # SCC exit codes:
-                # 0: Registration successful
-                # 64: Connection refused
-                # 65: Access error, e.g. files not readable
-                # 66: Parser error: Server JSON response was not parseable
-                # 67: Server responded with error: see log output
                 log.error('Baseproduct registration failed')
                 log.error(error_message)
                 utils.deregister_non_free_extensions()

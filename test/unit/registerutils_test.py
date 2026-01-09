@@ -1150,6 +1150,43 @@ class TestRegisterUtils:
     @patch('cloudregister.registerutils.get_register_cmd')
     @patch('cloudregister.registerutils.os.access')
     @patch('cloudregister.registerutils.os.path.exists')
+    @patch('cloudregister.registerutils.exec_subprocess')
+    def test_register_product_packmgr_lock(
+        self,
+        mock_exec, mock_os_path_exists,
+        mock_os_access, mock_get_register_cmd
+    ):
+        smt_data_ipv46 = dedent('''\
+            <smtInfo fingerprint="AA:BB:CC:DD"
+             SMTserverIP="1.2.3.5"
+             SMTserverIPv6="fc00::1"
+             SMTserverName="foo-ec2.susecloud.net"
+             SMTregistryName="registry-ec2.susecloud.net"
+             region="antarctica-1"/>''')
+        smt_server = SMT(etree.fromstring(smt_data_ipv46))
+
+        mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
+        mock_os_path_exists.return_value = True
+        mock_os_access.return_value = True
+
+        mock_exec.side_effect = [(b'', b'foo', 7), (b'bar', b'', 0)]
+        result = utils.register_product(
+            smt_server, 'reg_code', 'email', 'instance_data_filepath', 'product'
+        )
+        prod_reg_type = namedtuple(
+            'prod_reg_type', ['returncode', 'output', 'error']
+        )
+        assert result == prod_reg_type(
+            returncode=0,
+            output='bar',
+            error=''
+        )
+        assert '/usr/sbin/SUSEConnect' in self._caplog.text
+        assert '--url https://foo-ec2.susecloud.net' in self._caplog.text
+
+    @patch('cloudregister.registerutils.get_register_cmd')
+    @patch('cloudregister.registerutils.os.access')
+    @patch('cloudregister.registerutils.os.path.exists')
     @patch('cloudregister.registerutils.subprocess.Popen')
     def test_register_product_transactional_ok(
         self,
