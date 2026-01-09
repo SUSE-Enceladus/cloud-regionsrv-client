@@ -1,4 +1,4 @@
-# Copyright (c) 2017, SUSE LLC, All rights reserved.
+# Copyright (c) 2026, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -11,242 +11,209 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
-import inspect
-import os
-import requests
-import sys
 
+import logging
+import requests
+
+from pytest import fixture
 from unittest.mock import patch
 
-test_path = os.path.abspath(
-    os.path.dirname(inspect.getfile(inspect.currentframe())))
-code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
+import cloudregister.msftazure as azure  # noqa
 
-sys.path.insert(0, code_path)
+from cloudregister.logger import Logger
 
-import cloudregister.msftazure as azure # noqa
+log_instance = Logger()
+log = Logger.get_logger()
 
 
 # ----------------------------------------------------------------------------
-class Response():
+class Response:
     pass
 
 
 # ____________________________________________________________________________
-class Resolver():
+class Resolver:
     pass
 
 
 # ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_metadata_request_fail(mock_logging, mock_request, mock_resolver):
-    """Test proper exception handling when request to metadata server fails"""
-    mock_request.side_effect = requests.exceptions.RequestException
-    mock_resolver.return_value = _get_no_nameservers_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'Unable to determine instance placement from metadata '
-    expected += 'server "http://169.254.169.254/metadata/'
-    expected += 'instance/compute/location"'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
+class TestGCEPLugin:
+    @fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog
 
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_metadata_request_fail(self, mock_request, mock_resolver):
+        """Test proper exception handling when request to metadata
+        server fails"""
+        mock_request.side_effect = requests.exceptions.RequestException
+        mock_resolver.return_value = _get_no_nameservers_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = "Unable to determine instance placement from metadata "
+        expected += 'server "http://169.254.169.254/metadata/'
+        expected += 'instance/compute/location"'
+        assert expected in self._caplog.text
 
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_metadata_request_fail_server_error(mock_logging, mock_request):
-    """Test metadata server error code return"""
-    mock_request.return_value = _get_error_response()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'Unable to get availability zone metadata'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
-    expected = '\tReturn code: 500'
-    actual = _get_msg(mock_logging.warning.call_args_list[1])
-    assert actual == expected
-    expected = '\tMessage: Test server failure'
-    actual = _get_msg(mock_logging.warning.call_args_list[2])
-    assert actual == expected
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.requests.get")
+    def test_metadata_request_fail_server_error(self, mock_request):
+        """Test metadata server error code return"""
+        mock_request.return_value = _get_error_response()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected_msgs = [
+            "Unable to get availability zone metadata",
+            "\tReturn code: 500",
+            "\tMessage: Test server failure",
+        ]
+        for msg in expected_msgs:
+            assert msg in self._caplog.text
 
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.requests.get")
+    def test_metadata_request_success(self, mock_request):
+        """Test unexpected return value"""
+        mock_request.return_value = _get_expected_response_metadata()
+        result = azure.generateRegionSrvArgs()
+        assert result == "regionHint=useast"
 
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.requests.get')
-def test_metadata_request_success(mock_request):
-    """Test unexpected return value"""
-    mock_request.return_value = _get_expected_response_metadata()
-    result = azure.generateRegionSrvArgs()
-    assert result == 'regionHint=useast'
+        mock_request.reset()
+        mock_request.return_value = _get_expected_response_metadata(True)
+        result = azure.generateRegionSrvArgs()
+        assert result == "regionHint=useast"
 
-    mock_request.reset()
-    mock_request.return_value = _get_expected_response_metadata(True)
-    result = azure.generateRegionSrvArgs()
-    assert result == 'regionHint=useast'
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_goal_state_request_fail(
+        self, mock_request, mock_resolver
+    ):
+        """Test behavior goal state access triggering exception"""
+        mock_request.side_effect = [None, requests.exceptions.RequestException]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = "Could not retrieve goal state XML from 1.1.1.1"
+        assert expected in self._caplog.text
 
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_goal_state_request_fail_server_error(
+        self, mock_request, mock_resolver
+    ):
+        """Test behavior with goal state access triggering server error"""
+        mock_request.side_effect = [None, _get_error_response()]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = "1.1.1.1 error for goal state request: 500"
+        assert expected in self._caplog.text
 
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_goal_state_request_fail(
-        mock_logging,
-        mock_request,
-        mock_resolver
-):
-    """Test behavior goal state access triggering exception"""
-    mock_request.side_effect = [None, requests.exceptions.RequestException]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'Could not retrieve goal state XML from 1.1.1.1'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_goal_state_request_success_no_match(
+        self, mock_request, mock_resolver
+    ):
+        """Test behavior with goal state request success improper data"""
+        mock_request.side_effect = [None, _get_unexpected_response()]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = 'No "<ExtensionsConfig>" in goal state XML'
+        assert expected in self._caplog.text
 
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_extension_request_fail(
+        self, mock_request, mock_resolver
+    ):
+        """Test behavior with extension request triggering  exception"""
+        mock_request.side_effect = [
+            None,
+            _get_proper_goal_state_response(),
+            requests.exceptions.RequestException,
+        ]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = 'Could not get extensions information from "'
+        expected += 'http://ola%sdme&?getit=1"'
+        assert expected in self._caplog.text
 
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_goal_state_request_fail_server_error(
-        mock_logging,
-        mock_request,
-        mock_resolver
-):
-    """Test behavior with goal state access triggering server error"""
-    mock_request.side_effect = [None, _get_error_response()]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = '1.1.1.1 error for goal state request: 500'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_extension_request_fail_server_error(
+        self, mock_request, mock_resolver
+    ):
+        """Test request for extension data triggering server error"""
+        mock_request.side_effect = [
+            None,
+            _get_proper_goal_state_response(),
+            _get_error_response(),
+        ]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = "Extensions request failed with: 500"
+        assert expected in self._caplog.text
 
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_extension_request_success_no_match(
+        self, mock_request, mock_resolver
+    ):
+        """Test request for extension data success improper data"""
+        mock_request.side_effect = [
+            None,
+            _get_proper_goal_state_response(),
+            _get_unexpected_response(),
+        ]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        with self._caplog.at_level(logging.DEBUG):
+            result = azure.generateRegionSrvArgs()
+        assert result is None
+        expected = 'No "<Location>" in extensions XML'
+        assert expected in self._caplog.text
 
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_goal_state_request_success_no_match(
-        mock_logging,
-        mock_request,
-        mock_resolver
-):
-    """Test behavior with goal state request success improper data"""
-    mock_request.side_effect = [None, _get_unexpected_response()]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'No "<ExtensionsConfig>" in goal state XML'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.msftazure.dns.resolver.get_default_resolver")
+    @patch("cloudregister.msftazure.requests.get")
+    def test_wire_request_success(self, mock_request, mock_resolver):
+        """Test success for info on the wire server"""
+        mock_request.side_effect = [
+            None,
+            _get_proper_goal_state_response(),
+            _get_proper_extensions_response(),
+        ]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        result = azure.generateRegionSrvArgs()
+        assert result == "regionHint=useast"
 
-
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_extension_request_fail(
-        mock_logging,
-        mock_request,
-        mock_resolver
-):
-    """Test behavior with extension request triggering  exception"""
-    mock_request.side_effect = [
-        None,
-        _get_proper_goal_state_response(),
-        requests.exceptions.RequestException
-    ]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'Could not get extensions information from "'
-    expected += 'http://ola%sdme&?getit=1"'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
-
-
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_extension_request_fail_server_error(
-        mock_logging,
-        mock_request,
-        mock_resolver
-):
-    """Test request for extension data triggering server error"""
-    mock_request.side_effect = [
-        None,
-        _get_proper_goal_state_response(),
-        _get_error_response()
-    ]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'Extensions request failed with: 500'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
-
-
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_extension_request_success_no_match(
-        mock_logging,
-        mock_request,
-        mock_resolver
-):
-    """Test request for extension data success improper data"""
-    mock_request.side_effect = [
-        None,
-        _get_proper_goal_state_response(),
-        _get_unexpected_response()
-    ]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    expected = 'No "<Location>" in extensions XML'
-    actual = _get_msg(mock_logging.warning.call_args_list[0])
-    assert actual == expected
-
-
-# ----------------------------------------------------------------------------
-@patch('cloudregister.msftazure.dns.resolver.get_default_resolver')
-@patch('cloudregister.msftazure.requests.get')
-@patch('cloudregister.msftazure.logging')
-def test_wire_request_success(mock_logging, mock_request, mock_resolver):
-    """Test success for info on the wire server"""
-    mock_request.side_effect = [
-        None,
-        _get_proper_goal_state_response(),
-        _get_proper_extensions_response()
-    ]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result == 'regionHint=useast'
-
-    mock_resolver.reset()
-    mock_request.reset()
-    mock_request.side_effect = [
-        None,
-        _get_proper_goal_state_response(),
-        _get_proper_extensions_response(True)
-    ]
-    mock_resolver.return_value = _get_nameserver_resolver()
-    result = azure.generateRegionSrvArgs()
-    assert result == 'regionHint=useast'
+        mock_resolver.reset()
+        mock_request.reset()
+        mock_request.side_effect = [
+            None,
+            _get_proper_goal_state_response(),
+            _get_proper_extensions_response(True),
+        ]
+        mock_resolver.return_value = _get_nameserver_resolver()
+        result = azure.generateRegionSrvArgs()
+        assert result == "regionHint=useast"
 
 
 # ----------------------------------------------------------------------------
@@ -254,7 +221,7 @@ def _get_error_response():
     """Return an error code as the response of the request"""
     response = Response()
     response.status_code = 500
-    response.text = 'Test server failure'
+    response.text = "Test server failure"
     return response
 
 
@@ -263,7 +230,7 @@ def _get_expected_response_metadata(upper=False):
     """Return an object mocking a expected response"""
     response = Response()
     response.status_code = 200
-    response.text = 'useast'
+    response.text = "useast"
     if upper:
         response.text = response.text.upper()
 
@@ -281,7 +248,7 @@ def _get_msg(log_moc_call):
 def _get_nameserver_resolver():
     """Return a resolver with a nameserver"""
     resolver = Resolver()
-    resolver.nameservers = ['1.1.1.1']
+    resolver.nameservers = ["1.1.1.1"]
     return resolver
 
 
@@ -297,14 +264,14 @@ def _get_no_nameservers_resolver():
 def _get_proper_extensions_response(upper=False):
     """Return a response that matches extensions config"""
     response = Response()
-    region = 'useast'
+    region = "useast"
     if upper:
         # test region hint from MSFT are treated in lowercase
         region = region.upper()
     response.status_code = 200
-    data = 'the_doc '
-    data += '<Location>{0}</Location>'.format(region)
-    data += 'last'
+    data = "the_doc "
+    data += "<Location>{0}</Location>".format(region)
+    data += "last"
     response.text = data
     return response
 
@@ -314,9 +281,9 @@ def _get_proper_goal_state_response():
     """Return a response that matches goal state config"""
     response = Response()
     response.status_code = 200
-    data = 'the_doc '
-    data += '<ExtensionsConfig>http://ola%sdme&amp;?getit=1</ExtensionsConfig>'
-    data += 'last'
+    data = "the_doc "
+    data += "<ExtensionsConfig>http://ola%sdme&amp;?getit=1</ExtensionsConfig>"
+    data += "last"
     response.text = data
     return response
 
@@ -326,5 +293,5 @@ def _get_unexpected_response():
     """Return an unexpected response, i.e. triggers a parse error"""
     response = Response()
     response.status_code = 200
-    response.text = 'This matches nothing'
+    response.text = "This matches nothing"
     return response
