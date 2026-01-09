@@ -452,5 +452,13 @@ class TestSMT:
         mock_get_cert.return_value = "what a cert"
         smt = SMT(etree.fromstring(smt_data_ipv46))
         result = smt.write_cert("fussball")
-        assert result == 0
+        assert result is None
         assert "Could not store update server certificate" in self._caplog.text
+
+    # --------------------------------------------------------------------
+    @patch.object(SMT, 'get_cert')
+    def test_write_cert_no_valid(self, mock_get_cert):
+        """Check that we properly handle invalid certs."""
+        mock_get_cert.return_value = None
+        smt = SMT(etree.fromstring(smt_data_ipv46))
+        assert smt.write_cert('fussball') is None

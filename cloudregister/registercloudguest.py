@@ -796,7 +796,6 @@ def main(args):
         sys.exit(1)
 
     if not utils.import_smt_cert(registration_target):
-        log.error('SMT certificate import failed')
         sys.exit(1)
 
     # Register the base product first
