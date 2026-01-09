@@ -45,6 +45,7 @@ from cloudregister.defaults import (
     BASE_CREDENTIALS_NAME,
     FRAMEWORK_IDENTIFIER,
     HOSTSFILE_PATH,
+    KEY_CHAIN,
     NEW_REGISTRATION_MARKER,
     REGISTRATION_COMPLETED_MARKER,
     REGISTRATION_DATA_DIR,
@@ -1926,26 +1927,18 @@ def https_only(config):
 
 
 # ----------------------------------------------------------------------------
-def import_smtcert_12(smt):
-    """Import the SMT certificate on SLES 12"""
-    key_chain = '/etc/pki/trust/anchors'
-    if not smt.write_cert(key_chain):
-        return 0
-    if not update_ca_chain(['update-ca-certificates']):
-        return 0
-
-    return 1
-
-
-# ----------------------------------------------------------------------------
 def import_smt_cert(smt):
     """Import the SMT certificate for the given server"""
-    # 1 step of indirection to allow us to handle different cert import
-    # mechanisms per distribution
-    import_result = import_smtcert_12(smt)
-    if not import_result:
+    try:
+        cert_written = smt.write_cert(KEY_CHAIN)
+    except Exception as err:
+        log.error('Could not write certificate: {}'.format(err))
+        return None
+
+    if not (cert_written and update_ca_chain(['update-ca-certificates'])):
         log.error('SMT certificate import failed')
         return None
+
     # Check if the underlying Python packages use certs that are built in
     # bsc#1214801
     for site_path in site.getsitepackages():

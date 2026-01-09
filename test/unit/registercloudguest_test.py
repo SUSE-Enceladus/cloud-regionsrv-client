@@ -1235,7 +1235,6 @@ class TestRegisterCloudGuest:
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
-        assert 'SMT certificate import failed' in self._caplog.text
 
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.register_product')

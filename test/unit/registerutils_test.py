@@ -2707,29 +2707,11 @@ class TestRegisterUtils:
         cfg = get_test_config()
         assert utils.https_only(cfg) is False
 
-    @patch.object(SMT, 'write_cert')
-    def test_import_smtcert_12_no_write_cert(self, mock_smt_write_cert):
-        mock_smt_write_cert.return_value = False
-        smt_data_ipv46 = dedent(
-            '''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="fantasy.example.com"
-             SMTregistryName="registry-fantasy.example.com"
-             region="antarctica-1"/>'''
-        )
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-
-        assert utils.import_smtcert_12(smt_server) == 0
-
     @patch('cloudregister.registerutils.update_ca_chain')
     @patch.object(SMT, 'write_cert')
-    def test_import_smtcert_12_no_update_ca_chain(
-        self, mock_smt_write_cert, mock_update_ca_chain
-    ):
-        mock_smt_write_cert.return_value = True
-        mock_update_ca_chain.return_value = False
+    def test_import_smt_cert_fail(self, mock_write_cert, mock_update_ca):
+        mock_write_cert.return_value = False
+        mock_update_ca.return_value = False
         smt_data_ipv46 = dedent(
             '''\
             <smtInfo fingerprint="00:11:22:33"
@@ -2739,46 +2721,58 @@ class TestRegisterUtils:
              SMTregistryName="registry-fantasy.example.com"
              region="antarctica-1"/>'''
         )
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
 
-        assert utils.import_smtcert_12(smt_server) == 0
-
-    @patch('cloudregister.registerutils.update_ca_chain')
-    @patch.object(SMT, 'write_cert')
-    def test_import_smtcert_12(self, mock_smt_write_cert, mock_update_ca_chain):
-        mock_smt_write_cert.return_value = True
-        mock_update_ca_chain.return_value = True
-        smt_data_ipv46 = dedent(
-            '''\
-            <smtInfo fingerprint="00:11:22:33"
-             SMTserverIP="192.168.1.1"
-             SMTserverIPv6="fc00::1"
-             SMTserverName="fantasy.example.com"
-             SMTregistryName="registry-fantasy.example.com"
-             region="antarctica-1"/>'''
-        )
-        smt_server = SMT(etree.fromstring(smt_data_ipv46))
-
-        assert utils.import_smtcert_12(smt_server) == 1
-
-    @patch('cloudregister.registerutils.import_smtcert_12')
-    def test_import_smt_cert_fail(self, mock_import_smtcert_12):
-        mock_import_smtcert_12.return_value = False
-        assert utils.import_smt_cert('foo') is None
+        update_server = SMT(etree.fromstring(smt_data_ipv46))
+        assert utils.import_smt_cert(update_server) is None
         assert 'SMT certificate import failed' in self._caplog.text
 
     @patch('cloudregister.registerutils.glob.glob')
     @patch('cloudregister.registerutils.site')
-    @patch('cloudregister.registerutils.import_smtcert_12')
+    @patch('cloudregister.registerutils.update_ca_chain')
+    @patch.object(SMT, 'write_cert')
     def test_import_smt_cert_cert_middling(
-        self, mock_import_smtcert_12, mockin_site, mockin_glob
+        self, mock_write_cert, mock_update_ca, mockin_site, mockin_glob
     ):
-        mock_import_smtcert_12.return_value = True
+        mock_write_cert.return_value = True
+        mock_update_ca.return_value = True
         mockin_site.getsitepackages.return_value = ['foo']
         mockin_glob.return_value = ['foo/certifi/foo.pem']
-        assert utils.import_smt_cert('foo') == 1
+        smt_data_ipv46 = dedent(
+            '''\
+            <smtInfo fingerprint="00:11:22:33"
+             SMTserverIP="192.168.1.1"
+             SMTserverIPv6="fc00::1"
+             SMTserverName="fantasy.example.com"
+             SMTregistryName="registry-fantasy.example.com"
+             region="antarctica-1"/>'''
+        )
+
+        update_server = SMT(etree.fromstring(smt_data_ipv46))
+        assert utils.import_smt_cert(update_server) == 1
         assert (
             'SMT certificate imported, but "foo/certifi/foo.pem" exist'
+            in self._caplog.text
+        )
+
+    @patch.object(SMT, 'write_cert')
+    def test_import_smt_cert_cert_exception(self, mock_write_cert):
+        mock_write_cert.side_effect = Exception(
+            'something exceptional happened'
+        )
+        smt_data_ipv46 = dedent(
+            '''\
+            <smtInfo fingerprint="00:11:22:33"
+             SMTserverIP="192.168.1.1"
+             SMTserverIPv6="fc00::1"
+             SMTserverName="fantasy.example.com"
+             SMTregistryName="registry-fantasy.example.com"
+             region="antarctica-1"/>'''
+        )
+
+        update_server = SMT(etree.fromstring(smt_data_ipv46))
+        assert utils.import_smt_cert(update_server) is None
+        assert (
+            'Could not write certificate: something exceptional happened'
             in self._caplog.text
         )
 

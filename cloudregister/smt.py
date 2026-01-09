@@ -204,8 +204,13 @@ class SMT:
     # --------------------------------------------------------------------
     def write_cert(self, target_dir):
         """Write the certificate to the given directory"""
-        log.debug("Writing SMT rootCA: %s" % target_dir)
         cert = self.get_cert()
+        if not cert:
+            # the cert is invalid or
+            # the request to fetch the cert failed
+            return None
+
+        log.debug('Writing SMT rootCA: {}'.format(target_dir))
         certs_to_write = []
         ipv4 = self.get_ipv4()
         if ipv4:
@@ -227,7 +232,7 @@ class SMT:
             except IOError:
                 errMsg = "Could not store update server certificate"
                 log.error(errMsg)
-                return 0
+                return None
 
         return 1
 
@@ -281,6 +286,7 @@ class SMT:
     # --------------------------------------------------------------------
     def _request_cert(self):
         """Request the cert from the SMT server and return the request"""
+        log.debug('Fetching CA cert from the update server')
         cert_res = None
         attempts = 0
         retries = 3
