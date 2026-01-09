@@ -11,8 +11,11 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
-import logging
 import requests
+
+from cloudregister.logger import Logger
+
+log = Logger.get_logger()
 
 
 def generateRegionSrvArgs():
@@ -26,22 +29,27 @@ def generateRegionSrvArgs():
     try:
         zoneResp = requests.get(metaDataUrl + zoneInfo, headers=headers)
     except requests.exceptions.RequestException:
-        msg = 'Unable to determine zone information from "%s"'
-        logging.warning(msg % (metaDataUrl + zoneInfo))
+        log.debug(
+            'Unable to determine zone information from "{}"'.format(
+                (metaDataUrl + zoneInfo)
+            )
+        )
         return
 
     if zoneResp.status_code == 200:
         try:
             country, region, zone = zoneResp.text.split('/')[-1].split('-')
         except Exception:
-            logging.warning(
-                'Unable to form region string from text: %s' % zoneResp.text
+            log.debug(
+                'Unable to form region string from text: {}'.format(
+                    zoneResp.text
+                )
             )
             return
     else:
-        logging.warning('Unable to get zone metadata')
-        logging.warning('\tReturn code: %d' % zoneResp.status_code)
-        logging.warning('\tMessage: %s' % zoneResp.text)
+        log.debug('Unable to get zone metadata')
+        log.debug('\tReturn code: {}'.format(zoneResp.status_code))
+        log.debug('\tMessage: {}'.format(zoneResp.text))
         return
 
     return 'regionHint=' + country + '-' + region
