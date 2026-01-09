@@ -156,7 +156,9 @@ class TestSMT:
     def test_get_cert_access_exception_ipv4(self, mock_request_get):
         """Test the exception path for cert retrieval when we cannot reach
         an update server with IPv4 adddress"""
-        mock_request_get.side_effect = Exception("Server's too far, cant be reached")
+        mock_request_get.side_effect = Exception(
+            "Server's too far, cant be reached"
+        )
         smt = SMT(etree.fromstring(smt_data_ipv4))
         assert not smt.get_cert()
         assert "Server 192.168.1.1 is unreachable" in self._caplog.text
@@ -409,7 +411,9 @@ class TestSMT:
             smt.write_cert(tmpdirname)
             certs = glob.glob("%s/*.pem" % tmpdirname)
             assert len(certs) == 1
-            assert certs[0] == ("%s/registration_server_192_168_1_1.pem" % tmpdirname)
+            assert certs[0] == (
+                "%s/registration_server_192_168_1_1.pem" % tmpdirname
+            )
 
     # ------------------------------------------------------------------------
     @patch.object(SMT, "get_cert")
@@ -436,7 +440,9 @@ class TestSMT:
             certs = glob.glob("%s/*.pem" % tmpdirname)
             assert len(certs) == 2
             assert "%s/registration_server_fc00__1.pem" % tmpdirname in certs
-            assert "%s/registration_server_192_168_1_1.pem" % tmpdirname in certs
+            assert (
+                "%s/registration_server_192_168_1_1.pem" % tmpdirname in certs
+            )
 
     # --------------------------------------------------------------------
     @patch.object(SMT, "get_cert")

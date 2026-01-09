@@ -22,7 +22,8 @@ check: setup
 	poetry run flake8 --statistics -j auto --count usr/lib/zypp/plugins/urlresolver
 
 black:
-	poetry run black --skip-string-normalization --line-length 80 cloudregister
+	poetry run black --skip-string-normalization --line-length 80 cloudregister test/unit/
+	poetry run black --skip-string-normalization --line-length 80 usr/lib/zypp/plugins/urlresolver/susecloud
 
 test: setup
 	# unit tests

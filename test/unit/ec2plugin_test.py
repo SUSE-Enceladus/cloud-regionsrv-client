@@ -67,15 +67,17 @@ class TestEC2PLugin:
     @patch("cloudregister.amazonec2.requests.put")
     @patch("cloudregister.amazonec2.requests.get")
     def test_request_fail_response_error(
-            self, mock_request_get, mock_request_put
+        self, mock_request_get, mock_request_put
     ):
         """Test unexpected return value"""
         # make sure loop has two IP addresses
         mock_request_put.side_effect = [
-            _get_error_response(), _get_error_response()
+            _get_error_response(),
+            _get_error_response(),
         ]
         mock_request_get.side_effect = [
-            _get_error_response(), _get_error_response()
+            _get_error_response(),
+            _get_error_response(),
         ]
         with self._caplog.at_level(logging.DEBUG):
             result = ec2.generateRegionSrvArgs()

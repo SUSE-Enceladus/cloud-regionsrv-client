@@ -14,7 +14,7 @@
 # License along with this library.
 
 """URL Resolver zypper plugin. This plugin resolves the url to the proper
-   update server and sends along the necessary instance data."""
+update server and sends along the necessary instance data."""
 
 
 import base64
@@ -45,15 +45,13 @@ class SUSECloudPlugin(Plugin):
             verify_credentials = True
             zypper_root = utils.get_zypper_target_root()
         # Note this logic breaks when FATE#320882/PM-1251 gets implemented
-        if (
-                verify_credentials and not
-                utils.credentials_files_are_equal(
-                    repo_credentials, zypper_root
-                )
+        if verify_credentials and not utils.credentials_files_are_equal(
+            repo_credentials, zypper_root
         ):
             self.error(
                 {'CREDENTIAL_ERROR': 'INCONSISTENT'},
-                'Not all credentials files are equivalent: %s' % repo_credentials
+                'Not all credentials files are equivalent: %s'
+                % repo_credentials,
             )
             return
         server_name = ''
@@ -72,7 +70,7 @@ class SUSECloudPlugin(Plugin):
                     # However, for BYOS the registration service is not
                     # enabled, thus pushing the check to every reboot would
                     # miss BYOS instances that use the update infrastructure
-                    # as proxy to SCC. 
+                    # as proxy to SCC.
                     # The other option would be to have another service that
                     # runs less frequently, once every 6 months for example.
                     # Given that updates via zypper are expected to be
@@ -91,8 +89,8 @@ class SUSECloudPlugin(Plugin):
                 if verify_credentials:
                     target_root = utils.get_zypper_target_root()
                     credentials_file_path = (
-                        target_root +
-                        '/etc/zypp/credentials.d/%s' % repo_credentials
+                        target_root
+                        + '/etc/zypp/credentials.d/%s' % repo_credentials
                     )
                     user, password = utils.get_credentials(
                         credentials_file_path
@@ -100,45 +98,43 @@ class SUSECloudPlugin(Plugin):
                     if not user or not password:
                         self.error(
                             {'CREDENTIAL_ERROR': 'NOCREDENTIALS'},
-                            ('Credentials required for "%s" but not found '
-                             'in "%s"' % (repo_url, credentials_file_path))
+                            (
+                                'Credentials required for "%s" but not found '
+                                'in "%s"' % (repo_url, credentials_file_path)
+                            ),
                         )
                         return
                     # Verify access to the server with the credentials
                     if not utils.has_smt_access(server_name, user, password):
                         self.error(
                             {'CREDENTIAL_ERROR': 'INVALID'},
-                            ('Credentials are invalid. For details see '
-                             '"/var/log/cloudregister". Re-register the '
-                             'system with '
-                             '"registercloudguest --force-new"')
+                            (
+                                'Credentials are invalid. For details see '
+                                '"/var/log/cloudregister". Re-register the '
+                                'system with '
+                                '"registercloudguest --force-new"'
+                            ),
                         )
                         return
                     utils.refresh_zypper_pid_cache()
             instance_data = b''
             try:
                 instance_data = bytes(
-                    utils.get_instance_data(utils.get_config()),
-                    'utf-8'
+                    utils.get_instance_data(utils.get_config()), 'utf-8'
                 )
             except TypeError:
-                log.warning(
-                    '[URL-Resolver] Unable to retrieve instance data'
-                )
+                log.warning('[URL-Resolver] Unable to retrieve instance data')
             # zypper wants a string or bad things happen on the other side
-            inst_data_bin_str = base64.b64encode(
-                instance_data).decode('utf-8')
+            inst_data_bin_str = base64.b64encode(instance_data).decode('utf-8')
         else:
             self.error(
                 {'NO_TARGET_ERROR': 'NOTFOUND'},
-                'Could not determine the FQDN of the update server'
+                'Could not determine the FQDN of the update server',
             )
             return
 
         self.answer(
-            'RESOLVEDURL',
-            {'X-Instance-Data': inst_data_bin_str},
-            repo_url
+            'RESOLVEDURL', {'X-Instance-Data': inst_data_bin_str}, repo_url
         )
 
 
