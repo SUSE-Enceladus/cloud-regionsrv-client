@@ -44,7 +44,7 @@ def generateRegionSrvArgs():
     else:
         log.debug('Unable to get zone metadata')
         log.debug('\tReturn code: %d' % zoneResp.status_code)
-        log.debug('\tMessage: %s' % zoneResp.text)
+        log.debug('\tMessage: {}'.format(zoneResp.text))
         return
 
     return 'regionHint=' + country + '-' + region
