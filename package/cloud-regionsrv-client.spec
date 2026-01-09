@@ -18,7 +18,11 @@
 %if 0%{?suse_version} >= 1600
 %define pythons %{primary_python}
 %else
+%if 0%{?suse_version} > 1315
+%define pythons python311
+%else
 %define pythons python3
+%endif
 %endif
 %global _sitelibdir %{%{pythons}_sitelib}
 
@@ -86,7 +90,7 @@ BuildRequires:  %{pythons}-lxml
 BuildRequires:  %{pythons}-requests
 BuildRequires:  %{pythons}-setuptools
 BuildRequires:  %{pythons}-zypp-plugin
-%if 0%{?suse_version} >= 1600
+%if 0%{?suse_version} > 1315
 BuildRequires:  %{pythons}-pip
 BuildRequires:  %{pythons}-wheel
 BuildRequires:  %{pythons}-poetry-core >= 1.2.0
@@ -188,7 +192,7 @@ find . -name *.orig -delete
 %endif
 
 %build
-%if 0%{?suse_version} >= 1600
+%if 0%{?suse_version} > 1315
 %pyproject_wheel
 %else
 %{pythons} setup.py build
@@ -197,7 +201,7 @@ find . -name *.orig -delete
 %install
 cp -r etc %{buildroot}
 cp -r usr %{buildroot}
-%if 0%{?suse_version} >= 1600
+%if 0%{?suse_version} > 1315
 %pyproject_install
 %else
 %{pythons} setup.py install --prefix=%{_prefix} --root=%{buildroot}
@@ -205,8 +209,8 @@ cp -r usr %{buildroot}
 
 # The location of the binaries
 mkdir -p %{buildroot}/usr/sbin
-mv %{buildroot}/usr/bin/* %{buildroot}/usr/sbin
-mv %{buildroot}/usr/sbin/cloudguestregistryauth %{buildroot}/usr/bin
+mv %{buildroot}%{_bindir}/* %{buildroot}%{_sbindir}
+mv %{buildroot}%{_sbindir}/cloudguestregistryauth %{buildroot}%{_bindir}
 # The location of the regionserver certs
 mkdir -p %{buildroot}/usr/lib/regionService/certs
 # The directory for the cache data
@@ -214,13 +218,17 @@ mkdir -p %{buildroot}/var/cache/cloudregister
 # The man pages
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 doc/man/man1/* %{buildroot}/%{_mandir}/man1
+gzip %{buildroot}/%{_mandir}/man1/*
 # The sudo setup for cloudguestregistryauth
 install -m 440 etc/sudoers.d/cloudguestregistryauth %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
 %if 0%{?suse_version} == 1315
 rm -rf %{buildroot}%{_sysconfdir}/sudoers.d/cloudguestregistryauth
 rm -rf %{buildroot}%{_bindir}/cloudguestregistryauth
 %endif
-gzip %{buildroot}/%{_mandir}/man1/*
+%if 0%{?suse_version} > 1315 && 0%{?suse_version} < 1600
+# Fix the interpreter on SLE 15 for the urlresolver
+sed -i s/python3/python3.11/ %{buildroot}/usr/lib/zypp/plugins/urlresolver/susecloud
+%endif
 
 %pre
 %service_add_pre guestregister.service containerbuild-regionsrv.service
@@ -334,7 +342,7 @@ fi
 %exclude %{_sitelibdir}/cloudregister/msft*
 %exclude %{_sitelibdir}/cloudregister/cloudguest_lic_watcher.py
 %{_sitelibdir}/cloudregister/
-%if 0%{?suse_version} >= 1600
+%if 0%{?suse_version} > 1315
 %{_sitelibdir}/cloudregister-*.dist-info/
 %else
 %dir %{_sitelibdir}/cloudregister-%{base_version}-py%{py3_ver}.egg-info
