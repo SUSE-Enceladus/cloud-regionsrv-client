@@ -61,7 +61,7 @@ class TestEC2PLugin:
                 'Unable to determine instance placement from "{}"'.format(url)
             )
         for msg in expected_msgs:
-            assert msg in self._caplog
+            assert msg in self._caplog.text
 
     # ------------------------------------------------------------------------
     @patch("cloudregister.amazonec2.requests.put")
@@ -90,7 +90,7 @@ class TestEC2PLugin:
             "\tMessage: Test server failure",
         ]
         for msg in expected_msgs:
-            assert msg in self._caplog
+            assert msg in self._caplog.text
 
     # ------------------------------------------------------------------------
     @patch("cloudregister.amazonec2.requests.put")
