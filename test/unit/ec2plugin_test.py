@@ -11,120 +11,120 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
-import inspect
-import os
+import logging
 import requests
-import sys
 
-from unittest.mock import patch, call
+from pytest import fixture
+from unittest.mock import patch
 
-test_path = os.path.abspath(
-    os.path.dirname(inspect.getfile(inspect.currentframe())))
-code_path = os.path.abspath('%s/../lib/cloudregister' % test_path)
+import cloudregister.amazonec2 as ec2  # noqa
 
-sys.path.insert(0, code_path)
+from cloudregister.logger import Logger
 
-import cloudregister.amazonec2 as ec2 # noqa
+log_instance = Logger()
+log = Logger.get_logger()
 
 
 # ----------------------------------------------------------------------------
-class Response():
+class Response:
     pass
 
 
 # ----------------------------------------------------------------------------
-@patch('cloudregister.amazonec2.requests.put')
-@patch('cloudregister.amazonec2.requests.get')
-@patch('cloudregister.amazonec2.logging')
-def test_request_fail(mock_logging, mock_request_get, mock_request_put):
-    """Test proper exception handling when request to metadata server fails"""
-    mock_request_get.side_effect = requests.exceptions.RequestException
-    mock_request_put.side_effect = requests.exceptions.RequestException
-    result = ec2.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.info.call_args_list == [
-        call('Unable to retrieve IMDSv2 token using 169.254.169.254'),
-        call('Unable to retrieve IMDSv2 token using fd00:ec2::254')
-    ]
-    expected_urls = [
-        'http://169.254.169.254/latest/meta-data/placement/region',
-        'http://[fd00:ec2::254]/latest/meta-data/placement/region'
-    ]
-    assert mock_logging.warning.call_args_list == [
-        call('Falling back to IMDSv1'),
-        call('Unable to determine instance placement from "{}"'.format(
-            expected_urls[0]
-        )),
-        call('Unable to determine instance placement from "{}"'.format(
-            expected_urls[1]
-        ))
-    ]
+class TestEC2PLugin:
+    @fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog
+
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.amazonec2.requests.put")
+    @patch("cloudregister.amazonec2.requests.get")
+    def test_request_fail(self, mock_request_get, mock_request_put):
+        """Test proper exception handling when request to metadata server
+        fails"""
+        mock_request_get.side_effect = requests.exceptions.RequestException
+        mock_request_put.side_effect = requests.exceptions.RequestException
+        with self._caplog.at_level(logging.DEBUG):
+            result = ec2.generateRegionSrvArgs()
+        assert result is None
+        expected_msgs = [
+            "Unable to retrieve IMDSv2 token using 169.254.169.254",
+            "Unable to retrieve IMDSv2 token using fd00:ec2::254",
+            "Falling back to IMDSv1",
+        ]
+        expected_urls = [
+            "http://169.254.169.254/latest/meta-data/placement/region",
+            "http://[fd00:ec2::254]/latest/meta-data/placement/region",
+        ]
+        for url in expected_urls:
+            expected_msgs.append(
+                'Unable to determine instance placement from "{}"'.format(url)
+            )
+        for msg in expected_msgs:
+            assert msg in self._caplog.text
+
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.amazonec2.requests.put")
+    @patch("cloudregister.amazonec2.requests.get")
+    def test_request_fail_response_error(
+            self, mock_request_get, mock_request_put
+    ):
+        """Test unexpected return value"""
+        # make sure loop has two IP addresses
+        mock_request_put.side_effect = [
+            _get_error_response(), _get_error_response()
+        ]
+        mock_request_get.side_effect = [
+            _get_error_response(), _get_error_response()
+        ]
+        with self._caplog.at_level(logging.DEBUG):
+            result = ec2.generateRegionSrvArgs()
+        assert result is None
+        expected_msgs = [
+            "Falling back to IMDSv1",
+            "Unable to get region metadata",
+            "\tReturn code: 500",
+            "\tMessage: Test server failure",
+            "Unable to get region metadata",
+            "\tReturn code: 500",
+            "\tMessage: Test server failure",
+        ]
+        for msg in expected_msgs:
+            assert msg in self._caplog.text
+
+    # ------------------------------------------------------------------------
+    @patch("cloudregister.amazonec2.requests.put")
+    @patch("cloudregister.amazonec2.requests.get")
+    def test_request_succeed(self, mock_request_get, mock_request_put):
+        """Test behavior with expected return value"""
+        mock_request_put.return_value = _get_expected_region_response()
+        mock_request_get.return_value = _get_expected_region_response()
+        result = ec2.generateRegionSrvArgs()
+        assert "regionHint=us-east-1" == result
 
 
-# ----------------------------------------------------------------------------
-@patch('cloudregister.amazonec2.requests.put')
-@patch('cloudregister.amazonec2.requests.get')
-@patch('cloudregister.amazonec2.logging')
-def test_request_fail_response_error(
-        mock_logging, mock_request_get, mock_request_put
-):
-    """Test unexpected return value"""
-    # make sure loop has two IP addresses
-    mock_request_put.side_effect = [
-        _get_error_response(),
-        _get_error_response()
-    ]
-    mock_request_get.side_effect = [
-        _get_error_response(),
-        _get_error_response()
-    ]
-    result = ec2.generateRegionSrvArgs()
-    assert result is None
-    assert mock_logging.warning.called
-    assert mock_logging.warning.call_args_list == [
-        call('Falling back to IMDSv1'),
-        call('Unable to get region metadata'),
-        call('\tReturn code: 500'),
-        call('\tMessage: Test server failure'),
-        call('Unable to get region metadata'),
-        call('\tReturn code: 500'),
-        call('\tMessage: Test server failure')
-    ]
-
-
-# ----------------------------------------------------------------------------
-@patch('cloudregister.amazonec2.requests.put')
-@patch('cloudregister.amazonec2.requests.get')
-def test_request_succeed(mock_request_get, mock_request_put):
-    """Test behavior with expected return value"""
-    mock_request_put.return_value = _get_expected_region_response()
-    mock_request_get.return_value = _get_expected_region_response()
-    result = ec2.generateRegionSrvArgs()
-    assert 'regionHint=us-east-1' == result
-
-
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 def _get_error_response():
     """Return an error code as the response of the request"""
     response = Response()
     response.status_code = 500
-    response.text = 'Test server failure'
+    response.text = "Test server failure"
     return response
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 def _get_expected_region_response():
     """Return an object mocking a expected response"""
     response = Response()
     response.status_code = 200
-    response.text = 'us-east-1'
+    response.text = "us-east-1"
     return response
 
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------
 def _get_unexpected_response():
     """Return an unexpected response, i.e. triggers a parse error"""
     response = Response()
     response.status_code = 200
-    response.text = ''
+    response.text = ""
     return response

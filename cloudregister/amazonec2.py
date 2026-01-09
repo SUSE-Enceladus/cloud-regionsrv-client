@@ -11,8 +11,11 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
-import logging
 import requests
+
+from cloudregister.logger import Logger
+
+log = Logger.get_logger()
 
 
 def generateRegionSrvArgs():
@@ -43,11 +46,11 @@ def generateRegionSrvArgs():
                 continue
         except requests.exceptions.RequestException:
             msg = 'Unable to retrieve IMDSv2 token using %s' % imds_ip
-            logging.info(msg)
+            log.debug(msg)
             continue
         break
     else:
-        logging.warning('Falling back to IMDSv1')
+        log.debug('Falling back to IMDSv1')
 
     # If we suceeded getting a token then we use the IP address that
     # provided the token
@@ -67,15 +70,15 @@ def generateRegionSrvArgs():
             )
         except requests.exceptions.RequestException:
             msg = 'Unable to determine instance placement from "%s"'
-            logging.warning(msg % (metadata_url + region_data))
+            log.debug(msg % (metadata_url + region_data))
             if imds_ip == imds_ips[-1]:
                 return
             continue
 
         if not region_resp.status_code == 200:
-            logging.warning('Unable to get region metadata')
-            logging.warning('\tReturn code: %d' % region_resp.status_code)
-            logging.warning('\tMessage: %s' % region_resp.text)
+            log.debug('Unable to get region metadata')
+            log.debug('\tReturn code: {}'.format(region_resp.status_code))
+            log.debug('\tMessage: {}'.format(region_resp.text))
             if imds_ip == imds_ips[-1]:
                 return
 
