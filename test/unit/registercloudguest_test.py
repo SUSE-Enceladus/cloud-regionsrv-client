@@ -8,15 +8,13 @@ from lxml import etree
 from textwrap import dedent
 from urllib.parse import ParseResult
 
-from pytest import (
-    raises, fixture
-)
+from pytest import raises, fixture
 from types import SimpleNamespace
 from unittest.mock import patch, Mock, mock_open
 
 from tempfile import NamedTemporaryFile
-from cloudregister.smt import SMT # noqa
-import cloudregister.registerutils as utils # noqa
+from cloudregister.smt import SMT  # noqa
+import cloudregister.registerutils as utils  # noqa
 
 import cloudregister.registercloudguest as register_cloud_guest
 
@@ -25,8 +23,9 @@ register_cloud_guest.LOG_FILE = temp_log.name
 
 
 # Helper functions
-class Response():
+class Response:
     """Fake a request response object"""
+
     def json(self):
         pass
 
@@ -40,7 +39,7 @@ class TestRegisterCloudGuest:
         fake_args = SimpleNamespace(
             user_smt_ip='fc00::1',
             user_smt_fqdn='foo.susecloud.net',
-            user_smt_fp=None
+            user_smt_fp=None,
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -51,7 +50,7 @@ class TestRegisterCloudGuest:
         fake_args = SimpleNamespace(
             user_smt_ip='1.2.3.5',
             user_smt_fqdn='foo.susecloud.net',
-            user_smt_fp='AA:BB:CC:DD'
+            user_smt_fp='AA:BB:CC:DD',
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -60,7 +59,7 @@ class TestRegisterCloudGuest:
         fake_args = SimpleNamespace(
             user_smt_ip='Not.an.IP.Address',
             user_smt_fqdn='foo.susecloud.net',
-            user_smt_fp='AA:BB:CC'
+            user_smt_fp='AA:BB:CC',
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -72,7 +71,7 @@ class TestRegisterCloudGuest:
             user_smt_ip=None,
             user_smt_fqdn=None,
             user_smt_fp=None,
-            debug=True
+            debug=True,
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -86,7 +85,7 @@ class TestRegisterCloudGuest:
             user_smt_fp=None,
             email='foo',
             reg_code=None,
-            debug=True
+            debug=True,
         )
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
@@ -101,8 +100,12 @@ class TestRegisterCloudGuest:
     def test_register_cloud_guest_cleanup(
         self,
         mock_clean_smt_cache,
-        mock_clear_reg_flag, mock_framework_id,  mock_get_config, mock_time_sleep,
-        mock_deregister_non_free_extensions, mock_clean_hosts_file
+        mock_clear_reg_flag,
+        mock_framework_id,
+        mock_get_config,
+        mock_time_sleep,
+        mock_deregister_non_free_extensions,
+        mock_clean_hosts_file,
     ):
         fake_args = SimpleNamespace(
             clean_up=True,
@@ -114,7 +117,7 @@ class TestRegisterCloudGuest:
             reg_code=None,
             delay_time=1,
             config_file='config_file',
-            debug=False
+            debug=False,
         )
         with raises(SystemExit):
             register_cloud_guest.main(fake_args)
@@ -133,12 +136,18 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_zypper_running(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_clear_reg_flag,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_set_registration_completed_flag
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_clear_reg_flag,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_set_registration_completed_flag,
     ):
         fake_args = SimpleNamespace(
             clean_up=False,
@@ -150,7 +159,7 @@ class TestRegisterCloudGuest:
             reg_code=None,
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = True
@@ -175,12 +184,17 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_zypper_runnning_write_config(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
     ):
         fake_args = SimpleNamespace(
             clean_up=False,
@@ -192,7 +206,7 @@ class TestRegisterCloudGuest:
             reg_code=None,
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = True
@@ -227,23 +241,33 @@ class TestRegisterCloudGuest:
         self,
         mock_utils_fetch_smt_data,
         mock_get_update_servers,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_smt_is_responsive, mock_smt_is_equivalent
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_smt_is_responsive,
+        mock_smt_is_equivalent,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         child = etree.fromstring(smt_data_ipv46)
 
@@ -260,7 +284,7 @@ class TestRegisterCloudGuest:
             reg_code=None,
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -308,26 +332,42 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -341,7 +381,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -391,27 +431,43 @@ class TestRegisterCloudGuest:
     def test_register_cloud_guest_registry_setup_failed(
         self,
         mock_clean_registry_setup,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_set_proxy,
     ):
         mock_set_proxy.return_value = True
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -425,7 +481,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -474,27 +530,43 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_region_not_changed_proxy_ok(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_set_proxy,
     ):
         mock_set_proxy.return_value = True
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -508,7 +580,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -559,28 +631,46 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_region_not_responsive_proxy_ok(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_set_proxy, mock_smt_is_equivalent,
-        mock_has_ipv6_access, mock_replace_hosts_entry
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_set_proxy,
+        mock_smt_is_equivalent,
+        mock_has_ipv6_access,
+        mock_replace_hosts_entry,
     ):
         mock_set_proxy.return_value = True
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -594,7 +684,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -644,26 +734,42 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -677,7 +783,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -728,27 +834,45 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_no_executable_found(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -762,7 +886,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -816,27 +940,46 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_registration_not_supported(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_is_registration_supported, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_is_registration_supported,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -850,7 +993,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -905,28 +1048,46 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_no_products_installed(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -940,7 +1101,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -997,28 +1158,47 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_cert_import_failed(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -1032,7 +1212,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1101,27 +1281,46 @@ class TestRegisterCloudGuest:
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
         mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product, mock_set_proxy
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -1135,7 +1334,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1159,9 +1358,7 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.return_value = prod_reg_type(
-            returncode=67,
-            output='registration code',
-            error='stderr'
+            returncode=67, output='registration code', error='stderr'
         )
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
@@ -1208,30 +1405,54 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product, mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_set_proxy, mock_remove_state_file
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
+        mock_set_rmt_as_scc_proxy_flag,
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_set_proxy,
+        mock_remove_state_file,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -1245,7 +1466,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1269,9 +1490,7 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.return_value = prod_reg_type(
-            returncode=0,
-            output='registration code',
-            error='stderr'
+            returncode=0, output='registration code', error='stderr'
         )
         response = Response()
         response.status_code = requests.codes.forbidden
@@ -1279,7 +1498,8 @@ class TestRegisterCloudGuest:
         response.content = str(json.dumps('no accessio')).encode()
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -1289,15 +1509,18 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
         mock_set_proxy.return_value = False
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.main(fake_args)
-        assert 'Unable to obtain product information from server "1.2.3.5,None"' in \
-            self._caplog.text
+        assert (
+            'Unable to obtain product information from server "1.2.3.5,None"'
+            in self._caplog.text
+        )
         assert 'Unable to register modules, exiting.' in self._caplog.text
         assert sys_exit.value.code == 1
 
@@ -1352,30 +1575,52 @@ class TestRegisterCloudGuest:
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
         mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product,
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_os_unlink, mock_set_proxy
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_os_unlink,
+        mock_set_proxy,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -1389,7 +1634,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1412,16 +1657,10 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.side_effect = [
+            prod_reg_type(returncode=0, output='all OK', error='stderr'),
             prod_reg_type(
-                returncode=0,
-                output='all OK',
-                error='stderr'
+                returncode=6, output='registration code', error='stderr'
             ),
-            prod_reg_type(
-                returncode=6,
-                output='registration code',
-                error='stderr'
-            )
         ]
         response = Response()
         response.status_code = requests.codes.ok
@@ -1447,22 +1686,22 @@ class TestRegisterCloudGuest:
                     'release_type': None,
                     'release_stage': 'released',
                     'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                     'product_class': 'SLES15-SP4-LTSS-X86',
                     'free': False,
                     'repositories': [],
                     'product_type': 'extension',
                     'extensions': [],
                     'recommended': False,
-                    'available': True
+                    'available': True,
                 }
-            ]
+            ],
         }
         response.json = json_mock
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -1472,7 +1711,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -1530,33 +1770,61 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product,
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_os_unlink,
+        mock_has_nvidia_support,
+        mock_find_repos,
+        mock_get_repo_url,
+        mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse,
+        mock_set_proxy,
+        mock_set_registration_completed_flag,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
@@ -1570,7 +1838,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1593,16 +1861,10 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.side_effect = [
+            prod_reg_type(returncode=0, output='all OK', error='stderr'),
             prod_reg_type(
-                returncode=0,
-                output='all OK',
-                error='stderr'
+                returncode=0, output='registration code', error='stderr'
             ),
-            prod_reg_type(
-                returncode=0,
-                output='registration code',
-                error='stderr'
-            )
         ]
         response = Response()
         response.status_code = requests.codes.ok
@@ -1628,22 +1890,22 @@ class TestRegisterCloudGuest:
                     'release_type': None,
                     'release_stage': 'released',
                     'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                     'product_class': 'SLES15-SP4-LTSS-X86',
                     'free': False,
                     'repositories': [],
                     'product_type': 'extension',
                     'extensions': [],
                     'recommended': False,
-                    'available': True
+                    'available': True,
                 }
-            ]
+            ],
         }
         response.json = json_mock
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -1653,7 +1915,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -1666,17 +1929,28 @@ class TestRegisterCloudGuest:
         )
         mock_exec_subprocess.side_effect = [True, False]
         mock_urlparse.return_value = ParseResult(
-            scheme='https', netloc='susecloud.net:443',
-            path='/some/repo', params='',
-            query='highlight=params', fragment='url-parsing'
+            scheme='https',
+            netloc='susecloud.net:443',
+            path='/some/repo',
+            params='',
+            query='highlight=params',
+            fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
         assert register_cloud_guest.main(fake_args) is None
         assert 'Forced new registration' in self._caplog.text
-        assert 'Using user specified SMT server:\n\n\t"IP:1.2.3.5"\n\t"' in self._caplog.text
-        assert 'Region change detected, registering to new servers' in self._caplog.text
-        assert 'Cannot reach host: "susecloud.net", will not enable repo "repo_a"' \
+        assert (
+            'Using user specified SMT server:\n\n\t"IP:1.2.3.5"\n\t"'
             in self._caplog.text
+        )
+        assert (
+            'Region change detected, registering to new servers'
+            in self._caplog.text
+        )
+        assert (
+            'Cannot reach host: "susecloud.net", will not enable repo "repo_a"'
+            in self._caplog.text
+        )
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('cloudregister.registerutils.set_proxy')
@@ -1726,33 +2000,61 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product,
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_set_proxy, mock_set_registration_completed_flag
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_os_unlink,
+        mock_has_nvidia_support,
+        mock_find_repos,
+        mock_get_repo_url,
+        mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse,
+        mock_set_proxy,
+        mock_set_registration_completed_flag,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
         fake_args = SimpleNamespace(
@@ -1765,7 +2067,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1788,16 +2090,10 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.side_effect = [
+            prod_reg_type(returncode=0, output='all OK', error='stderr'),
             prod_reg_type(
-                returncode=0,
-                output='all OK',
-                error='stderr'
+                returncode=0, output='registration code', error='stderr'
             ),
-            prod_reg_type(
-                returncode=0,
-                output='registration code',
-                error='stderr'
-            )
         ]
         response = Response()
         response.status_code = requests.codes.ok
@@ -1823,22 +2119,22 @@ class TestRegisterCloudGuest:
                     'release_type': None,
                     'release_stage': 'released',
                     'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                     'product_class': 'SLES15-SP4-LTSS-X86',
                     'free': False,
                     'repositories': [],
                     'product_type': 'extension',
                     'extensions': [],
                     'recommended': True,
-                    'available': True
+                    'available': True,
                 }
-            ]
+            ],
         }
         response.json = json_mock
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -1848,7 +2144,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -1861,17 +2158,28 @@ class TestRegisterCloudGuest:
         )
         mock_exec_subprocess.side_effect = [True, False]
         mock_urlparse.return_value = ParseResult(
-            scheme='https', netloc='susecloud.net:443',
-            path='/some/repo', params='',
-            query='highlight=params', fragment='url-parsing'
+            scheme='https',
+            netloc='susecloud.net:443',
+            path='/some/repo',
+            params='',
+            query='highlight=params',
+            fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
         assert register_cloud_guest.main(fake_args) is None
         assert 'Forced new registration' in self._caplog.text
-        assert 'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"' in self._caplog.text
-        assert 'Region change detected, registering to new servers' in self._caplog.text
-        assert 'Cannot reach host: "susecloud.net", will not enable repo "repo_a"' \
+        assert (
+            'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"'
             in self._caplog.text
+        )
+        assert (
+            'Region change detected, registering to new servers'
+            in self._caplog.text
+        )
+        assert (
+            'Cannot reach host: "susecloud.net", will not enable repo "repo_a"'
+            in self._caplog.text
+        )
 
     @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')
@@ -1923,34 +2231,63 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product,
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_set_proxy, mock_os_system,
-        mock_set_registration_completed_flag, mock_remove_state_file
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_os_unlink,
+        mock_has_nvidia_support,
+        mock_find_repos,
+        mock_get_repo_url,
+        mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse,
+        mock_set_proxy,
+        mock_os_system,
+        mock_set_registration_completed_flag,
+        mock_remove_state_file,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
         fake_args = SimpleNamespace(
@@ -1963,7 +2300,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -1987,16 +2324,10 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.side_effect = [
+            prod_reg_type(returncode=0, output='all OK', error='stderr'),
             prod_reg_type(
-                returncode=0,
-                output='all OK',
-                error='stderr'
+                returncode=67, output='registration code', error='stderr'
             ),
-            prod_reg_type(
-                returncode=67,
-                output='registration code',
-                error='stderr'
-            )
         ]
         response = Response()
         response.status_code = requests.codes.ok
@@ -2022,22 +2353,22 @@ class TestRegisterCloudGuest:
                     'release_type': None,
                     'release_stage': 'released',
                     'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                     'product_class': 'SLES15-SP4-LTSS-FOO-X86',
                     'free': False,
                     'repositories': [],
                     'product_type': 'extension',
                     'extensions': [],
                     'recommended': False,
-                    'available': True
+                    'available': True,
                 }
-            ]
+            ],
         }
         response.json = json_mock
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -2047,7 +2378,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -2058,22 +2390,29 @@ class TestRegisterCloudGuest:
             'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
             'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
         )
-        findmnt_return = b'{"filesystems": [{"target": "/","source": ' + \
-            b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
+        findmnt_return = (
+            b'{"filesystems": [{"target": "/","source": '
+            + b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
+        )
         mock_exec_subprocess.return_value = findmnt_return, b'', 0
         mock_os_path_exists.reset_mock()
         mock_os_path_exists.return_value = True
         mock_urlparse.return_value = ParseResult(
-            scheme='https', netloc='susecloud.net:443',
-            path='/some/repo', params='',
-            query='highlight=params', fragment='url-parsing'
+            scheme='https',
+            netloc='susecloud.net:443',
+            path='/some/repo',
+            params='',
+            query='highlight=params',
+            fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
 
         assert register_cloud_guest.main(fake_args) is None
 
         assert 'Registration succeeded' in self._caplog.text
-        assert 'There are products that were not registered' in self._caplog.text
+        assert (
+            'There are products that were not registered' in self._caplog.text
+        )
         assert 'transactional-update register -p' in self._caplog.text
         assert 'SLES-LTSS-FOO/15.4/x86_64' in self._caplog.text
         assert '-r ADDITIONAL REGCODE' in self._caplog.text
@@ -2128,35 +2467,64 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product,
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_fetch_smt_data,
-        mock_is_reg_supported, mock_get_responding_update_server, mock_set_proxy
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_os_unlink,
+        mock_has_nvidia_support,
+        mock_find_repos,
+        mock_get_repo_url,
+        mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse,
+        mock_fetch_smt_data,
+        mock_is_reg_supported,
+        mock_get_responding_update_server,
+        mock_set_proxy,
     ):
         mock_set_proxy.return_value = False
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_fetch_smt_data.return_value = etree.fromstring(smt_data_ipv46)
         mock_get_current_smt.return_value = smt_server
@@ -2170,7 +2538,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_is_reg_supported.return_value = False
         mock_os_path_isdir.return_value = False
@@ -2194,16 +2562,10 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.side_effect = [
+            prod_reg_type(returncode=0, output='all OK', error='stderr'),
             prod_reg_type(
-                returncode=0,
-                output='all OK',
-                error='stderr'
+                returncode=0, output='registration code', error='stderr'
             ),
-            prod_reg_type(
-                returncode=0,
-                output='registration code',
-                error='stderr'
-            )
         ]
         response = Response()
         response.status_code = requests.codes.ok
@@ -2229,22 +2591,22 @@ class TestRegisterCloudGuest:
                     'release_type': None,
                     'release_stage': 'released',
                     'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                     'product_class': 'SLES15-SP4-LTSS-X86',
                     'free': False,
                     'repositories': [],
                     'product_type': 'extension',
                     'extensions': [],
                     'recommended': True,
-                    'available': True
+                    'available': True,
                 }
-            ]
+            ],
         }
         response.json = json_mock
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -2254,7 +2616,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -2267,15 +2630,21 @@ class TestRegisterCloudGuest:
         )
         mock_exec_subprocess.side_effect = [True, False]
         mock_urlparse.return_value = ParseResult(
-            scheme='https', netloc='susecloud.net:443',
-            path='/some/repo', params='',
-            query='highlight=params', fragment='url-parsing'
+            scheme='https',
+            netloc='susecloud.net:443',
+            path='/some/repo',
+            params='',
+            query='highlight=params',
+            fragment='url-parsing',
         )
         with raises(SystemExit) as sys_exit:
             with patch('builtins.open', mock_open()):
                 register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
-        assert 'Region change detected, registering to new servers' in self._caplog.text
+        assert (
+            'Region change detected, registering to new servers'
+            in self._caplog.text
+        )
 
     @patch('cloudregister.registerutils.register_product')
     def test_register_modules(self, mock_register_product):
@@ -2284,9 +2653,7 @@ class TestRegisterCloudGuest:
         )
 
         mock_register_product.return_value = prod_reg_type(
-            returncode=67,
-            output='registration code',
-            error='stderr'
+            returncode=67, output='registration code', error='stderr'
         )
         extensions = [
             {
@@ -2298,15 +2665,14 @@ class TestRegisterCloudGuest:
                 'release_type': None,
                 'release_stage': 'released',
                 'arch': 'x86_64',
-                'friendly_name':
-                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                 'product_class': 'SLES15-SP4-LTSS-X86',
                 'free': False,
                 'repositories': [],
                 'product_type': 'extension',
                 'extensions': [],
                 'recommended': False,
-                'available': True
+                'available': True,
             }
         ]
         register_cloud_guest.register_modules(
@@ -2322,7 +2688,7 @@ class TestRegisterCloudGuest:
         mock_register_product.return_value = prod_reg_type(
             returncode=67,
             output='',
-            error='missing system credentials try again'
+            error='missing system credentials try again',
         )
         extensions = [
             {
@@ -2334,15 +2700,14 @@ class TestRegisterCloudGuest:
                 'release_type': None,
                 'release_stage': 'released',
                 'arch': 'x86_64',
-                'friendly_name':
-                'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                 'product_class': 'SLES15-SP4-LTSS-X86',
                 'free': False,
                 'repositories': [],
                 'product_type': 'extension',
                 'extensions': [],
                 'recommended': False,
-                'available': True
+                'available': True,
             }
         ]
         register_cloud_guest.register_modules(
@@ -2356,19 +2721,23 @@ class TestRegisterCloudGuest:
     @patch('os.path.exists')
     def test_setup_registry_registered(
         self,
-        mock_os_path_exists, mock_set_registries_conf_docker,
-        mock_get_credentials, mock_get_credentials_file,
-        mock_is_registry_registered
+        mock_os_path_exists,
+        mock_set_registries_conf_docker,
+        mock_get_credentials,
+        mock_get_credentials_file,
+        mock_is_registry_registered,
     ):
         mock_os_path_exists.return_value = True
         mock_set_registries_conf_docker.return_value = False
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_credentials.return_value = 'foo', 'bar'
         mock_is_registry_registered.return_value = True
@@ -2391,17 +2760,21 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.get_credentials')
     def test_setup_clean_registry(
         self,
-        mock_get_credentials, mock_get_credentials_file,
-        mock_is_registry_registered, mock_prepare_registry_setup,
-        mock_clean_registry_setup
+        mock_get_credentials,
+        mock_get_credentials_file,
+        mock_is_registry_registered,
+        mock_prepare_registry_setup,
+        mock_clean_registry_setup,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_credentials.return_value = 'foo', 'bar'
         mock_is_registry_registered.return_value = False
@@ -2419,21 +2792,27 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.is_docker_present')
     def test_setup_registry_ok(
         self,
-        mock_is_docker_present, mock_get_credentials,
-        mock_get_credentials_file, mock_is_registry_registered,
-        mock_is_suma_instance, mock_set_registry_fqdn_suma,
-        mock_set_registries_conf_docker, mock_set_registries_conf_podman,
-        mock_prepare_registry_setup
+        mock_is_docker_present,
+        mock_get_credentials,
+        mock_get_credentials_file,
+        mock_is_registry_registered,
+        mock_is_suma_instance,
+        mock_set_registry_fqdn_suma,
+        mock_set_registries_conf_docker,
+        mock_set_registries_conf_podman,
+        mock_prepare_registry_setup,
     ):
         mock_is_docker_present.return_value = True
         mock_is_suma_instance.return_value = True
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_credentials.return_value = 'foo', 'bar'
         mock_is_registry_registered.return_value = False
@@ -2463,21 +2842,27 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.is_docker_present')
     def test_setup_registry_ok_without_docker(
         self,
-        mock_is_docker_present, mock_get_credentials,
-        mock_get_credentials_file, mock_is_registry_registered,
-        mock_is_suma_instance, mock_set_registry_fqdn_suma,
-        mock_set_registries_conf_docker, mock_set_registries_conf_podman,
-        mock_prepare_registry_setup
+        mock_is_docker_present,
+        mock_get_credentials,
+        mock_get_credentials_file,
+        mock_is_registry_registered,
+        mock_is_suma_instance,
+        mock_set_registry_fqdn_suma,
+        mock_set_registries_conf_docker,
+        mock_set_registries_conf_podman,
+        mock_prepare_registry_setup,
     ):
         mock_is_docker_present.return_value = False
         mock_is_suma_instance.return_value = True
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_credentials.return_value = 'foo', 'bar'
         mock_is_registry_registered.return_value = False
@@ -2494,16 +2879,16 @@ class TestRegisterCloudGuest:
         assert 'No response from: []' in self._caplog.text
 
     @patch('cloudregister.registerutils.get_product_tree')
-    def test_setup_ltss_registration_no_product(
-        self, mock_get_product_tree
-    ):
+    def test_setup_ltss_registration_no_product(self, mock_get_product_tree):
         mock_get_product_tree.return_value = None
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.setup_ltss_registration(
                 'target', 'regcode', 'instance_filepath'
             )
         assert sys_exit.value.code == 1
-        assert 'Cannot find baseproduct registration for LTSS' in self._caplog.text
+        assert (
+            'Cannot find baseproduct registration for LTSS' in self._caplog.text
+        )
 
     @patch('os.listdir')
     @patch('os.path.isdir')
@@ -2514,9 +2899,12 @@ class TestRegisterCloudGuest:
         mock_get_product_tree.return_value = True
         mock_os_path_isdir.return_value = True
         mock_os_listdir.return_value = ['LTSS']
-        assert register_cloud_guest.setup_ltss_registration(
-            'target', 'regcode', 'instance_filepath'
-        ) is None
+        assert (
+            register_cloud_guest.setup_ltss_registration(
+                'target', 'regcode', 'instance_filepath'
+            )
+            is None
+        )
         assert 'Running LTSS registration...' in self._caplog.text
         assert 'LTSS registration succeeded' in self._caplog.text
 
@@ -2527,12 +2915,14 @@ class TestRegisterCloudGuest:
     def test_setup_ltss_registration_registration_ok(
         self,
         mock_get_product_tree,
-        mock_os_path_isdir, mock_os_listdir,
-        mock_register_product
+        mock_os_path_isdir,
+        mock_os_listdir,
+        mock_register_product,
     ):
         mock_os_path_isdir.return_value = True
         mock_os_listdir.return_value = ['foo']
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -2542,7 +2932,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -2550,13 +2941,14 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.return_value = prod_reg_type(
-            returncode=0,
-            output='all OK',
-            error='stderr'
+            returncode=0, output='all OK', error='stderr'
         )
-        assert register_cloud_guest.setup_ltss_registration(
-            'target', 'regcode', 'instance_filepath'
-        ) is None
+        assert (
+            register_cloud_guest.setup_ltss_registration(
+                'target', 'regcode', 'instance_filepath'
+            )
+            is None
+        )
         assert 'Running LTSS registration...' in self._caplog.text
         assert 'LTSS registration succeeded' in self._caplog.text
 
@@ -2567,12 +2959,14 @@ class TestRegisterCloudGuest:
     def test_setup_ltss_registration_registration_failed(
         self,
         mock_get_product_tree,
-        mock_os_path_isdir, mock_os_listdir,
-        mock_register_product
+        mock_os_path_isdir,
+        mock_os_listdir,
+        mock_register_product,
     ):
         mock_os_path_isdir.return_value = True
         mock_os_listdir.return_value = ['foo']
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -2582,7 +2976,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -2590,9 +2985,7 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.return_value = prod_reg_type(
-            returncode=7,
-            output='not OK',
-            error='stderr'
+            returncode=7, output='not OK', error='stderr'
         )
         with raises(SystemExit) as sys_exit:
             register_cloud_guest.setup_ltss_registration(
@@ -2623,8 +3016,9 @@ class TestRegisterCloudGuest:
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
         mock_clear_rmt_as_scc_proxy_flag,
-        mock_cleanup, mock_add_hosts_entry,
-        mock_register_product
+        mock_cleanup,
+        mock_add_hosts_entry,
+        mock_register_product,
     ):
         prod_reg = Mock()
         prod_reg.returncode = 0
@@ -2636,8 +3030,10 @@ class TestRegisterCloudGuest:
         region_smt_servers = [Mock(), Mock()]
         # Test success case
         register_cloud_guest.register_base_product(
-            registration_target, instance_data_filepath,
-            commandline_args, region_smt_servers
+            registration_target,
+            instance_data_filepath,
+            commandline_args,
+            region_smt_servers,
         )
         assert 'Baseproduct registration complete' in self._caplog.text
         mock_clear_new_registration_flag.assert_called_once_with()
@@ -2647,8 +3043,10 @@ class TestRegisterCloudGuest:
         prod_reg.returncode = 1
         with raises(SystemExit):
             register_cloud_guest.register_base_product(
-                registration_target, instance_data_filepath,
-                commandline_args, region_smt_servers
+                registration_target,
+                instance_data_filepath,
+                commandline_args,
+                region_smt_servers,
             )
             mock_deregister_non_free_extensions.assert_called_once_with()
             mock_clear_rmt_as_scc_proxy_flag.assert_called_once_with()
@@ -2669,7 +3067,7 @@ class TestRegisterCloudGuest:
         mock_clean_cache,
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
-        mock_deregister_non_free_extensions
+        mock_deregister_non_free_extensions,
     ):
         # cleanup standard style
         register_cloud_guest.cleanup()
@@ -2725,34 +3123,63 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registercloudguest.cleanup')
     def test_reg_cloud_baseprod_ok_setup_registry_failed(
         self,
-        mock_cleanup, mock_get_config,
-        mock_get_state_dir, mock_time_sleep,
-        mock_os_path_isdir, mock_os_makedirs,
-        mock_get_available_smt_servers, mock_write_framework_id,
-        mock_is_zypper_running, mock_has_network_access,
-        mock_set_new_registration_flag, mock_get_current_smt,
+        mock_cleanup,
+        mock_get_config,
+        mock_get_state_dir,
+        mock_time_sleep,
+        mock_os_path_isdir,
+        mock_os_makedirs,
+        mock_get_available_smt_servers,
+        mock_write_framework_id,
+        mock_is_zypper_running,
+        mock_has_network_access,
+        mock_set_new_registration_flag,
+        mock_get_current_smt,
         mock_store_smt_data,
-        mock_has_region_changed, mock_uses_rmt_as_scc_proxy,
-        mock_get_instance_data, mock_setup_registry, mock_setup_ltss_registration,
-        mock_smt_is_responsive, mock_os_path_exists, mock_has_rmt_in_hosts,
-        mock_clean_hosts_file, mock_add_hosts_entry, mock_has_registry_in_hosts,
-        mock_update_rmt_cert, mock_get_register_cmd, mock_os_access,
-        mock_set_as_current_smt, mock_get_installed_products,
-        mock_import_smt_cert, mock_register_product,
+        mock_has_region_changed,
+        mock_uses_rmt_as_scc_proxy,
+        mock_get_instance_data,
+        mock_setup_registry,
+        mock_setup_ltss_registration,
+        mock_smt_is_responsive,
+        mock_os_path_exists,
+        mock_has_rmt_in_hosts,
+        mock_clean_hosts_file,
+        mock_add_hosts_entry,
+        mock_has_registry_in_hosts,
+        mock_update_rmt_cert,
+        mock_get_register_cmd,
+        mock_os_access,
+        mock_set_as_current_smt,
+        mock_get_installed_products,
+        mock_import_smt_cert,
+        mock_register_product,
         mock_set_rmt_as_scc_proxy_flag,
-        mock_requests_get, mock_get_product_tree, mock_get_creds,
-        mock_get_creds_file, mock_os_unlink, mock_has_nvidia_support,
-        mock_find_repos, mock_get_repo_url, mock_exec_subprocess, mock_enable_repo,
-        mock_urlparse, mock_set_proxy, mock_os_system,
-        mock_set_registration_completed_flag, mock_remove_state_file
+        mock_requests_get,
+        mock_get_product_tree,
+        mock_get_creds,
+        mock_get_creds_file,
+        mock_os_unlink,
+        mock_has_nvidia_support,
+        mock_find_repos,
+        mock_get_repo_url,
+        mock_exec_subprocess,
+        mock_enable_repo,
+        mock_urlparse,
+        mock_set_proxy,
+        mock_os_system,
+        mock_set_registration_completed_flag,
+        mock_remove_state_file,
     ):
-        smt_data_ipv46 = dedent('''\
+        smt_data_ipv46 = dedent(
+            '''\
             <smtInfo fingerprint="AA:BB:CC:DD"
              SMTserverIP="1.2.3.5"
              SMTserverIPv6="fc00::1"
              SMTserverName="foo-ec2.susecloud.net"
              SMTregistryName="registry-ec2.susecloud.net"
-             region="antarctica-1"/>''')
+             region="antarctica-1"/>'''
+        )
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
         fake_args = SimpleNamespace(
@@ -2765,7 +3192,7 @@ class TestRegisterCloudGuest:
             reg_code='super_reg_code',
             delay_time=1,
             config_file='config_file',
-            debug=True
+            debug=True,
         )
         mock_os_path_isdir.return_value = False
         mock_is_zypper_running.return_value = False
@@ -2789,16 +3216,10 @@ class TestRegisterCloudGuest:
             'prod_reg_type', ['returncode', 'output', 'error']
         )
         mock_register_product.side_effect = [
+            prod_reg_type(returncode=0, output='all OK', error='stderr'),
             prod_reg_type(
-                returncode=0,
-                output='all OK',
-                error='stderr'
+                returncode=67, output='registration code', error='stderr'
             ),
-            prod_reg_type(
-                returncode=67,
-                output='registration code',
-                error='stderr'
-            )
         ]
         response = Response()
         response.status_code = requests.codes.ok
@@ -2824,22 +3245,22 @@ class TestRegisterCloudGuest:
                     'release_type': None,
                     'release_stage': 'released',
                     'arch': 'x86_64',
-                    'friendly_name':
-                    'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                    'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
                     'product_class': 'SLES15-SP4-LTSS-FOO-X86',
                     'free': False,
                     'repositories': [],
                     'product_type': 'extension',
                     'extensions': [],
                     'recommended': False,
-                    'available': True
+                    'available': True,
                 }
-            ]
+            ],
         }
         response.json = json_mock
         mock_requests_get.return_value = response
         mock_get_creds.return_value = 'SCC_foo', 'bar'
-        base_product = dedent('''\
+        base_product = dedent(
+            '''\
             <?xml version="1.0" encoding="UTF-8"?>
             <product schemeversion="0">
               <vendor>SUSE</vendor>
@@ -2849,7 +3270,8 @@ class TestRegisterCloudGuest:
               <patchlevel>4</patchlevel>
               <release>0</release>
               <endoflife></endoflife>
-              <arch>x86_64</arch></product>''')
+              <arch>x86_64</arch></product>'''
+        )
         mock_get_product_tree.return_value = etree.fromstring(
             base_product[base_product.index('<product'):]
         )
@@ -2860,15 +3282,20 @@ class TestRegisterCloudGuest:
             'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
             'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
         )
-        findmnt_return = b'{"filesystems": [{"target": "/","source": ' + \
-            b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
+        findmnt_return = (
+            b'{"filesystems": [{"target": "/","source": '
+            + b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
+        )
         mock_exec_subprocess.return_value = findmnt_return, b'', 0
         mock_os_path_exists.reset_mock()
         mock_os_path_exists.return_value = True
         mock_urlparse.return_value = ParseResult(
-            scheme='https', netloc='susecloud.net:443',
-            path='/some/repo', params='',
-            query='highlight=params', fragment='url-parsing'
+            scheme='https',
+            netloc='susecloud.net:443',
+            path='/some/repo',
+            params='',
+            query='highlight=params',
+            fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
         mock_setup_registry.return_value = False
