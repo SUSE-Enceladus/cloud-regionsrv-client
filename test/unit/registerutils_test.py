@@ -3385,7 +3385,7 @@ class TestRegisterUtils:
         self, mock_socket_create_connection
     ):
         mock_socket_create_connection.side_effect = OSError
-        with self._caplog.at_level(logging.INFO):
+        with self._caplog.at_level(logging.DEBUG):
             has_access = utils.has_network_access_by_ip_address('FFF::0')
             assert not has_access
             assert 'Skipping IPv6 protocol version, no network configuration' in \
@@ -3970,7 +3970,7 @@ export DOCKER_CONFIG=/etc/containers
         mock_os_path_exists.return_value = True
         mock_get_registry_credentials.return_value = {'auths': {}}, None
         mock_same_registry_auth_content.return_value = False
-        with self._caplog.at_level(logging.INFO):
+        with self._caplog.at_level(logging.DEBUG):
             assert utils.clean_registry_auth(registry_fqdn='')
             assert 'JSON content is empty' in self._caplog.text
 

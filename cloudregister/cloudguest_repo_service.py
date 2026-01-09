@@ -94,7 +94,7 @@ def app():
     # Make sure we are pointing to a reachable server
     update_server = utils.get_smt()
     if not update_server:
-        log.info('[Repo-Service] No update server found cannot provide repos')
+        log.debug('[Repo-Service] No update server found cannot provide repos')
         sys.exit(1)
 
     # Get the available repos from the server
@@ -110,7 +110,7 @@ def app():
         headers=headers,
     )
     if not res.status_code == 200:
-        log.info('[Repo-Service] Unable to retrieve update server repo data')
+        log.debug('[Repo-Service] Unable to retrieve update server repo data')
         sys.exit(1)
 
     repo_info_xml = res.text

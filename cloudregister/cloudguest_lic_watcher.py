@@ -53,7 +53,7 @@ def maybe_drop_registration(license_type):
             # There is no target registration server, nothing to do
             return
         if not utils.uses_rmt_as_scc_proxy():
-            log.info('Detected flavor change to BYOS, clean up registration')
+            log.debug('Detected flavor change to BYOS, clean up registration')
             utils.clean_all_standard()
             utils.exec_subprocess(['systemctl', 'disable', SERVICE_NAME])
 
@@ -72,7 +72,7 @@ def maybe_register_system(license_type):
             # a registration code. Now that the system is PAYG we have to
             # clean up that registration
             utils.clean_all_standard()
-            log.info(
+            log.debug(
                 base_msg.format(
                     status='removed registration to update infra as BYOS'
                 )
@@ -82,7 +82,7 @@ def maybe_register_system(license_type):
             # The system is registered to the SUSE Customer center. Now
             # that the system is PAYG we have to clean up that registration
             utils.clean_all_standard()
-            log.info(
+            log.debug(
                 base_msg.format(status='removed registration to SCC as BYOS')
             )
             current_target = None
@@ -90,12 +90,12 @@ def maybe_register_system(license_type):
             current_target.get_FQDN()
         ):
             # The system is not registered to the update infrastructure
-            log.info(base_msg.format(status='registering'))
+            log.debug(base_msg.format(status='registering'))
             utils.exec_subprocess(['registercloudguest'])
             utils.exec_subprocess(['systemctl', 'enable', SERVICE_NAME])
             return
         # Everything is as it is expected to be
-        log.info(base_msg.format(status='already registered, nothing to do'))
+        log.debug(base_msg.format(status='already registered, nothing to do'))
 
 
 def app():

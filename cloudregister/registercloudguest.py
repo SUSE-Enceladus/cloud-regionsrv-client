@@ -185,7 +185,7 @@ def setup_registry(registration_target):
 
     with_docker = utils.is_docker_present()
     if not with_docker:
-        log.info(
+        log.debug(
             'docker config file {} not found. '
             'Registration for docker skipped. '
             'Install docker to add docker support.'.format(DOCKER_CONFIG_PATH)
@@ -217,12 +217,12 @@ def setup_registry(registration_target):
                 sys.exit(1)
             elif docker_setup_ok is True:
                 log.info('Successfully added docker to the registry setup')
-        log.info(
+        log.debug(
             'Instance is setup to access container registry, nothing to do'
         )
         # Podman registry data is already set up, nothing to do
         return True
-    log.info('Adding registry setup to instance')
+    log.debug('Adding registry setup to instance')
     registry_setup_ok = False
     if utils.prepare_registry_setup(registry_fqdn, user, password):
         log.info('Adding podman support')
@@ -270,8 +270,7 @@ def setup_ltss_registration(
     """
     Run registration command to register LTSS for this instance
     """
-    log.info('Running LTSS registration...')
-    log.debug('Running LTSS registration...this takes a little longer')
+    log.info('Running LTSS registration...this takes a little longer')
     product = utils.get_product_tree()
     if product is None:
         message = 'Cannot find baseproduct registration for LTSS'
@@ -381,7 +380,7 @@ def register_base_product(
                     registration_target = smt_srv
                     break
         else:
-            log.info('Baseproduct registration complete')
+            log.debug('Baseproduct registration complete')
             base_registered = True
             registration_returncode = 0
             utils.clear_new_registration_flag()
@@ -416,7 +415,7 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
             if not utils.has_registry_in_hosts(registration_smt):
                 utils.clean_hosts_file(registration_smt.get_domain_name())
                 utils.add_hosts_entry(registration_smt)
-            log.info(msg)
+            log.debug(msg)
             target_found = True
         else:
             # The current target server is not resposive, lets check if we can
@@ -505,7 +504,7 @@ def get_proxies():
             'https_proxy': https_proxy,
             'no_proxy': no_proxy,
         }
-        log.info('Using proxy settings: %s' % proxies)
+        log.debug('Using proxy settings: %s' % proxies)
 
     return proxies
 
@@ -605,7 +604,7 @@ argparse.add_argument('-v', '--version', action='version', version=__version__)
 
 
 def main(args):
-    log.info('registercloudguest {}'.format(__version__))
+    log.debug('registercloudguest {}'.format(__version__))
     global registration_returncode  # noqa: F824
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
@@ -652,7 +651,7 @@ def main(args):
     log_instance.set_logfile(LOG_FILE, args.debug)
 
     if args.clean_up:
-        log.info('Registration clean up initiated by user')
+        log.debug('Registration clean up initiated by user')
         cleanup()
         sys.exit(0)
 
@@ -661,14 +660,14 @@ def main(args):
 
     utils.set_new_registration_flag()
     if args.force_new_registration:
-        log.info('Forced new registration')
+        log.debug('Forced new registration')
 
     if args.user_smt_ip:
         msg = 'Using user specified SMT server:\n'
         msg += '\n\t"IP:%s"' % args.user_smt_ip
         msg += '\n\t"FQDN:%s"' % args.user_smt_fqdn
         msg += '\n\t"Fingerprint:%s"' % args.user_smt_fp
-        log.info(msg)
+        log.debug(msg)
 
     cached_smt_servers = utils.get_available_smt_servers()
     if cached_smt_servers:
@@ -718,7 +717,7 @@ def main(args):
             '\tregistercloudguest -r YOUR_REG_CODE'
         )
     elif region_change:
-        log.info('Region change detected, registering to new servers')
+        log.debug('Region change detected, registering to new servers')
         cleanup()
         region_smt_servers = cached_smt_servers = []
         registration_smt = None
@@ -763,7 +762,7 @@ def main(args):
     # We should not get here for a registered system that is a proxy. However,
     # it doesn't hurt to check and get out before breaking things
     if utils.uses_rmt_as_scc_proxy():
-        log.info(
+        log.debug(
             'System already uses the update infrastructure with a '
             'registration code, nothing to do'
         )
@@ -863,7 +862,7 @@ def main(args):
                     'Cannot reach host: "{hostname}", '
                     'will not enable repo "{repo_name}"'
                 ).format(hostname=url.hostname, repo_name=repo_name)
-                log.info(msg)
+                log.debug(msg)
             else:
                 utils.enable_repository(repo_name)
 

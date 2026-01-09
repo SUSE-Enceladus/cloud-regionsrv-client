@@ -40,7 +40,7 @@ class Logger:
         error.setFormatter(formatter)
         logging.getLogger().addHandler(error)
 
-    def set_logfile(self, logfile, debug=False):
+    def set_logfile(self, logfile, debug=True):
         # Add file handler, with level DEBUG (all)
         formatter = logging.Formatter(
             '%(asctime)s: %(module)s: %(lineno)s '

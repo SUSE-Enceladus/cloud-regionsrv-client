@@ -146,12 +146,12 @@ def clean_base_credentials():
     """
     Delete base credential files
     """
-    log.info('Deleting base credentials')
+    log.debug('Deleting base credentials')
     credential_file = os.path.normpath(
         os.sep.join([ZYPP_CREDENTIALS_PATH, BASE_CREDENTIALS_NAME])
     )
     if os.path.isfile(credential_file):
-        log.info('Removing credential file: {}'.format(credential_file))
+        log.debug('Removing credential file: {}'.format(credential_file))
         try:
             os.unlink(credential_file)
         except FileNotFoundError:
@@ -308,9 +308,11 @@ def deregister_non_free_extensions():
                         msg += 'failed to be removed'
                     else:
                         msg += 'removed'
-                    log.info(msg)
+                    log.debug(msg)
     except Exception as issue:
-        log.info('Deregister non free extensions failed with: {}'.format(issue))
+        log.error(
+            'Deregister non free extensions failed with: {}'.format(issue)
+        )
 
 
 # ----------------------------------------------------------------------------
@@ -358,7 +360,7 @@ def get_product_data(registration_target=None):
     if not registration_target:
         registration_target = get_current_smt()
     if not registration_target:
-        log.info('No update server set')
+        log.debug('No update server set')
         return {}
 
     base_product = get_product_triplet(get_product_tree())
@@ -565,7 +567,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
     if cfg.has_option('server', 'metadata_server'):
         metadata_url = cfg.get('server', 'metadata_server')
         msg = 'Using metadata server "%s" to obtain SMT information'
-        log.info(msg % metadata_url)
+        log.debug(msg % metadata_url)
         try:
             response = requests.get(metadata_url, timeout=15.0, proxies=proxies)
             if response.status_code != 200:
@@ -889,7 +891,7 @@ def get_registry_credentials(set_new):
         with open(REGISTRY_CREDENTIALS_PATH, 'r') as cred_json:
             config_json = json.load(cred_json)
     except OSError as error:
-        log.info(str(error))
+        log.debug(str(error))
         action = 'open'
     except json.decoder.JSONDecodeError:
         action = 'parse'
@@ -904,13 +906,13 @@ def get_registry_credentials(set_new):
         )
         if set_new:
             error_msg += ', writing new credentials'
-        log.info(error_msg)
+        log.debug(error_msg)
         mv_file_cmd = 'mv -Z {} {}.bak'.format(
             REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH
         ).split()
         _, _, status = exec_subprocess(mv_file_cmd)
         message = 'File not preserved.' if status else 'File preserved.'
-        log.info(message)
+        log.debug(message)
 
     return config_json, status
 
@@ -974,7 +976,7 @@ def set_container_engines_env_vars():
             with open(PROFILE_LOCAL_PATH, 'r') as bashrc_local:
                 bashrc_local_lines = bashrc_local.read()
         except OSError as error:
-            log.info('Could not open %s: %s' % (PROFILE_LOCAL_PATH, error))
+            log.debug('Could not open %s: %s' % (PROFILE_LOCAL_PATH, error))
             failed = _mv_file_backup(PROFILE_LOCAL_PATH)
             if failed:
                 return False
@@ -1001,12 +1003,12 @@ def get_registry_conf_file(container_path, container):
                 registries_conf = json.load(registries_conf_file)
             return registries_conf, False
     except IOError as error:
-        log.info(str(error))
+        log.debug(str(error))
         action = 'open'
     except (json.decoder.JSONDecodeError, toml.decoder.TomlDecodeError):
         action = 'parse'
 
-    log.info(
+    log.debug(
         'Could not %s %s, preserving file as %s.bak'
         % (action, container_path, container_path)
     )
@@ -1015,7 +1017,7 @@ def get_registry_conf_file(container_path, container):
     ).split()
     _, _, failed = exec_subprocess(mv_file_cmd)
     message = 'File not preserved.' if failed else 'File preserved.'
-    log.info(message)
+    log.debug(message)
     return {}, failed
 
 
@@ -1048,7 +1050,7 @@ def clean_registry_setup():
 def clean_registry_auth(registry_fqdn):
     """Clean the auth token from the config json file."""
     if not os.path.exists(REGISTRY_CREDENTIALS_PATH):
-        log.info('Credentials file does not exist. Nothing to do')
+        log.debug('Credentials file does not exist. Nothing to do')
         return True
 
     config_json, preserve_status = get_registry_credentials(set_new=False)
@@ -1059,7 +1061,7 @@ def clean_registry_auth(registry_fqdn):
         # credentials file is not empty but its content is useless or
         # could not access the file but the backup suceeded
         if preserve_status is None:
-            log.info('JSON content is empty')
+            log.debug('JSON content is empty')
             os.unlink(REGISTRY_CREDENTIALS_PATH)
         return True
 
@@ -1073,7 +1075,7 @@ def clean_registry_auth(registry_fqdn):
         if same_registry_auth_content(config_json, registry_fqdn):
             # if the content of the registry auth file is only
             # our auth info, remove the file
-            log.info(
+            log.debug(
                 'Registry authentication config only contains managed content.'
                 ' Removing the file %s' % REGISTRY_CREDENTIALS_PATH
             )
@@ -1081,9 +1083,9 @@ def clean_registry_auth(registry_fqdn):
             return True
 
         if registry_fqdn:
-            log.info('Unsetting the auth entry for %s' % registry_fqdn)
+            log.debug('Unsetting the auth entry for %s' % registry_fqdn)
         else:
-            log.info('Unsetting the auth entry based on the token')
+            log.debug('Unsetting the auth entry based on the token')
             auth_token = _generate_registry_auth_token()
             entries = config_json.get('auths', {}).items()
             entry = [
@@ -1101,13 +1103,13 @@ def clean_registry_auth(registry_fqdn):
             # there is content worth updating the credentials file
             # the dictionary has changed since read from the auth config file
             # we write the changed dictionary back to the file
-            log.info('Registry auth entry unset')
+            log.debug('Registry auth entry unset')
             return write_registry_credentials(
                 content=config_json, set_new=False
             )
     except AttributeError:
         log.error('The entry for "auths" key is not a dictionary')
-        log.info(
+        log.debug(
             'Preserving file %s as %s.bak'
             % (REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH)
         )
@@ -1116,7 +1118,7 @@ def clean_registry_auth(registry_fqdn):
         )
         _, _, status = exec_subprocess(mv_file_cmd)
         message = 'File not preserved.' if status else 'File preserved.'
-        log.info(message)
+        log.debug(message)
 
 
 # ----------------------------------------------------------------------------
@@ -1142,7 +1144,7 @@ def unset_env_vars():
     """Remove the registry environment variables."""
     env_vars = ['REGISTRY_AUTH_FILE', 'DOCKER_CONFIG']
     if not os.path.exists(PROFILE_LOCAL_PATH):
-        log.info('%s file does not exist' % PROFILE_LOCAL_PATH)
+        log.debug('%s file does not exist' % PROFILE_LOCAL_PATH)
         # remove the enviroment variables from the env, if present
         return True
 
@@ -1158,7 +1160,7 @@ def unset_env_vars():
         if not mv_backup:
             # we could access the bashrc local file and
             # no env vars were found
-            log.info(
+            log.debug(
                 'Environment variables not present in %s' % PROFILE_LOCAL_PATH
             )
             succeeded = True
@@ -1187,7 +1189,7 @@ def clean_bashrc_local(env_vars):
         with open(PROFILE_LOCAL_PATH, 'r') as bashrc_local:
             bashrc_local_lines = bashrc_local.readlines()
     except OSError as error:
-        log.info('Could not open %s: %s' % (PROFILE_LOCAL_PATH, error))
+        log.debug('Could not open %s: %s' % (PROFILE_LOCAL_PATH, error))
         failed = _mv_file_backup(PROFILE_LOCAL_PATH)
         return [], False, failed, True
 
@@ -1250,7 +1252,7 @@ def clean_registries_conf_podman(private_registry_fqdn):
             unqualified_search_reg
         )
         registries_conf['registry'] = registry_mirrors
-        log.info(
+        log.debug(
             'SUSE registry information has been removed from {0}'.format(
                 REGISTRIES_CONF_PATH
             )
@@ -1271,7 +1273,7 @@ def clean_registries_conf_docker(private_registry_fqdn):
         DOCKER_CONFIG_PATH, 'docker'
     )
     if failed:
-        log.info(
+        log.debug(
             'Unable to read "{0}", cleanup not possible'.format(
                 DOCKER_CONFIG_PATH
             )
@@ -1292,7 +1294,7 @@ def clean_registries_conf_docker(private_registry_fqdn):
     # write registry setup if modified by us
     if modified_by_us:
         docker_cfg_json['registry-mirrors'] = registry_mirrors
-        log.info(
+        log.debug(
             'SUSE registry information has been removed from {0}'.format(
                 DOCKER_CONFIG_PATH
             )
@@ -1316,7 +1318,7 @@ def write_registries_conf(registries_conf, container_path, container_name):
         log.debug('File {} updated'.format(container_path))
         return True
     except IOError as error:
-        log.info(str(error))
+        log.debug(str(error))
         action = 'open'
     except TypeError:
         action = 'write'
@@ -1570,7 +1572,7 @@ def get_smt(cache_refreshed=None):
         if is_registered(current_smt.get_FQDN()):
             alive = current_smt.is_responsive()
             if alive:
-                log.info(
+                log.debug(
                     'Current update server will be used: '
                     '"%s"'
                     % str((current_smt.get_ipv4(), current_smt.get_ipv6()))
@@ -1587,9 +1589,9 @@ def get_smt(cache_refreshed=None):
                 for delay in [5, 3, 1]:
                     time.sleep(delay)
                     msg = 'Waiting for current server to show up for %d s'
-                    log.info(msg % delay)
+                    log.debug(msg % delay)
                     if current_smt.is_responsive():
-                        log.info('No failover needed, system access recovered')
+                        log.debug('No failover needed, system access recovered')
                         return current_smt
                 # Looks like the target server is really not reachable,
                 # let's check if we can find an equivalent server.
@@ -1609,7 +1611,7 @@ def get_smt(cache_refreshed=None):
                     current_smt, available_servers
                 )
                 if new_target:
-                    log.info(
+                    log.debug(
                         'Using equivalent update server: '
                         '"%s"'
                         % str((new_target.get_ipv4(), new_target.get_ipv6()))
@@ -1645,7 +1647,7 @@ def get_smt(cache_refreshed=None):
         for server in available_servers:
             if server.is_responsive():
                 import_smt_cert(server)
-                log.info(
+                log.debug(
                     'Found alternate update server: '
                     '"%s"' % str((server.get_ipv4(), server.get_ipv6()))
                 )
@@ -1765,7 +1767,7 @@ def has_network_access_by_ip_address(server_ip):
             ip_ver = 'IPv%d' % ipaddress.ip_address(server_ip).version
         except ValueError:
             ip_ver = 'UNKNOWN'
-        log.info(
+        log.debug(
             'Skipping %s protocol version, no network configuration' % ip_ver
         )
         return False
@@ -1781,7 +1783,7 @@ def has_rmt_ipv6_access(smt):
     smt_ipv6 = smt.get_ipv6()
     if not smt_ipv6 or not has_ipv6_access([smt_ipv6]):
         return False
-    log.info('Attempt to access update server over IPv6')
+    log.debug('Attempt to access update server over IPv6')
     protocol = 'http'  # Default for backward compatibility
     if https_only(get_config()):
         protocol = 'https'
@@ -1793,7 +1795,7 @@ def has_rmt_ipv6_access(smt):
             verify=False,
         )
     except Exception:
-        log.info('Update server not reachable over IPv6')
+        log.debug('Update server not reachable over IPv6')
         return False
     if cert_res and cert_res.status_code == 200:
         return True
@@ -1805,14 +1807,14 @@ def has_nvidia_support():
     try:
         pci_info, errors, returncode = exec_subprocess(['lspci'])
     except TypeError:
-        log.info(
+        log.debug(
             'lspci command not found, instance Nvidia support cannot '
             'be determined'
         )
         return False
 
     if 'NVIDIA' in pci_info.decode():
-        log.info('Instance has Nvidia support')
+        log.debug('Instance has Nvidia support')
         return True
 
     return False
@@ -2043,8 +2045,8 @@ def is_registration_supported(cfg):
     try:
         package_backend = cfg.get('service', 'packageBackend')
         if package_backend == 'dnf':
-            log.info('Registration for RHEL product family requested')
-            log.info('Exit after repository server hosts entry setup')
+            log.debug('Registration for RHEL product family requested')
+            log.debug('Exit after repository server hosts entry setup')
             registration_supported = False
 
         return registration_supported
@@ -2148,9 +2150,9 @@ def set_proxy():
         # If the environment variables exist all external functions used
         # by the registration code will honor them, thus we can tell the
         # client that we didn't do anything, which also happens to be true
-        log.info('Using proxy settings from execution environment')
-        log.info('\thttp_proxy: %s' % existing_http_proxy)
-        log.info('\thttps_proxy: %s' % existing_https_proxy)
+        log.debug('Using proxy settings from execution environment')
+        log.debug('\thttp_proxy: %s' % existing_http_proxy)
+        log.debug('\thttps_proxy: %s' % existing_https_proxy)
         return False
     proxy_config_file = '/etc/sysconfig/proxy'
     if not os.path.exists(proxy_config_file):
@@ -2217,25 +2219,25 @@ def deregister_from_update_infrastructure():
     )
     if not user:
         if not is_new_registration():
-            log.info('No credentials, nothing to do server side')
+            log.debug('No credentials, nothing to do server side')
         return
     auth_creds = HTTPBasicAuth(user, password)
     if os.path.exists(smt_data_file):
         smt = get_smt_from_store(smt_data_file)
         smt_ips = (smt.get_ipv4(), smt.get_ipv6())
-        log.info('Clean current registration server: %s' % str(smt_ips))
+        log.debug('Clean current registration server: %s' % str(smt_ips))
         server_name = smt.get_FQDN()
         try:
             response = requests.delete(
                 'https://%s/connect/systems' % server_name, auth=auth_creds
             )
             if response.status_code == 204:
-                log.info(
+                log.debug(
                     'System successfully removed from update infrastructure'
                 )
             else:
                 rmt_check_msg = 'System unknown to update infrastructure'
-                log.info(rmt_check_msg)
+                log.debug(rmt_check_msg)
         except requests.exceptions.RequestException as issue:
             log.warning(
                 'Unable to remove client registration from server: {}'.format(
@@ -2252,24 +2254,24 @@ def deregister_from_SCC():
     )
     if not user:
         if not is_new_registration():
-            log.info('No credentials, nothing to do server side')
+            log.debug('No credentials, nothing to do server side')
         return
     auth_creds = HTTPBasicAuth(user, password)
     if is_scc_connected():
-        log.info('Removing system from SCC')
+        log.debug('Removing system from SCC')
         try:
             response = requests.delete(
                 'https://scc.suse.com/connect/systems', auth=auth_creds
             )
             if response.status_code == 204:
-                log.info('System successfully removed from SCC')
+                log.debug('System successfully removed from SCC')
             else:
                 scc_check_msg = 'System not found in SCC. The system may still'
                 scc_check_msg += ' be tracked against your subscription. It is'
                 scc_check_msg += ' recommended to investigate the issue. '
                 scc_check_msg += 'System user name: "%s". '
                 scc_check_msg += 'Local registration artifacts removed.'
-                log.info(scc_check_msg % user)
+                log.debug(scc_check_msg % user)
         except requests.exceptions.RequestException as issue:
             scc_except_msg = 'Unable to remove client registration from SCC. '
             scc_except_msg += 'The system is most likely still tracked against'
@@ -2446,12 +2448,12 @@ def get_suma_registry_content():
             suma_reg_config_data = yaml.safe_load(suma_reg_config)
         return suma_reg_config_data, False
     except IOError as error:
-        log.info(str(error))
+        log.debug(str(error))
         action = 'open'
     except yaml.YAMLError:
         action = 'parse'
 
-    log.info('Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH))
+    log.debug('Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH))
     return {}, True
 
 
@@ -2552,7 +2554,7 @@ def _get_region_server_args(plugin):
             retry_cnt += 1
             time.sleep(1)
             continue
-        log.info('Region server arguments: ?%s' % region_srv_args)
+        log.debug('Region server arguments: ?%s' % region_srv_args)
         break
 
     return region_srv_args
@@ -2617,7 +2619,7 @@ def _populate_srv_cache():
             'https_proxy': os.environ.get('https_proxy'),
         }
     cfg = get_config()
-    log.info('Populating server cache')
+    log.debug('Populating server cache')
     region_smt_data = fetch_smt_data(cfg, proxies, True)
     cnt = 1
     for child in region_smt_data:
@@ -2633,12 +2635,12 @@ def _populate_srv_cache():
 # ----------------------------------------------------------------------------
 def _remove_credentials(smt_server_names):
     """Remove the server generated credentials"""
-    log.info('Deleting locally stored credentials')
+    log.debug('Deleting locally stored credentials')
     referenced_credentials = _get_referenced_credentials(smt_server_names)
     system_credentials = glob.glob(os.sep.join([ZYPP_CREDENTIALS_PATH, '*']))
     for system_credential in system_credentials:
         if os.path.basename(system_credential) in referenced_credentials:
-            log.info(
+            log.debug(
                 'Removing credentials for server(s): {}: {}'.format(
                     smt_server_names, system_credential
                 )
@@ -2662,7 +2664,7 @@ def _remove_repos(smt_server_names):
                         or 'plugin:/susecloud' in url
                         or 'plugin:susecloud' in url
                     ):
-                        log.info(
+                        log.debug(
                             'Removing repo: %s' % os.path.basename(repo_file)
                         )
                         os.unlink(repo_file)
@@ -2685,7 +2687,7 @@ def _remove_service(smt_server_names):
                         or 'plugin:/susecloud' in url
                         or 'plugin:susecloud' in url
                     ):
-                        log.info(
+                        log.debug(
                             'Removing service: {}'.format(
                                 os.path.basename(service_file)
                             )
@@ -2747,11 +2749,11 @@ def _generate_registry_auth_token(username=None, password=None):
 # ----------------------------------------------------------------------------
 def _mv_file_backup(filename):
     message = 'Preserving file as %s.bak' % filename
-    log.info(message)
+    log.debug(message)
     mv_file_cmd = 'mv -Z {} {}.bak'.format(filename, filename).split()
     _, _, failed = exec_subprocess(mv_file_cmd)
     message = 'File not preserved' if failed else 'File preserved'
-    log.info(message)
+    log.debug(message)
     return failed
 
 
@@ -2893,13 +2895,13 @@ def _write_suma_conf(updated_content):
         log.debug('{} updated'.format(SUMA_REGISTRY_CONF_PATH))
         return True
     except IOError as error:
-        log.info(str(error))
+        log.debug(str(error))
         action = 'open'
     except yaml.YAMLError:
         action = 'parse'
 
     message = 'Could not %s %s' % (action, SUMA_REGISTRY_CONF_PATH)
-    log.info(message)
+    log.debug(message)
 
 
 # ----------------------------------------------------------------------------
