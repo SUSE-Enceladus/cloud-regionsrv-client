@@ -195,12 +195,17 @@ def setup_registry(registration_target):
         if with_docker:
             # Special handling for the docker case:
             #
-            # When docker is present we perform the registry configuration
-            # for the docker container engine. This may cause calling the
-            # setup routine even though docker was setup before. However,
-            # the code will only effectively write a new registry setup
-            # if the required modifications are not included.
-            log.info('Adding docker support')
+            # Docker is not a mandatory package and can be installed
+            # to the system at a later point when the actual registry
+            # registration was already performed. In addition docker
+            # support is optional and allowed to be skipped at the
+            # initial registration stage. Because of that any new
+            # call of the registration process needs to check if
+            # the docker setup conditions are met and setup docker
+            # when needed. The following code will only effectively
+            # write a new docker registry setup if the required
+            # modifications are not already present.
+            log.debug('Check/Add docker support')
             docker_setup_ok = utils.set_registries_conf_docker(registry_fqdn)
 
             # docker_setup_ok will take a True/False value on a real
@@ -212,11 +217,20 @@ def setup_registry(registration_target):
                         LOG_FILE
                     )
                 )
-                # TODO, we probably do not want to exit here, we do not have
-                # clear documented decision tree.
+                # This code path is reached if the client registration
+                # has been performed already and a subsequent call of
+                # the registration client found docker and configured
+                # it. The set_registries_conf_docker() function returned
+                # with a False value which means a configuration of
+                # docker registries was required but failed. In this
+                # situation we keep the general registry auth setup
+                # and cleanup the docker specific configuration and
+                # exit from the client.
+                utils.clean_registries_conf_docker(registry_fqdn)
                 sys.exit(1)
+
             elif docker_setup_ok is True:
-                log.info('Successfully added docker to the registry setup')
+                log.debug('Successfully added docker to the registry setup')
         log.debug(
             'Instance is setup to access container registry, nothing to do'
         )
