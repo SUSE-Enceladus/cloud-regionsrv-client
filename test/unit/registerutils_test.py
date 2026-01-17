@@ -5013,11 +5013,25 @@ export DOCKER_CONFIG=/etc/containers
         utils.clean_all_standard()
         mock_deregister_non_free_extensions.assert_called_once_with()
         mock_deregister_from_update_infrastructure.assert_called_once_with()
-        mock_clean_cache.assert_called_once_with()
+        mock_clean_cache.assert_called_once_with(wipe_all=True)
         mock_clean_hosts_file.assert_called_once_with()
         mock_clean_registry_setup.assert_called_once_with()
         mock_clean_repo_artifacts.assert_called_once_with()
         mock_deregister_from_SCC.assert_called_once_with()
+
+    @patch('cloudregister.registerutils.Path')
+    @patch('shutil.rmtree')
+    @patch('os.path.isdir')
+    def test_clean_cache_wipe_all(
+        self, mock_os_path_isdir, mock_shutil_rmtree, mock_pathlib_Path
+    ):
+        mock_os_path_isdir.return_value = True
+        utils.clean_cache(wipe_all=True)
+        mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
+        mock_pathlib_Path.assert_called_once_with('/var/cache/cloudregister')
+        mock_pathlib_Path.return_value.mkdir.assert_called_once_with(
+            parents=True, exist_ok=True
+        )
 
     @patch('cloudregister.registerutils.get_domain_name_from_region_server')
     def test_clean_hosts_file_no_domain_set(

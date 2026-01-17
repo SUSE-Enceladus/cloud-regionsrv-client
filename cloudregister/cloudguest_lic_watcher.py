@@ -18,9 +18,9 @@ import os
 import instance_billing_flavor_check.utils as inst_flvr_utils
 import cloudregister.registerutils as utils
 from cloudregister.logger import Logger
-from cloudregister.defaults import LOG_FILE
+from cloudregister.defaults import LOG_FILE, CACHED_LICENSE
 
-CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), 'cached_license')
+CACHE_LICENSE_PATH = os.path.join(utils.get_state_dir(), CACHED_LICENSE)
 SERVICE_NAME = 'guestregister.service'
 
 log_instance = Logger()

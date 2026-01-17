@@ -33,6 +33,7 @@ REGISTRATION_DATA_DIR = '/var/cache/cloudregister'
 # constants
 AVAILABLE_SMT_SERVER_DATA_FILE_NAME = 'availableSMTInfo_%s.obj'
 BASE_CREDENTIALS_NAME = 'SCCcredentials'
+CACHED_LICENSE = 'cached_license'
 FRAMEWORK_IDENTIFIER = 'framework_info'
 NEW_REGISTRATION_MARKER = 'newregistration'
 REGISTERED_SMT_SERVER_DATA_FILE_NAME = 'currentSMTInfo.obj'
@@ -40,6 +41,7 @@ REGISTRATION_COMPLETED_MARKER = 'registrationcompleted'
 REGSHARING_SYNC_TIME = 30
 RMT_AS_SCC_PROXY_MARKER = 'rmt_is_scc_proxy'
 SUSE_REGISTRY = 'registry.suse.com'
+ZYPPER_PID = 'zypper_pid'
 
 # suseconnect exit codes we care about
 LIBZYPP_ERROR = 4
