@@ -13,6 +13,7 @@
 
 """Utility functions for the cloud guest registration"""
 
+import shutil
 import base64
 import configparser
 import glob
@@ -129,18 +130,15 @@ def clean_all_standard():
     clean_registry_setup()
     clean_hosts_file()
 
-    # Clean all cache data from /var/cache
+    # Clean all cache data from /var/cache/cloudregister
     clean_cache()
 
 
 # ----------------------------------------------------------------------------
 def clean_cache():
-    clean_smt_cache()
-    clear_rmt_as_scc_proxy_flag()
-    clear_new_registration_flag()
-    clean_framework_identifier()
-    clear_registration_completed_flag()
-    clean_registered_smt_data_file()
+    if os.path.isdir(REGISTRATION_DATA_DIR):
+        shutil.rmtree(REGISTRATION_DATA_DIR)
+        Path(REGISTRATION_DATA_DIR).mkdir(parents=True, exist_ok=True)
 
 
 # ----------------------------------------------------------------------------
@@ -229,22 +227,6 @@ def clean_repo_artifacts():
 
 
 # ----------------------------------------------------------------------------
-def clean_framework_identifier():
-    """Remove the framework identification data"""
-    framework_file_path = os.sep.join([get_state_dir(), FRAMEWORK_IDENTIFIER])
-    if os.path.exists(framework_file_path):
-        os.unlink(framework_file_path)
-
-
-# ----------------------------------------------------------------------------
-def clean_registered_smt_data_file():
-    """Remove the registered SMT data cache file"""
-    smt_data_file = _get_registered_smt_file_path()
-    if os.path.exists(smt_data_file):
-        os.unlink(smt_data_file)
-
-
-# ----------------------------------------------------------------------------
 def clean_smt_cache():
     """Clean the disk cache for SMT data"""
     smt_data = glob.glob(os.sep.join([get_state_dir(), '*SMTInfo*']))
@@ -256,20 +238,6 @@ def clean_smt_cache():
 def clear_new_registration_flag():
     """Clear the new registration marker"""
     flag_path = os.sep.join([get_state_dir(), NEW_REGISTRATION_MARKER])
-    return _remove_state_file(flag_path)
-
-
-# ----------------------------------------------------------------------------
-def clear_rmt_as_scc_proxy_flag():
-    """Clear the marker that indicates that RMT is used as SCC proxy"""
-    flag_path = os.sep.join([get_state_dir(), RMT_AS_SCC_PROXY_MARKER])
-    return _remove_state_file(flag_path)
-
-
-# ----------------------------------------------------------------------------
-def clear_registration_completed_flag():
-    """Clear the registration completed marker"""
-    flag_path = os.sep.join([get_state_dir(), REGISTRATION_COMPLETED_MARKER])
     return _remove_state_file(flag_path)
 
 

@@ -783,16 +783,6 @@ class TestRegisterUtils:
         mock_get_framework_plugin.return_value = None
         utils.add_region_server_args_to_URL(None, cfg)
 
-    @patch('cloudregister.registerutils.os.unlink')
-    @patch('cloudregister.registerutils.os.path.exists')
-    def test_clean_framework_identifier(
-        self, mock_os_path_exists, mock_os_unlink
-    ):
-        utils.clean_framework_identifier()
-        framework_info_path = '/var/cache/cloudregister/framework_info'
-        mock_os_path_exists.assert_called_once_with(framework_info_path)
-        mock_os_unlink.assert_called_once_with(framework_info_path)
-
     @patch('cloudregister.registerutils.glob.glob')
     @patch('cloudregister.registerutils.os.unlink')
     def test_clean_smt_cache(self, mock_os_unlink, mock_glob):
@@ -805,20 +795,6 @@ class TestRegisterUtils:
         utils.clear_new_registration_flag()
         mock_remove_state.assert_called_once_with(
             '/var/cache/cloudregister/newregistration'
-        )
-
-    @patch('cloudregister.registerutils._remove_state_file')
-    def test_clear_reg_complete_flag(self, mock_remove_state):
-        utils.clear_registration_completed_flag()
-        mock_remove_state.assert_called_once_with(
-            '/var/cache/cloudregister/registrationcompleted'
-        )
-
-    @patch('cloudregister.registerutils._remove_state_file')
-    def test_clear_rmt_as_scc_proxy_flag(self, mock_remove_state):
-        utils.clear_rmt_as_scc_proxy_flag()
-        mock_remove_state.assert_called_once_with(
-            '/var/cache/cloudregister/rmt_is_scc_proxy'
         )
 
     @patch('cloudregister.registerutils.register_product')
@@ -5019,6 +4995,25 @@ export DOCKER_CONFIG=/etc/containers
         mock_clean_repo_artifacts.assert_called_once_with()
         mock_deregister_from_SCC.assert_called_once_with()
 
+    @patch('shutil.rmtree')
+    @patch('cloudregister.registerutils.Path')
+    @patch('os.path.isdir')
+    def test_clean_cache(
+        self,
+        mock_os_path_isdir,
+        mock_Path,
+        mock_shutil_rmtree
+    ):
+        mock_os_path_isdir.return_value = True
+        utils.clean_cache()
+        mock_shutil_rmtree.assert_called_once_with(
+            '/var/cache/cloudregister'
+        )
+        mock_Path.assert_called_once_with('/var/cache/cloudregister')
+        mock_Path.return_value.mkdir.assert_called_once_with(
+            parents=True, exist_ok=True
+        )
+
     @patch('cloudregister.registerutils.get_domain_name_from_region_server')
     def test_clean_hosts_file_no_domain_set(
         self, mock_get_domain_name_from_region_server
@@ -5054,17 +5049,6 @@ export DOCKER_CONFIG=/etc/containers
         mock_remove_repos.assert_called_once_with(['suse.com', 'some_FQDN'])
         mock_remove_credentials.assert_called_once_with(
             ['suse.com', 'some_FQDN']
-        )
-
-    @patch('os.path.exists')
-    @patch('os.unlink')
-    def test_clean_registered_smt_data_file(
-        self, mock_os_unlink, mock_os_path_exists
-    ):
-        mock_os_path_exists.return_value = True
-        utils.clean_registered_smt_data_file()
-        mock_os_unlink.assert_called_once_with(
-            '/var/cache/cloudregister/currentSMTInfo.obj'
         )
 
     @patch('cloudregister.registerutils.get_extensions')
