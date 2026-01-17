@@ -61,6 +61,7 @@ from cloudregister.defaults import (
     REGSHARING_SYNC_TIME,
     ZYPP_CREDENTIALS_PATH,
     ZYPPER_IS_LOCKED,
+    ZYPPER_PID,
 )
 
 requests.packages.urllib3.disable_warnings(
@@ -1736,7 +1737,7 @@ def get_zypper_pid():
 def get_zypper_pid_cache():
     """Return the PID for zypper stored in cache"""
     zypper_pid = 0
-    zypper_pid_cache_file = os.sep.join([get_state_dir(), 'zypper_pid'])
+    zypper_pid_cache_file = os.sep.join([get_state_dir(), ZYPPER_PID])
     if not os.path.exists(zypper_pid_cache_file):
         return zypper_pid
     with open(zypper_pid_cache_file) as zypper_state_file:
