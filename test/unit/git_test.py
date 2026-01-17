@@ -1,6 +1,5 @@
 from unittest.mock import patch, call
 from pytest import raises, fixture
-from cloudregister.defaults import Defaults
 from cloudregister.logger import Logger
 from cloudregister.git import Git, managed_file_type
 from cloudregister.exceptions import (
@@ -23,14 +22,18 @@ class TestGit:
     @patch('cloudregister.git.exec_subprocess')
     @patch('cloudregister.git.clean_all_standard')
     @patch.object(Git, 'cleanup')
+    @patch('cloudregister.git.Defaults')
     def setup(
         self,
+        mock_Defaults,
         mock_cleanup,
         mock_clean_all_standard,
         mock_exec_subprocess,
         mock_os_path_isfile,
         mock_os_path_isdir,
     ):
+        mock_Defaults.get_managed_files.return_value = ['some']
+
         # test init with new registercloudguest branch
         mock_exec_subprocess.return_value = (b'stdout', b'stderr', 1)
         mock_os_path_isfile.return_value = False
@@ -129,8 +132,8 @@ class TestGit:
                     '--git-dir',
                     '/some/.git',
                     'add',
+                    'some',
                 ]
-                + Defaults.get_managed_files()
             ),
             call(
                 [
@@ -140,6 +143,7 @@ class TestGit:
                     '--git-dir',
                     '/some/.git',
                     'commit',
+                    '--allow-empty',
                     '-m',
                     'origin',
                 ]

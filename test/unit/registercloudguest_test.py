@@ -3053,17 +3053,27 @@ class TestRegisterCloudGuest:
         mock_deregister_non_free_extensions,
     ):
         etc_content = Mock()
+        var_cache_cloudregister_content = Mock()
         # cleanup with content manager(git)...
-        register_cloud_guest.cleanup(etc_content)
+        register_cloud_guest.cleanup(
+            etc_content, var_cache_cloudregister_content
+        )
         mock_deregister_non_free_extensions.assert_called_once_with()
         mock_deregister_from_update_infrastructure.assert_called_once_with()
         mock_deregister_from_SCC.assert_called_once_with()
-        mock_clean_cache.assert_called_once_with()
         etc_content.cleanup.assert_called_once_with()
+        var_cache_cloudregister_content.cleanup.assert_called_once_with()
 
         # cleanup standard style
         register_cloud_guest.cleanup()
         mock_clean_all_standard.assert_called_once_with()
+
+    def test_done(self):
+        etc_content = Mock()
+        var_cache_cloudregister_content = Mock()
+        register_cloud_guest.done(etc_content, var_cache_cloudregister_content)
+        etc_content.done.assert_called_once_with()
+        var_cache_cloudregister_content.done.assert_called_once_with()
 
     @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')

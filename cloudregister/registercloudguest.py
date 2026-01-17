@@ -27,6 +27,7 @@ Logic:
 2.) Check if already registered
 3.) Register"""
 
+from contextlib import ExitStack
 import argparse
 import ipaddress
 import os
@@ -166,22 +167,36 @@ def register_modules(
 
 
 # ----------------------------------------------------------------------------
-def cleanup(etc_content=None):
+def cleanup(etc_content=None, var_cache_cloudregister_content=None):
     """
     Cleanup registration data. This covers sending
     delete requests to the API servers as well as deletion of
-    cache and etc files. With etc_content provided the cleanup
-    of files in etc will be handled through git.
+    cache and etc files. With content providers the cleanup
+    of files will be handled through git.
     """
-    if etc_content:
-        utils.deregister_non_free_extensions()
-        utils.deregister_from_update_infrastructure()
-        utils.deregister_from_SCC()
-        utils.clean_cache()
-        etc_content.done()
-        etc_content.cleanup()
+    if etc_content or var_cache_cloudregister_content:
+        if etc_content:
+            utils.deregister_non_free_extensions()
+            utils.deregister_from_update_infrastructure()
+            utils.deregister_from_SCC()
+            etc_content.done()
+            etc_content.cleanup()
+        if var_cache_cloudregister_content:
+            var_cache_cloudregister_content.done()
+            var_cache_cloudregister_content.cleanup()
     else:
         utils.clean_all_standard()
+
+
+# ----------------------------------------------------------------------------
+def done(etc_content=None, var_cache_cloudregister_content=None):
+    """
+    With content providers mark them done
+    """
+    if etc_content:
+        etc_content.done()
+    if var_cache_cloudregister_content:
+        var_cache_cloudregister_content.done()
 
 
 # ----------------------------------------------------------------------------
@@ -637,7 +652,7 @@ gitgroup.add_argument('-r', '--regcode', dest='reg_code', help=help_msg)
 argparse.add_argument('-v', '--version', action='version', version=__version__)
 
 
-def main(args, etc_content=None):
+def main(args, etc_content=None, var_cache_cloudregister_content=None):
     log.debug('registercloudguest {}'.format(__version__))
     global registration_returncode  # noqa: F824
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
@@ -681,7 +696,7 @@ def main(args, etc_content=None):
 
     if args.clean_up:
         log.debug('Registration clean up initiated by user')
-        cleanup(etc_content)
+        cleanup(etc_content, var_cache_cloudregister_content)
         sys.exit(0)
 
     if not os.path.isdir(utils.get_state_dir()):
@@ -717,7 +732,7 @@ def main(args, etc_content=None):
             msg += 'has completed'
             log.warning(msg)
             sys.exit(1)
-        cleanup(etc_content)
+        cleanup(etc_content, var_cache_cloudregister_content)
         utils.set_new_registration_flag()
         utils.write_framework_identifier(cfg)
         cached_smt_servers = []
@@ -747,7 +762,7 @@ def main(args, etc_content=None):
         )
     elif region_change:
         log.debug('Region change detected, registering to new servers')
-        cleanup(etc_content)
+        cleanup(etc_content, var_cache_cloudregister_content)
         region_smt_servers = cached_smt_servers = []
         registration_smt = None
         utils.set_new_registration_flag()
@@ -775,9 +790,9 @@ def main(args, etc_content=None):
 
     if registration_target_found:
         # The system is properly registered, run through the checklist now:
-        # Mark all created/modified files from the content manager as done so far
-        if etc_content:
-            etc_content.done()
+        # Mark all created/modified files from the content manager as
+        # done so far
+        done(etc_content, var_cache_cloudregister_content)
 
         # 1. check/setup the container registry for this target
         if not setup_registry(registration_smt):
@@ -792,8 +807,7 @@ def main(args, etc_content=None):
             )
 
         # Mark all created/modified files from the content manager as done
-        if etc_content:
-            etc_content.done()
+        done(etc_content, var_cache_cloudregister_content)
 
         # All done, time to leave...
         sys.exit(0)
@@ -806,8 +820,7 @@ def main(args, etc_content=None):
             'registration code, nothing to do'
         )
         # Mark all created/modified files from the content manager as done
-        if etc_content:
-            etc_content.done()
+        done(etc_content, var_cache_cloudregister_content)
         sys.exit(0)
 
     # The system is not yet registered, Figure out which server
@@ -871,19 +884,17 @@ def main(args, etc_content=None):
 
     # Mark all created/modified files from the content manager for
     # the plain registration as done.
-    if etc_content:
-        etc_content.done()
+    done(etc_content, var_cache_cloudregister_content)
 
     # Setup container registry
     if not setup_registry(registration_target):
-        cleanup(etc_content)
+        cleanup(etc_content, var_cache_cloudregister_content)
         sys.exit(1)
 
     utils.set_registration_completed_flag()
 
     # Mark all created/modified files from the content manager as done
-    if etc_content:
-        etc_content.done()
+    done(etc_content, var_cache_cloudregister_content)
 
     log.info('Registration succeeded')
 
@@ -924,9 +935,18 @@ def app():  # pragma: no cover
         fd = lock.acquire()
         if not fd == Lock.sameProcess():
             if args.git or Git.git_managed('/etc'):
-                with Git('/etc') as etc_content:
-                    utils.etc_content = etc_content
-                    main(args, etc_content)
+                with ExitStack() as stack:
+                    utils.etc_content = Git('/etc')
+                    stack.push(utils.etc_content)
+                    utils.var_cache_cloudregister_content = Git(
+                        '/var/cache/cloudregister'
+                    )
+                    stack.push(utils.var_cache_cloudregister_content)
+                    main(
+                        args,
+                        utils.etc_content,
+                        utils.var_cache_cloudregister_content,
+                    )
             else:
                 main(args)
     finally:

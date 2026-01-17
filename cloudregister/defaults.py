@@ -55,19 +55,21 @@ ZYPPER_UNKNOWN_ERROR = 1
 
 class Defaults:
     @staticmethod
-    def get_managed_files():
+    def get_managed_files(directory):
         result = []
-        managed = [
-            '/etc/zypp',
-            '/etc/pki/trust/anchors',
-            SUMA_REGISTRY_CONF_PATH,
-            DOCKER_CONFIG_PATH,
-            REGISTRIES_CONF_PATH,
-            PROFILE_LOCAL_PATH,
-            REGISTRY_CREDENTIALS_PATH,
-            HOSTSFILE_PATH,
-        ]
-        for data in managed:
+        managed = {
+            '/etc': [
+                '/etc/zypp',
+                '/etc/pki/trust/anchors',
+                SUMA_REGISTRY_CONF_PATH,
+                DOCKER_CONFIG_PATH,
+                REGISTRIES_CONF_PATH,
+                PROFILE_LOCAL_PATH,
+                REGISTRY_CREDENTIALS_PATH,
+                HOSTSFILE_PATH,
+            ]
+        }
+        for data in managed.get(directory) or []:
             if os.path.exists(data):
                 result.append(data)
         return result

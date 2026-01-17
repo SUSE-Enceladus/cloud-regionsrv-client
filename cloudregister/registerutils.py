@@ -71,6 +71,7 @@ requests.packages.urllib3.disable_warnings(
 log = Logger.get_logger()
 
 etc_content = Mock()
+var_cache_cloudregister_content = Mock()
 
 
 # ----------------------------------------------------------------------------
@@ -591,6 +592,9 @@ def register_product(
             and credential not in exclude_zypp_files
         ):
             etc_content.manage(credential)
+    zypper_pid_file = os.sep.join([get_state_dir(), 'zypper_pid'])
+    if os.path.exists(zypper_pid_file):
+        var_cache_cloudregister_content.manage(zypper_pid_file)
 
     return suseconnect_type(
         returncode=returncode, output=output.decode(), error=error.decode()
@@ -2161,7 +2165,9 @@ def is_zypper_running():
 def refresh_zypper_pid_cache():
     """Write the current zypper pid to the cache file"""
     zypper_pid = get_zypper_pid()
-    with open(os.sep.join([get_state_dir(), 'zypper_pid']), 'w') as cache_file:
+    zypper_pid_file = os.sep.join([get_state_dir(), 'zypper_pid'])
+    var_cache_cloudregister_content.manage(zypper_pid_file)
+    with open(zypper_pid_file, 'w') as cache_file:
         cache_file.write(zypper_pid)
 
 
@@ -2325,6 +2331,7 @@ def replace_hosts_entry(current_smt, new_smt):
 # ----------------------------------------------------------------------------
 def store_smt_data(smt_data_file_path, smt):
     """Store the given SMT server information to the given file"""
+    var_cache_cloudregister_content.manage(smt_data_file_path)
     with open(smt_data_file_path, 'wb') as smt_data:
         os.fchmod(smt_data.fileno(), stat.S_IREAD | stat.S_IWRITE)
         p = pickle.Pickler(smt_data)
@@ -2415,7 +2422,9 @@ def write_framework_identifier(cfg):
         if region_hint:
             identifier['region'] = region_hint.split('=')[-1]
 
-    with open(get_framework_identifier_path(), 'w') as framework_file:
+    framework_identifier_file = get_framework_identifier_path()
+    var_cache_cloudregister_content.manage(framework_identifier_file)
+    with open(framework_identifier_file, 'w') as framework_file:
         framework_file.write(json.dumps(identifier))
 
 
@@ -2916,6 +2925,7 @@ def set_registry_fqdn_suma(private_registry_fqdn):
 # ----------------------------------------------------------------------------
 def _set_state_file(filepath):
     """Create a file with the given path if it does not exist"""
+    var_cache_cloudregister_content.manage(filepath)
     Path(filepath).touch(exist_ok=True)
 
 

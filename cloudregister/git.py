@@ -101,12 +101,16 @@ class Git:
                     self.git_cmd + ['checkout', '-b', 'main']
                 )
             if not failed:
-                _, error, failed = exec_subprocess(
-                    self.git_cmd + ['add'] + Defaults.get_managed_files()
+                managed_system_files = Defaults.get_managed_files(
+                    self.managed_dir
                 )
+                if managed_system_files:
+                    _, error, failed = exec_subprocess(
+                        self.git_cmd + ['add'] + managed_system_files
+                    )
             if not failed:
                 _, error, failed = exec_subprocess(
-                    self.git_cmd + ['commit', '-m', 'origin']
+                    self.git_cmd + ['commit', '--allow-empty', '-m', 'origin']
                 )
         if not failed:
             _, error, failed = exec_subprocess(
@@ -151,29 +155,37 @@ class Git:
         Next go back to the main origin and delete the branch,
         followed by the deletion of the git itself.
         """
-        self.cleanup_called = True
-        _, error, failed = exec_subprocess(self.git_cmd + ['checkout', 'main'])
-        if failed:
-            if with_patch:
-                # There are local modifications not done by us
-                # We preserve them as a patch file
-                patch_file = '/var/tmp/cloudregister.patch'
-                log.warning('Changes detected in cloudregister managed files')
-                log.warning(
-                    'Please apply {} to not loose them'.format(patch_file)
-                )
-                exec_subprocess(
-                    self.git_cmd
-                    + [
-                        'diff',
-                        '--diff-filter=M',
-                        '--output={}'.format(patch_file),
-                    ]
-                )
-            exec_subprocess(self.git_cmd + ['checkout', '.'])
-            exec_subprocess(self.git_cmd + ['checkout', 'main'])
-        exec_subprocess(self.git_cmd + ['branch', '-D', 'registercloudguest'])
-        shutil.rmtree(self.managed_dir_git)
+        try:
+            self.cleanup_called = True
+            _, error, failed = exec_subprocess(
+                self.git_cmd + ['checkout', 'main']
+            )
+            if failed:
+                if with_patch:
+                    # There are local modifications not done by us
+                    # We preserve them as a patch file
+                    patch_file = '/var/tmp/cloudregister.patch'
+                    log.warning(
+                        'Changes detected in cloudregister managed files'
+                    )
+                    log.warning(
+                        'Please apply {} to not loose them'.format(patch_file)
+                    )
+                    exec_subprocess(
+                        self.git_cmd
+                        + [
+                            'diff',
+                            '--diff-filter=M',
+                            '--output={}'.format(patch_file),
+                        ]
+                    )
+                exec_subprocess(self.git_cmd + ['checkout', '.'])
+                exec_subprocess(self.git_cmd + ['checkout', 'main'])
+            exec_subprocess(
+                self.git_cmd + ['branch', '-D', 'registercloudguest']
+            )
+        finally:
+            shutil.rmtree(self.managed_dir_git)
 
     @staticmethod
     def git_managed(directory):
