@@ -42,7 +42,7 @@ class TestRegisterCloudGuest:
             user_smt_fp=None,
         )
         with raises(SystemExit):
-            assert register_cloud_guest.main(fake_args) is None
+            assert register_cloud_guest.main(fake_args, Mock()) is None
 
     @patch('cloudregister.registerutils.has_network_access_by_ip_address')
     def test_register_cloud_guest_no_connection_ip(self, mock_has_network):
@@ -53,7 +53,7 @@ class TestRegisterCloudGuest:
             user_smt_fp='AA:BB:CC:DD',
         )
         with raises(SystemExit):
-            assert register_cloud_guest.main(fake_args) is None
+            assert register_cloud_guest.main(fake_args, Mock()) is None
 
     def test_register_cloud_guest_non_ip_value(self):
         fake_args = SimpleNamespace(
@@ -62,19 +62,7 @@ class TestRegisterCloudGuest:
             user_smt_fp='AA:BB:CC',
         )
         with raises(SystemExit):
-            assert register_cloud_guest.main(fake_args) is None
-
-    def test_register_cloud_guest_mixed_param(self):
-        fake_args = SimpleNamespace(
-            clean_up=True,
-            force_new_registration=True,
-            user_smt_ip=None,
-            user_smt_fqdn=None,
-            user_smt_fp=None,
-            debug=True,
-        )
-        with raises(SystemExit):
-            assert register_cloud_guest.main(fake_args) is None
+            assert register_cloud_guest.main(fake_args, Mock()) is None
 
     def test_register_cloud_guest_no_regcode_email(self):
         fake_args = SimpleNamespace(
@@ -88,7 +76,7 @@ class TestRegisterCloudGuest:
             debug=True,
         )
         with raises(SystemExit):
-            assert register_cloud_guest.main(fake_args) is None
+            assert register_cloud_guest.main(fake_args, Mock()) is None
 
     @patch('cloudregister.registerutils.clean_hosts_file')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
@@ -120,7 +108,7 @@ class TestRegisterCloudGuest:
             debug=False,
         )
         with raises(SystemExit):
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -168,7 +156,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -215,7 +203,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 1
 
     @patch.object(SMT, 'is_equivalent')
@@ -300,7 +288,7 @@ class TestRegisterCloudGuest:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
             with self._caplog.at_level(logging.DEBUG):
-                register_cloud_guest.main(fake_args)
+                register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 1
         assert 'Configured update server is unresponsive' in self._caplog.text
 
@@ -398,7 +386,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -499,7 +487,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, None)
             assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -597,7 +585,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.replace_hosts_entry')
@@ -703,7 +691,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -800,7 +788,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -904,7 +892,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
             assert 'No registration executable found' in self._caplog.text
             assert sys_exit.value.code == 1
 
@@ -1013,7 +1001,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -1121,7 +1109,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert 'No products installed on system' in self._caplog.text
         assert sys_exit.value.code == 1
 
@@ -1233,7 +1221,7 @@ class TestRegisterCloudGuest:
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -1271,10 +1259,8 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
     @patch('cloudregister.registerutils.clean_cache')
-    @patch('cloudregister.registerutils.clean_all_standard')
     def test_register_cloud_guest_force_baseprod_registration_failed(
         self,
-        mock_clean_all_standard,
         mock_clean_cache,
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
@@ -1360,7 +1346,7 @@ class TestRegisterCloudGuest:
             returncode=67, output='registration code', error='stderr'
         )
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert 'Baseproduct registration failed' in self._caplog.text
         assert sys_exit.value.code == 1
 
@@ -1515,7 +1501,7 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert (
             'Unable to obtain product information from server "1.2.3.5,None"'
             in self._caplog.text
@@ -1565,10 +1551,8 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
     @patch('cloudregister.registerutils.clean_cache')
-    @patch('cloudregister.registerutils.clean_all_standard')
     def test_register_cloud_guest_force_baseprod_extensions_raise(
         self,
-        mock_clean_all_standard,
         mock_clean_cache,
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
@@ -1718,7 +1702,7 @@ class TestRegisterCloudGuest:
         mock_set_proxy.return_value = False
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 6
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
@@ -1936,7 +1920,7 @@ class TestRegisterCloudGuest:
             fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
-        assert register_cloud_guest.main(fake_args) is None
+        assert register_cloud_guest.main(fake_args, Mock()) is None
         assert 'Forced new registration' in self._caplog.text
         assert (
             'Using user specified SMT server:\n\n\t"IP:1.2.3.5"\n\t"'
@@ -2165,7 +2149,7 @@ class TestRegisterCloudGuest:
             fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
-        assert register_cloud_guest.main(fake_args) is None
+        assert register_cloud_guest.main(fake_args, Mock()) is None
         assert 'Forced new registration' in self._caplog.text
         assert (
             'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"'
@@ -2406,7 +2390,7 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
 
-        assert register_cloud_guest.main(fake_args) is None
+        assert register_cloud_guest.main(fake_args, Mock()) is None
 
         assert 'Registration succeeded' in self._caplog.text
         assert (
@@ -2638,7 +2622,7 @@ class TestRegisterCloudGuest:
         )
         with raises(SystemExit) as sys_exit:
             with patch('builtins.open', mock_open()):
-                register_cloud_guest.main(fake_args)
+                register_cloud_guest.main(fake_args, Mock())
         assert sys_exit.value.code == 0
         assert (
             'Region change detected, registering to new servers'
@@ -3068,9 +3052,28 @@ class TestRegisterCloudGuest:
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
     ):
+        etc_content = Mock()
+        var_cache_cloudregister_content = Mock()
+        # cleanup with content manager(git)...
+        register_cloud_guest.cleanup(
+            etc_content, var_cache_cloudregister_content
+        )
+        mock_deregister_non_free_extensions.assert_called_once_with()
+        mock_deregister_from_update_infrastructure.assert_called_once_with()
+        mock_deregister_from_SCC.assert_called_once_with()
+        etc_content.cleanup.assert_called_once_with()
+        var_cache_cloudregister_content.cleanup.assert_called_once_with()
+
         # cleanup standard style
         register_cloud_guest.cleanup()
         mock_clean_all_standard.assert_called_once_with()
+
+    def test_done(self):
+        etc_content = Mock()
+        var_cache_cloudregister_content = Mock()
+        register_cloud_guest.done(etc_content, var_cache_cloudregister_content)
+        etc_content.done.assert_called_once_with()
+        var_cache_cloudregister_content.done.assert_called_once_with()
 
     @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')
@@ -3299,5 +3302,5 @@ class TestRegisterCloudGuest:
         mock_set_proxy.return_value = False
         mock_setup_registry.return_value = False
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            register_cloud_guest.main(fake_args, Mock())
             assert sys_exit.value.code == 1
