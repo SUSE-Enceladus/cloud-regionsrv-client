@@ -13,6 +13,7 @@
 
 """Utility functions for the cloud guest registration"""
 
+import shutil
 import base64
 import configparser
 import glob
@@ -130,17 +131,34 @@ def clean_all_standard():
     clean_hosts_file()
 
     # Clean all cache data from /var/cache
-    clean_cache()
+    clean_cache(wipe_all=True)
 
 
 # ----------------------------------------------------------------------------
-def clean_cache():
-    clean_smt_cache()
-    clear_rmt_as_scc_proxy_flag()
-    clear_new_registration_flag()
-    clean_framework_identifier()
-    clear_registration_completed_flag()
-    clean_registered_smt_data_file()
+def clean_cache(wipe_all=False):
+    if wipe_all:
+        # remove entire cache directory and create new one
+        # This code path is called only in case of a full
+        # registration cleanup. Also see: clean_all_standard()
+        if os.path.isdir(REGISTRATION_DATA_DIR):
+            shutil.rmtree(REGISTRATION_DATA_DIR)
+            Path(REGISTRATION_DATA_DIR).mkdir(parents=True, exist_ok=True)
+    else:
+        # selective cache cleanup, allows to keep other cache files
+        # FIXME:
+        # !!!
+        # I did not understand why the implementation of the
+        # cache cleanup was done in this way. By reading the code
+        # I could not find a condition where a selective cleanup
+        # would be useful. As this is code written prior me
+        # joining the project, please clarify
+        # !!!
+        clean_smt_cache()
+        clear_rmt_as_scc_proxy_flag()
+        clear_new_registration_flag()
+        clean_framework_identifier()
+        clear_registration_completed_flag()
+        clean_registered_smt_data_file()
 
 
 # ----------------------------------------------------------------------------
