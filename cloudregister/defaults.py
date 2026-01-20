@@ -1,4 +1,4 @@
-# Copyright (c) 2025, SUSE LLC, All rights reserved.
+# Copyright (c) 2025-2026, SUSE LLC, All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
