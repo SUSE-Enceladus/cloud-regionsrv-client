@@ -44,6 +44,7 @@ from cloudregister.defaults import (
     LIBZYPP_ERROR,
     LOG_FILE,
     REGISTERED_SMT_SERVER_DATA_FILE_NAME,
+    REGISTRATION_DATA_DIR,
     SERVER_ACCESS_ERROR,
     SERVER_CONNECTION_REFUSED,
     SERVER_GENERAL_ERROR,
@@ -621,6 +622,10 @@ argparse.add_argument('-v', '--version', action='version', version=__version__)
 def main(args):
     log.debug('registercloudguest {}'.format(__version__))
     global registration_returncode  # noqa: F824
+    # Create our cache dir, we can nolonger handle this in the package.
+    # Packaging content outside /usr and /etc is verboten even if we are
+    # not really packaging any content
+    os.makedirs(REGISTRATION_DATA_DIR, exist_ok=True)
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
             msg = '--smt-ip, --smt-fqdn, and --smt-fp must be used together'
