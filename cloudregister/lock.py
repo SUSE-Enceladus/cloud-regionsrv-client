@@ -65,6 +65,12 @@ class Lock:
                 fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
         return fd
 
+    def is_locked(self):
+        """
+        Check if the registration process has a lock.
+        """
+        return os.path.exists(self.lock_file)
+
     def release(self, fd):
         """
         Release file lock from process lock file

@@ -90,6 +90,16 @@ class TestLock:
             assert self.lock.acquire() == Lock.sameProcess()
             assert 'already running as PID: 99' in self._caplog.text
 
+    @patch('os.path.exists')
+    def test_lock_is_locked_locked(self, mock_path):
+        mock_path.return_value = True
+        assert self.lock.is_locked() is True
+
+    @patch('os.path.exists')
+    def test_lock_is_locked_unlocked(self, mock_path):
+        mock_path.return_value = False
+        assert self.lock.is_locked() is False
+
     def test_read_cmdline(self):
         with patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = MagicMock(spec=io.IOBase)
