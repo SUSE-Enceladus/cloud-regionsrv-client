@@ -35,7 +35,8 @@ class TestRegisterCloudGuest:
     def inject_fixtures(self, caplog):
         self._caplog = caplog
 
-    def test_register_cloud_guest_missing_param(self):
+    @patch('os.makedirs')
+    def test_register_cloud_guest_missing_param(self, mock_makedirs):
         fake_args = SimpleNamespace(
             user_smt_ip='fc00::1',
             user_smt_fqdn='foo.susecloud.net',
@@ -44,8 +45,13 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
+    @patch('os.makedirs')
     @patch('cloudregister.registerutils.has_network_access_by_ip_address')
-    def test_register_cloud_guest_no_connection_ip(self, mock_has_network):
+    def test_register_cloud_guest_no_connection_ip(
+            self,
+            mock_has_network,
+            mock_makedirs
+    ):
         mock_has_network.return_value = False
         fake_args = SimpleNamespace(
             user_smt_ip='1.2.3.5',
@@ -55,7 +61,8 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    def test_register_cloud_guest_non_ip_value(self):
+    @patch('os.makedirs')
+    def test_register_cloud_guest_non_ip_value(self, mock_makedirs):
         fake_args = SimpleNamespace(
             user_smt_ip='Not.an.IP.Address',
             user_smt_fqdn='foo.susecloud.net',
@@ -64,7 +71,8 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    def test_register_cloud_guest_mixed_param(self):
+    @patch('os.makedirs')
+    def test_register_cloud_guest_mixed_param(self, mock_makedirs):
         fake_args = SimpleNamespace(
             clean_up=True,
             force_new_registration=True,
@@ -76,7 +84,8 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    def test_register_cloud_guest_no_regcode_email(self):
+    @patch('os.makedirs')
+    def test_register_cloud_guest_no_regcode_email(self, mock_makedirs):
         fake_args = SimpleNamespace(
             clean_up=False,
             force_new_registration=False,
@@ -90,6 +99,7 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
+    @patch('os.makedirs')
     @patch('cloudregister.registerutils.clean_hosts_file')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('time.sleep')
@@ -106,6 +116,7 @@ class TestRegisterCloudGuest:
         mock_time_sleep,
         mock_deregister_non_free_extensions,
         mock_clean_hosts_file,
+        mock_makedirs
     ):
         fake_args = SimpleNamespace(
             clean_up=True,

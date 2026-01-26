@@ -213,8 +213,6 @@ mv %{buildroot}%{_bindir}/* %{buildroot}%{_sbindir}
 mv %{buildroot}%{_sbindir}/cloudguestregistryauth %{buildroot}%{_bindir}
 # The location of the regionserver certs
 mkdir -p %{buildroot}/usr/lib/regionService/certs
-# The directory for the cache data
-mkdir -p %{buildroot}/var/cache/cloudregister
 # The man pages
 install -d -m 755 %{buildroot}/%{_mandir}/man1
 install -m 644 doc/man/man1/* %{buildroot}/%{_mandir}/man1
@@ -319,7 +317,6 @@ fi
 %dir %{_usr}/lib/zypp
 %dir %{_usr}/lib/zypp/plugins
 %dir %{_usr}/lib/zypp/plugins/urlresolver
-%dir /var/cache/cloudregister
 %{_mandir}/man*/*
 # Do not expect the user that needs containers to have root access
 # on the system

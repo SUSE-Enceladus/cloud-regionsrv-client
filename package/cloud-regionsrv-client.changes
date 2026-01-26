@@ -1,3 +1,6 @@
+- Update to version XXXX
+  + Create cache directory in code and drop from package (jsc#PED-14732)
+
 -------------------------------------------------------------------
 Wed Sep 17 07:47:42 UTC 2025 - Marcus Schäfer <marcus.schaefer@suse.com>
 
