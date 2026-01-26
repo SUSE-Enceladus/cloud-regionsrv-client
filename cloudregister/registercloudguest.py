@@ -385,14 +385,13 @@ def register_base_product(
                             str((new_smt_ipv4, new_smt_ipv6)),
                         )
                     )
-                    utils.clear_rmt_as_scc_proxy_flag()
                     utils.deregister_non_free_extensions()
                     utils.deregister_from_update_infrastructure()
                     utils.deregister_from_SCC()
-                    utils.clean_registered_smt_data_file()
                     utils.clean_hosts_file(
                         registration_target.get_domain_name()
                     )
+                    utils.clean_cache()
                     registration_target = smt_srv
                     break
         else:

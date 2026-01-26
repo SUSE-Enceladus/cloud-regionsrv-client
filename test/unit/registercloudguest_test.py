@@ -104,14 +104,12 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('time.sleep')
     @patch('cloudregister.registerutils.get_config')
-    @patch('cloudregister.registerutils.clean_framework_identifier')
     @patch('cloudregister.registerutils.clear_new_registration_flag')
     @patch('cloudregister.registerutils.clean_smt_cache')
     def test_register_cloud_guest_cleanup(
         self,
         mock_clean_smt_cache,
         mock_clear_reg_flag,
-        mock_framework_id,
         mock_get_config,
         mock_time_sleep,
         mock_deregister_non_free_extensions,
@@ -3008,11 +3006,9 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.add_hosts_entry')
     @patch('cloudregister.registercloudguest.cleanup')
-    @patch('cloudregister.registerutils.clear_rmt_as_scc_proxy_flag')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
-    @patch('cloudregister.registerutils.clean_registered_smt_data_file')
     @patch('cloudregister.registerutils.clean_hosts_file')
     @patch('cloudregister.registerutils.clear_new_registration_flag')
     @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
@@ -3021,11 +3017,9 @@ class TestRegisterCloudGuest:
         mock_set_rmt_as_scc_proxy_flag,
         mock_clear_new_registration_flag,
         mock_clean_hosts_file,
-        mock_clean_registered_smt_data_file,
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
-        mock_clear_rmt_as_scc_proxy_flag,
         mock_cleanup,
         mock_add_hosts_entry,
         mock_register_product,
@@ -3059,11 +3053,9 @@ class TestRegisterCloudGuest:
                 region_smt_servers,
             )
             mock_deregister_non_free_extensions.assert_called_once_with()
-            mock_clear_rmt_as_scc_proxy_flag.assert_called_once_with()
             mock_deregister_non_free_extensions.assert_called_once_with()
             mock_deregister_from_update_infrastructure.assert_called_once_with()
             mock_deregister_from_SCC.assert_called_once_with()
-            mock_clean_registered_smt_data_file.assert_called_once_with()
             mock_clean_hosts_file.assert_called_once_with()
 
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
