@@ -265,15 +265,6 @@ if [ -e "/.buildenv" ]; then
 fi
 
 %post
-# Scripts need access to the update infrastructure, do not execute them
-# in the build service.
-if [ "$YAST_IS_RUNNING" != "instsys" ] ; then
-# On initial install we do not need to handle existing data, only on update
-if [ "$1" -gt 1 ] ; then
-    %{_sbindir}/updatesmtcache
-    %{_sbindir}/createregioninfo
-fi
-fi
 # replace obsolete NCCcredentials with SCCcredentials
 # the following code block is scheduled for deletion end of 2026
 for repo in /etc/zypp/repos.d/*.repo; do
@@ -289,6 +280,18 @@ fi
 
 %post license-watcher
 %service_add_post guestregister-lic-watcher.timer
+
+%posttrans
+# We need access to the update infrastructure, as such execute those actions
+# when we know all dependencies have also been installed.
+# Scripts need access to the update infrastructure, do not execute them
+# in the build service.
+if [ "$YAST_IS_RUNNING" != "instsys" ] ; then
+    if [ "$1" -gt 1 ] ; then
+        %{_sbindir}/updatesmtcache
+        %{_sbindir}/createregioninfo
+    fi
+fi
 
 %posttrans license-watcher
 if test -f %eflag; then
