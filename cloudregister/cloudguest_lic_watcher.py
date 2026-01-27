@@ -14,9 +14,11 @@
 # License along with this library.
 
 import os
+import sys
 
 import instance_billing_flavor_check.utils as inst_flvr_utils
 import cloudregister.registerutils as utils
+from cloudregister.lock import Lock
 from cloudregister.logger import Logger
 from cloudregister.defaults import LOG_FILE, CACHED_LICENSE
 
@@ -100,6 +102,17 @@ def maybe_register_system(license_type):
 
 def app():
     current_flavor = inst_flvr_utils.check_payg_byos()[0]
+    # Shortcut to skip a lot of testing on initial start up. If there is
+    # no cache file the license cannot have changed because we do not know
+    # what it was previously. Write the current state to the cache then
+    # on the next go around we have a defined staring point.
+    if not os.path.exists(CACHE_LICENSE_PATH):
+        update_license_cache(current_flavor)
+        sys.exit(0)
+    # Do not take any action if the registration process is in progress
+    lock = Lock()
+    if lock.is_locked():
+        sys.exit(0)
     if has_license_changed(current_flavor):
         maybe_drop_registration(current_flavor)
         maybe_register_system(current_flavor)
