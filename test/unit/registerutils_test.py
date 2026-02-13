@@ -5120,6 +5120,52 @@ export DOCKER_CONFIG=/etc/containers
             in self._caplog.text
         )
 
+    @patch('glob.glob')
+    @patch('os.path.exists')
+    @patch('os.access')
+    @patch('cloudregister.registerutils.exec_subprocess')
+    @patch('cloudregister.registerutils.get_register_cmd')
+    def test_register_product_manage_zypper_files(
+        self,
+        mock_get_register_cmd,
+        mock_exec_subprocess,
+        mock_os_access,
+        mock_os_path_exists,
+        mock_glob,
+    ):
+        glob_results = [
+            # new zypp files and cache data
+            ['some_cache_data'],
+            ['some_repos'],
+            ['some_services'],
+            ['some_credentials'],
+            # exclude_zypp_files
+            [],
+            [],
+            [],
+        ]
+
+        def glob_mock(arg):
+            return glob_results.pop()
+
+        smt = Mock()
+        smt.get_FQDN.return_value = 'some_FQDN'
+        mock_get_register_cmd.return_value = 'SUSEConnect'
+        mock_os_path_exists.return_value = True
+        mock_os_access.return_value = True
+        mock_exec_subprocess.return_value = (b'', b'', 0)
+        mock_glob.side_effect = glob_mock
+
+        utils.etc_content.reset_mock()
+        utils.register_product(smt)
+
+        assert utils.etc_content.manage.call_args_list == [
+            call('/etc/zypp/credentials.d/SCCcredentials'),
+            call('some_credentials'),
+            call('some_services'),
+            call('some_repos'),
+        ]
+
     @patch('cloudregister.registerutils.get_credentials')
     @patch('cloudregister.registerutils.HTTPBasicAuth')
     @patch('cloudregister.registerutils.get_smt_from_store')
