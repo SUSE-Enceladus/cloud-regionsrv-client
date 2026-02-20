@@ -3003,7 +3003,6 @@ class TestRegisterCloudGuest:
         assert 'LTSS registration failed' in self._caplog.text
         assert '\tnot OK' in self._caplog.text
 
-
     @patch('cloudregister.registerutils.register_product')
     @patch('os.listdir')
     @patch('os.path.isdir')
