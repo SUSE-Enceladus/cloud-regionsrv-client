@@ -667,6 +667,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                         break
                     else:
                         log.error('=' * 20)
+                        log.error('Request URL: %s' % url)
                         log.error('Server returned: %d' % response.status_code)
                         log.error('Server error: "%s"' % response.reason)
                         log.error('=' * 20)

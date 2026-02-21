@@ -1653,6 +1653,7 @@ class TestRegisterUtils:
         mock_has_ipv6_access.return_value = False
         with raises(SystemExit):
             utils.fetch_smt_data(cfg, None)
+        assert 'Request URL: https://1.1.1.1/regionInfo' in self._caplog.text
         assert 'Server returned: 422' in self._caplog.text
         assert 'Server error: "well, you shall not pass"' in self._caplog.text
 
