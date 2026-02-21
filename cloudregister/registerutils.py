@@ -2468,10 +2468,10 @@ def _get_framework_plugin(cfg):
         if module and module != 'none':
             try:
                 mod = __import__('cloudregister.%s' % module, fromlist=[''])
-            except Exception:
-                msg = 'Configured instanceArgs module could not be loaded. '
-                msg += 'Continuing without additional arguments.'
-                log.debug(msg)
+            except Exception as e:
+                msg = 'Failed to load instanceArgs module '
+                msg += '"%s": %s' % (module, e)
+                log.error(msg)
 
     return mod
 
