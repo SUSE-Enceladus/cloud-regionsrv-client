@@ -129,6 +129,7 @@ Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for GCE
 Group:          Productivity/Networking/Web/Servers
 Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       %{pythons}
 
 %description plugin-gce
 Guest registration plugin for images intended for Google Compute Engine
@@ -140,6 +141,7 @@ Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
 Group:          Productivity/Networking/Web/Servers
 Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       %{pythons}
 
 %description plugin-ec2
 Guest registration plugin for images intended for Amazon EC2 providing
@@ -151,6 +153,7 @@ Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Microsoft Azure
 Group:          Productivity/Networking/Web/Servers
 Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       %{pythons}
 Requires:       python3-dnspython
 
 %description plugin-azure
