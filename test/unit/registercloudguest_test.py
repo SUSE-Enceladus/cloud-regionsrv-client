@@ -3002,6 +3002,55 @@ class TestRegisterCloudGuest:
         assert '\tnot OK' in self._caplog.text
 
     @patch('cloudregister.registerutils.register_product')
+    @patch('os.listdir')
+    @patch('os.path.isdir')
+    @patch('cloudregister.registerutils.get_product_tree')
+    def test_setup_ltss_registration_registration_failed_error_message(
+        self,
+        mock_get_product_tree,
+        mock_os_path_isdir,
+        mock_os_listdir,
+        mock_register_product,
+    ):
+        mock_os_path_isdir.return_value = True
+        mock_os_listdir.return_value = ['foo']
+        base_product = dedent(
+            '''\
+            <?xml version="1.0" encoding="UTF-8"?>
+            <product schemeversion="0">
+              <vendor>SUSE</vendor>
+              <name>SLES</name>
+              <version>15.4</version>
+              <baseversion>15</baseversion>
+              <patchlevel>4</patchlevel>
+              <release>0</release>
+              <endoflife></endoflife>
+              <arch>x86_64</arch></product>'''
+        )
+        mock_get_product_tree.return_value = etree.fromstring(
+            base_product[base_product.index('<product') :]
+        )
+        prod_reg_type = namedtuple(
+            'prod_reg_type', ['returncode', 'output', 'error']
+        )
+        error_message = (
+            "\nError: Registration server returned "
+            "'The subscription with registration code 'FOO-CODE'"
+            "is wrong'' (422)"
+        )
+
+        mock_register_product.return_value = prod_reg_type(
+            returncode=7, output=error_message, error='stderr'
+        )
+        with raises(SystemExit) as sys_exit:
+            register_cloud_guest.setup_ltss_registration(
+                'target', 'regcode', 'instance_filepath'
+            )
+        assert sys_exit.value.code == 1
+        assert 'LTSS registration failed' in self._caplog.text
+        assert 'is wrong' in self._caplog.text
+
+    @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.add_hosts_entry')
     @patch('cloudregister.registercloudguest.cleanup')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
