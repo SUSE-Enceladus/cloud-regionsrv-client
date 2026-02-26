@@ -1653,6 +1653,7 @@ class TestRegisterUtils:
         mock_has_ipv6_access.return_value = False
         with raises(SystemExit):
             utils.fetch_smt_data(cfg, None)
+        assert 'Request URL: https://1.1.1.1/regionInfo' in self._caplog.text
         assert 'Server returned: 422' in self._caplog.text
         assert 'Server error: "well, you shall not pass"' in self._caplog.text
 
@@ -3232,11 +3233,7 @@ class TestRegisterUtils:
         cfg.add_section('instance')
         cfg.set('instance', 'instanceArgs', 'foo')
         assert utils._get_framework_plugin(cfg) is None
-        assert (
-            'Configured instanceArgs module could not be loaded. '
-            in self._caplog.text
-        )
-        assert 'Continuing without additional arguments.' in self._caplog.text
+        assert 'Failed to load instanceArgs module "foo":' in self._caplog.text
 
     def test_get_framework_plugin(self):
         cfg = get_test_config()

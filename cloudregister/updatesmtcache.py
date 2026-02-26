@@ -20,11 +20,17 @@ import os
 
 import cloudregister.registerutils as utils
 from cloudregister.defaults import (
+    LOG_FILE,
     OLD_REGISTRATION_DATA_DIR,
     REGISTRATION_DATA_DIR,
 )
 
+from cloudregister.logger import Logger
 from cloudregister import smt
+
+log_instance = Logger()
+log_instance.set_logfile(LOG_FILE)
+log = Logger.get_logger()
 
 
 def app():
