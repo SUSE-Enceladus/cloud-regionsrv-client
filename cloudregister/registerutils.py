@@ -2475,8 +2475,7 @@ def _get_framework_plugin(cfg):
                     'registration will not work correctly'
                 )
                 log.debug(
-                    'instanceArgs plugin "%s" import failed: %s' % (module, error),
-                    exc_info=True,
+                    'instanceArgs plugin "%s" import failed: %s' % (module, error)
                 )
 
     return mod
