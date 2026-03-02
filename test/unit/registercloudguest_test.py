@@ -48,9 +48,7 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('cloudregister.registerutils.has_network_access_by_ip_address')
     def test_register_cloud_guest_no_connection_ip(
-            self,
-            mock_has_network,
-            mock_makedirs
+        self, mock_has_network, mock_makedirs
     ):
         mock_has_network.return_value = False
         fake_args = SimpleNamespace(
@@ -114,7 +112,7 @@ class TestRegisterCloudGuest:
         mock_time_sleep,
         mock_deregister_non_free_extensions,
         mock_clean_hosts_file,
-        mock_makedirs
+        mock_makedirs,
     ):
         fake_args = SimpleNamespace(
             clean_up=True,

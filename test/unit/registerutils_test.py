@@ -4999,16 +4999,11 @@ export DOCKER_CONFIG=/etc/containers
     @patch('cloudregister.registerutils.Path')
     @patch('os.path.isdir')
     def test_clean_cache(
-        self,
-        mock_os_path_isdir,
-        mock_Path,
-        mock_shutil_rmtree
+        self, mock_os_path_isdir, mock_Path, mock_shutil_rmtree
     ):
         mock_os_path_isdir.return_value = True
         utils.clean_cache()
-        mock_shutil_rmtree.assert_called_once_with(
-            '/var/cache/cloudregister'
-        )
+        mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
         mock_Path.assert_called_once_with('/var/cache/cloudregister')
         mock_Path.return_value.mkdir.assert_called_once_with(
             parents=True, exist_ok=True

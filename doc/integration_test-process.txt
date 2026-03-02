@@ -57,7 +57,9 @@ After installing the test package with "zypper in"
   + systemctl stop docker.service
   + zypper in podman
   + podman pull bci/bci-base
-  # The next test (until the end of this section) is still a bit flaky
+  # The next test will only work if the pulled BCI container version matches
+  # the version of the underlying OS, for example a 15 SP6 container on
+  # a 15 SP6 host.
   # If it fails ignore if you are certain it is not broken because of changes
   # in this code
   + zypper in libcontainers-sles-mounts
@@ -177,7 +179,7 @@ SLE 15
   + systemctl status docker.service
     - Service should be running
   + zypper in podman
-  + podman search --list-tags registry-ec2.susecloud.net/suse/ltss/sle$VERSION.SPNUMBER/sle15
+  + podman search --list-tags registry-$CSP.susecloud.net/suse/ltss/sle$VERSION.SPNUMBER/sle15
   + podman pull suse/ltss/sle$VERSION.SPNUMBER/sle15:TAGNUMBER
     - Should pull the container from registry-$FRAMEWORK.susecloud.net
   + docker pull suse/ltss/sle$VERSION/bci-base
