@@ -2470,10 +2470,6 @@ def _get_framework_plugin(cfg):
             try:
                 mod = __import__('cloudregister.%s' % module, fromlist=[''])
             except Exception as error:
-                log.error(
-                    'Unable to load cloud provider support; '
-                    'registration will not work correctly'
-                )
                 log.debug(
                     'instanceArgs plugin "%s" import failed: %s' % (module, error)
                 )
