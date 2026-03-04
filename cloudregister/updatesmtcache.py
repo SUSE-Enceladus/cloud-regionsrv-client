@@ -28,9 +28,9 @@ from cloudregister.defaults import (
 from cloudregister.logger import Logger
 from cloudregister import smt
 
+# Attach file handler so logs from called registerutils functions persist
 log_instance = Logger()
 log_instance.set_logfile(LOG_FILE)
-log = Logger.get_logger()
 
 
 def app():
