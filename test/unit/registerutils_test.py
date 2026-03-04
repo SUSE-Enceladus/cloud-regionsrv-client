@@ -3234,9 +3234,8 @@ class TestRegisterUtils:
         cfg.set('instance', 'instanceArgs', 'foo')
         with self._caplog.at_level(logging.DEBUG):
             assert utils._get_framework_plugin(cfg) is None
-        assert 'Unable to load cloud provider support' in self._caplog.text
-        assert 'registration will not work correctly' in self._caplog.text
-        assert 'instanceArgs plugin "foo" import failed' in self._caplog.text
+        assert 'Configured instanceArgs module could not be loaded' in self._caplog.text
+        assert 'Continuing without additional arguments' in self._caplog.text
 
     def test_get_framework_plugin(self):
         cfg = get_test_config()
