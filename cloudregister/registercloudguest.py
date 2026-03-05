@@ -320,10 +320,8 @@ def setup_ltss_registration(
             # Something went wrong...
             # Even on error SUSEConnect writes messages to stdout, go figure
             message = prod_reg.output
-            log.error(
-                'LTSS registration failed see /var/log/cloudregister for details'
-            )
-            log.debug('\t{0}'.format(message))
+            log.error('LTSS registration failed')
+            log.error(message)
             sys.exit(1)
         message = 'LTSS registration succeeded'
         log.info(message)
