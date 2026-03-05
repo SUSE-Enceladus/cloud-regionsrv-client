@@ -2468,9 +2468,15 @@ def _get_framework_plugin(cfg):
             module = cfg.get('instance', 'instanceArgs')
         if module and module != 'none':
             try:
-                mod = __import__('cloudregister.{}'.format(module), fromlist=[''])
+                mod = __import__(
+                    'cloudregister.{}'.format(module), fromlist=['']
+                )
             except Exception as issue:
-                log.debug('Configured instanceArgs module could not be loaded: {}'.format(issue))
+                log.debug(
+                    'Configured instanceArgs module could not be loaded: {}'.format(
+                        issue
+                    )
+                )
                 log.debug('Continuing without additional arguments')
 
     return mod
