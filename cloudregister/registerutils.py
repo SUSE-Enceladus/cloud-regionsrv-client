@@ -667,6 +667,7 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                         break
                     else:
                         log.error('=' * 20)
+                        log.error('Request URL: {}'.format(url))
                         log.error('Server returned: %d' % response.status_code)
                         log.error('Server error: "%s"' % response.reason)
                         log.error('=' * 20)
@@ -2467,11 +2468,10 @@ def _get_framework_plugin(cfg):
             module = cfg.get('instance', 'instanceArgs')
         if module and module != 'none':
             try:
-                mod = __import__('cloudregister.%s' % module, fromlist=[''])
-            except Exception:
-                msg = 'Configured instanceArgs module could not be loaded. '
-                msg += 'Continuing without additional arguments.'
-                log.debug(msg)
+                mod = __import__('cloudregister.{}'.format(module), fromlist=[''])
+            except Exception as issue:
+                log.debug('Configured instanceArgs module could not be loaded: {}'.format(issue))
+                log.debug('Continuing without additional arguments')
 
     return mod
 
