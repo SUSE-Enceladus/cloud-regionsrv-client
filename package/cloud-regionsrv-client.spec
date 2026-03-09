@@ -151,7 +151,7 @@ Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Microsoft Azure
 Group:          Productivity/Networking/Web/Servers
 Requires:       cloud-regionsrv-client >= 6.0.0
-Requires:       python3-dnspython
+Requires:       %{pythons}-dnspython
 
 %description plugin-azure
 Guest registration plugin for images intended for Microsoft Azure providing
