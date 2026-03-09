@@ -6,8 +6,8 @@ index fc16c4e..0df0871 100644
      """
      Run the registration process for the container registry
      """
-+    # Disabled on SLE12
-+    return None
++    # Disabled on SLE12, pretend it worked
++    return True
      user, password = utils.get_credentials(
          utils.get_credentials_file(registration_target)
      )
