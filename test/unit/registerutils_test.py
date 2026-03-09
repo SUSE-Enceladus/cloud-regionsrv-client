@@ -5008,8 +5008,20 @@ export DOCKER_CONFIG=/etc/containers
         mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
         mock_Path.assert_called_once_with('/var/cache/cloudregister')
         mock_Path.return_value.mkdir.assert_called_once_with(
-            parents=True, exist_ok=True
+            parents=True
         )
+
+    @patch('shutil.rmtree')
+    @patch('cloudregister.registerutils.Path')
+    @patch('os.path.isdir')
+    def test_clean_cache_w_except(
+        self, mock_os_path_isdir, mock_Path, mock_shutil_rmtree
+    ):
+        mock_os_path_isdir.return_value = True
+        mock_Path.side_effect = FileExistsError('boo')
+        utils.clean_cache()
+        mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
+        mock_Path.assert_called_once_with('/var/cache/cloudregister')
 
     @patch('cloudregister.registerutils.get_domain_name_from_region_server')
     def test_clean_hosts_file_no_domain_set(
