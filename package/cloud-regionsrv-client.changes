@@ -1,6 +1,10 @@
-- Update to version XXXX (bsc#1254960, bsc#1254982, bsc#1253777)
+-------------------------------------------------------------------
+Tue Mar 10 17:47:45 UTC 2026 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 11.0.0 (bsc#1254960, bsc#1254982, bsc#1253777)
+  + Major version bump for main package and plugin sub-packages due to
+    interpreter change in SLE 15 SP4+ from Python 3.6 to Python 3.11
   + Create cache directory in code and drop from package (jsc#PED-14732)
-  + Switch build to Python 3.11 for SLE 15 SP4 and later
   + Fix race condition between license watcher timer and registration
     (bsc#1254984)
   + Fix cleanup issue in hosts (bsc#1254702)
@@ -8,7 +12,7 @@
   + Fix exit condition from container registry setup
   + Lock the registration process to ensure single execution (bsc#1254984)
   + Fix traceback on FP and cert mismatch
-  + Switch remaining code to update logging implementation
+  + Switch remaining code to updated logging implementation
   + Increase loggin information in log to help with issue debugging
   + Fix exit code on partial registration success
   + Remove obsolete switchcloudguestservices

@@ -124,33 +124,33 @@ Generic configuration for the registration client. The configuration needs
 to be adapted for the specific cloud framework after installation.
 
 %package plugin-gce
-Version:        1.0.0
+Version:        2.0.0
 Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for GCE
 Group:          Productivity/Networking/Web/Servers
-Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       cloud-regionsrv-client >= 10.5.4
 
 %description plugin-gce
 Guest registration plugin for images intended for Google Compute Engine
 providing information to get the appropriate data form the region server.
 
 %package plugin-ec2
-Version:        1.0.5
+Version:        2.0.0
 Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
 Group:          Productivity/Networking/Web/Servers
-Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       cloud-regionsrv-client >= 10.5.4
 
 %description plugin-ec2
 Guest registration plugin for images intended for Amazon EC2 providing
 information to get the appropriate data form the region server.
 
 %package plugin-azure
-Version:        2.0.0
+Version:        3.0.0
 Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Microsoft Azure
 Group:          Productivity/Networking/Web/Servers
-Requires:       cloud-regionsrv-client >= 6.0.0
+Requires:       cloud-regionsrv-client >= 10.5.4
 Requires:       %{pythons}-dnspython
 
 %description plugin-azure
@@ -162,7 +162,7 @@ Version:	1.0.0
 Release:	0
 Summary:	Enable/Disable Guest Registration for a running instance
 Group:		Productivity/Networking/Web/Servers
-Requires:	cloud-regionsrv-client >= 9.0.0
+Requires:	cloud-regionsrv-client >= 10.5.4
 Requires:       python-instance-billing-flavor-check >= 1.0.0
 Provides:       cloud-regionsrv-client-addon-azure = 1.0.6
 Obsoletes:      cloud-regionsrv-client-addon-azure <= 1.0.5
