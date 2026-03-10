@@ -670,20 +670,21 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                         have_update_server_data = True
                         break
                     else:
-                        log.error('=' * 20)
-                        log.error('Request URL: {}'.format(url))
-                        log.error('Server returned: %d' % response.status_code)
-                        log.error('Server error: "%s"' % response.reason)
-                        log.error('=' * 20)
+                        log.debug('=' * 20)
+                        log.debug('Request URL: {}'.format(url))
+                        log.debug('Server returned: {}'.format(
+                            response.status_code))
+                        log.debug('Server error: "{}"'.format(response.reason))
+                        log.debug('=' * 20)
                         if srv == region_servers[-1]:
-                            log.error('\tAll servers reported an error')
+                            log.debug('\tAll servers reported an error')
                 except requests.exceptions.RequestException:
                     if quiet:
                         continue
-                    log.error('\tNo response from: %s' % srvName)
+                    log.debug('\tNo response from: {}'.format(srvName))
                     if srv == region_servers[-1]:
-                        log.error('\tNone of the servers responded')
-                        log.error('\tAttempted: %s' % region_servers)
+                        log.error('None of the region servers responded')
+                        log.error('\tAttempted: {}'.format(region_servers))
             else:
                 # No message on the last go around
                 if attempt + 1 < max_attempts:
