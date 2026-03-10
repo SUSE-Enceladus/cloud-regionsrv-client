@@ -31,4 +31,7 @@ def app():
     if os.path.exists(region_info_path):
         sys.exit(0)
 
+    if not os.path.isdir(utils.get_state_dir()):
+        os.makedirs(utils.get_state_dir())
+
     utils.write_framework_identifier(utils.get_config())
