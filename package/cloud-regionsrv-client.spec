@@ -287,7 +287,13 @@ fi
 # Scripts need access to the update infrastructure, do not execute them
 # in the build service.
 if [ "$YAST_IS_RUNNING" != "instsys" ] ; then
-    if [ "$1" -gt 1 ] ; then
+    %if 0%{?suse_version} == 1315
+      # In SLE 12 $1 is not set properly for posttrans
+      test -n "$1" || set 0
+      if [ "$1" -eq 0 -o "$1" -gt 1 ] ; then
+    %else
+      if [ "$1" -gt 1 ] ; then
+    %endif
         %{_sbindir}/updatesmtcache
         %{_sbindir}/createregioninfo
     fi
