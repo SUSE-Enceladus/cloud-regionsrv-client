@@ -29,7 +29,7 @@
 %define eflag /run/azuretimer-was-enabled
 %define aflag /run/azuretimer-was-running
 
-%define base_version 10.5.3
+%define base_version 11.0.0
 Name:           cloud-regionsrv-client
 Version:        %{base_version}
 Release:        0

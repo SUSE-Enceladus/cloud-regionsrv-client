@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cloudregister"
-version = "10.5.3"
+version = "11.0.0"
 description = "cloudregister - registration tools"
 license = "GPL-3.0-or-later"
 readme = "README.rst"
