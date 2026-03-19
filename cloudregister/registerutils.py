@@ -805,18 +805,22 @@ def get_config(configFile=None):
         parsed = cfg.read(configFile)
     except configparser.Error:
         if configFile == default:
-            log.error('Could not parse configuration file %s' % configFile)
+            log.error(
+                'Could not parse configuration file {}'.format(configFile)
+            )
         else:
-            log.debug('Could not parse configuration file %s' % configFile)
+            log.debug(
+                'Could not parse configuration file {}'.format(configFile)
+            )
         type, value, tb = sys.exc_info()
         log.debug(format(value))
         sys.exit(1)
 
     if not parsed:
         if configFile == default:
-            log.error('Error parsing config file: %s' % configFile)
+            log.error('Error parsing config file: {}'.format(configFile))
         else:
-            log.debug('Could not parse configuration file %s' % configFile)
+            log.debug('Error parsing config file: {}'.format(configFile))
         sys.exit(1)
 
     return cfg
