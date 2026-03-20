@@ -42,6 +42,7 @@ from cloudregister.logger import Logger
 from cloudregister import smt
 
 from cloudregister.defaults import (
+    APP_CONFIG,
     AVAILABLE_SMT_SERVER_DATA_FILE_NAME,
     BASE_CREDENTIALS_NAME,
     FRAMEWORK_IDENTIFIER,
@@ -797,19 +798,29 @@ def get_available_smt_servers():
 def get_config(configFile=None):
     """Read configuration file and return a config object"""
     if not configFile:
-        configFile = '/etc/regionserverclnt.cfg'
+        configFile = APP_CONFIG
 
     cfg = configparser.RawConfigParser()
     try:
         parsed = cfg.read(configFile)
     except configparser.Error:
-        log.error('Could not parse configuration file %s' % configFile)
+        if configFile == APP_CONFIG:
+            log.error(
+                'Could not parse configuration file {}'.format(configFile)
+            )
+        else:
+            log.debug(
+                'Could not parse configuration file {}'.format(configFile)
+            )
         type, value, tb = sys.exc_info()
-        log.error(format(value))
+        log.debug(format(value))
         sys.exit(1)
 
     if not parsed:
-        log.error('Error parsing config file: %s' % configFile)
+        if configFile == APP_CONFIG:
+            log.error('Error parsing config file: {}'.format(configFile))
+        else:
+            log.debug('Error parsing config file: {}'.format(configFile))
         sys.exit(1)
 
     return cfg
@@ -2625,8 +2636,8 @@ def _remove_credentials(smt_server_names):
 # ----------------------------------------------------------------------------
 def _remove_repos(smt_server_names):
     """Remove the repositories for the given server"""
-    repo_files = glob.glob('/etc/zypp/repos.d/*')
     for smt_server_name in smt_server_names:
+        repo_files = glob.glob('/etc/zypp/repos.d/*')
         for repo_file in repo_files:
             repo_cfg = get_config(repo_file)
             for section in repo_cfg.sections():
@@ -2648,8 +2659,8 @@ def _remove_repos(smt_server_names):
 # ----------------------------------------------------------------------------
 def _remove_service(smt_server_names):
     """Remove the services pointing to the update infrastructure"""
-    service_files = glob.glob('/etc/zypp/services.d/*')
     for smt_server_name in smt_server_names:
+        service_files = glob.glob('/etc/zypp/services.d/*')
         for service_file in service_files:
             service_cfg = get_config(service_file)
             for section in service_cfg.sections():

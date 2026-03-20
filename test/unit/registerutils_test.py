@@ -1865,16 +1865,32 @@ class TestRegisterUtils:
         assert type(utils.get_config()) == configparser.RawConfigParser
 
     @patch('cloudregister.registerutils.sys.exit')
-    def test_get_config_not_parsed(self, mock_sys_exit):
+    def test_get_config_not_parsed_file(self, mock_sys_exit):
         utils.get_config('bogus')
+        assert 'bogus' in self._caplog.text
+        mock_sys_exit.assert_called_once_with(1)
+
+    @patch('cloudregister.registerutils.sys.exit')
+    def test_get_config_not_parsed_default_conf(self, mock_sys_exit):
+        utils.get_config()
+        assert 'regionserverclnt.cfg' in self._caplog.text
         mock_sys_exit.assert_called_once_with(1)
 
     @patch('cloudregister.registerutils.configparser.RawConfigParser.read')
-    def test_get_config_exception(self, mock_configparser):
+    def test_get_config_exception_default_config(self, mock_configparser):
         mock_configparser.side_effect = configparser.Error
         with raises(SystemExit) as pytest_wrapped_e:
             utils.get_config()
+        assert 'regionserverclnt.cfg' in self._caplog.text
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 1
 
+    @patch('cloudregister.registerutils.configparser.RawConfigParser.read')
+    def test_get_config_exception_file(self, mock_configparser):
+        mock_configparser.side_effect = configparser.Error
+        with raises(SystemExit) as pytest_wrapped_e:
+            utils.get_config('bogus')
+        assert 'bogus' in self._caplog.text
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 1
 
