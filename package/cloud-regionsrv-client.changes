@@ -1,4 +1,14 @@
 -------------------------------------------------------------------
+Fri Mar 20 12:52:43 UTC 2026 - Robert Schweikert <rjschwei@suse.com>
+
+- Update to version 11.0.1
+  + Fix attempt to read a deleted file resulting in an error. Refresh
+    the file list for repos and services for each pass over the
+    server domains we are looking to clean up the registration.
+  + Update user visible messages only showing messages for the
+    application configuration file.
+
+-------------------------------------------------------------------
 Tue Mar 10 17:47:45 UTC 2026 - Robert Schweikert <rjschwei@suse.com>
 
 - Update to version 11.0.0 (bsc#1254960, bsc#1254982, bsc#1253777)
