@@ -42,6 +42,7 @@ from cloudregister.logger import Logger
 from cloudregister import smt
 
 from cloudregister.defaults import (
+    APP_CONFIG,
     AVAILABLE_SMT_SERVER_DATA_FILE_NAME,
     BASE_CREDENTIALS_NAME,
     FRAMEWORK_IDENTIFIER,
@@ -796,15 +797,14 @@ def get_available_smt_servers():
 # ----------------------------------------------------------------------------
 def get_config(configFile=None):
     """Read configuration file and return a config object"""
-    default = '/etc/regionserverclnt.cfg'
     if not configFile:
-        configFile = default
+        configFile = APP_CONFIG
 
     cfg = configparser.RawConfigParser()
     try:
         parsed = cfg.read(configFile)
     except configparser.Error:
-        if configFile == default:
+        if configFile == APP_CONFIG:
             log.error(
                 'Could not parse configuration file {}'.format(configFile)
             )
@@ -817,7 +817,7 @@ def get_config(configFile=None):
         sys.exit(1)
 
     if not parsed:
-        if configFile == default:
+        if configFile == APP_CONFIG:
             log.error('Error parsing config file: {}'.format(configFile))
         else:
             log.debug('Error parsing config file: {}'.format(configFile))

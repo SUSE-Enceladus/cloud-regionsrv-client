@@ -15,6 +15,7 @@
 LOG_FILE = '/var/log/cloudregister'
 
 # etc content
+APP_CONFIG = '/etc/regionserverclnt.cfg'
 BASE_PRODUCT_PATH = '/etc/products.d/baseproduct'
 DOCKER_CONFIG_PATH = '/etc/docker/daemon.json'
 HOSTSFILE_PATH = '/etc/hosts'
