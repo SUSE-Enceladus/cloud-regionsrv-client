@@ -59,7 +59,7 @@ from cloudregister import smt
 from lxml import etree
 from requests.auth import HTTPBasicAuth
 
-__version__ = '11.0.0'
+__version__ = '11.0.1'
 
 log_instance = Logger()
 log = Logger.get_logger()
