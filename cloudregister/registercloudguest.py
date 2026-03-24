@@ -873,7 +873,8 @@ def main(args):
         for repo_name in nvidia_repo_names:
             url = urllib.parse.urlparse(utils.get_repo_url(repo_name))
             cmd = ['ping', '-c', '2', url.hostname]
-            if utils.exec_subprocess(cmd):
+            out, err, code = utils.exec_subprocess(cmd)
+            if code:
                 msg = (
                     'Cannot reach host: "{hostname}", '
                     'will not enable repo "{repo_name}"'
