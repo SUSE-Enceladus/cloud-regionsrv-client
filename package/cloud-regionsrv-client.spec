@@ -51,6 +51,7 @@ Requires:       cloud-regionsrv-client-config
 %ifarch %ix86 x86_64
 Requires:       dmidecode
 %endif
+Requires:       iputils
 Requires:       pciutils
 Requires:       procps
 Requires:       %{pythons}

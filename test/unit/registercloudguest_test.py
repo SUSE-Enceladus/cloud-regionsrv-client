@@ -1933,7 +1933,7 @@ class TestRegisterCloudGuest:
             'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
             'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
         )
-        mock_exec_subprocess.side_effect = [True, False]
+        mock_exec_subprocess.return_value = ('', '', 0)
         mock_urlparse.return_value = ParseResult(
             scheme='https',
             netloc='susecloud.net:443',
@@ -1951,10 +1951,6 @@ class TestRegisterCloudGuest:
         )
         assert (
             'Region change detected, registering to new servers'
-            in self._caplog.text
-        )
-        assert (
-            'Cannot reach host: "susecloud.net", will not enable repo "repo_a"'
             in self._caplog.text
         )
 
@@ -2162,7 +2158,7 @@ class TestRegisterCloudGuest:
             'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
             'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
         )
-        mock_exec_subprocess.side_effect = [True, False]
+        mock_exec_subprocess.return_value = ['', '1', 1]
         mock_urlparse.return_value = ParseResult(
             scheme='https',
             netloc='susecloud.net:443',
@@ -2400,7 +2396,7 @@ class TestRegisterCloudGuest:
             b'{"filesystems": [{"target": "/","source": '
             + b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
         )
-        mock_exec_subprocess.return_value = findmnt_return, b'', 0
+        mock_exec_subprocess.return_value = (findmnt_return, b'', 0)
         mock_os_path_exists.reset_mock()
         mock_os_path_exists.return_value = True
         mock_urlparse.return_value = ParseResult(
@@ -2634,7 +2630,7 @@ class TestRegisterCloudGuest:
             'plugin:/susecloud?credentials=Basesystem_Module_x86_64&'
             'path=/repo/SUSE/Updates/SLE-Module-Basesystem/15-SP4/x86_64/update/'
         )
-        mock_exec_subprocess.side_effect = [True, False]
+        mock_exec_subprocess.side_effect = ['', '', 0]
         mock_urlparse.return_value = ParseResult(
             scheme='https',
             netloc='susecloud.net:443',
@@ -3335,7 +3331,7 @@ class TestRegisterCloudGuest:
             b'{"filesystems": [{"target": "/","source": '
             + b'"/dev/sda3","fstype": "xfs","options": "ro"}]}'
         )
-        mock_exec_subprocess.return_value = findmnt_return, b'', 0
+        mock_exec_subprocess.return_value = (findmnt_return, b'', 0)
         mock_os_path_exists.reset_mock()
         mock_os_path_exists.return_value = True
         mock_urlparse.return_value = ParseResult(
