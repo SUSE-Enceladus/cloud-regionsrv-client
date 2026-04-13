@@ -673,8 +673,9 @@ def fetch_smt_data(cfg, proxies, quiet=False):
                     else:
                         log.debug('=' * 20)
                         log.debug('Request URL: {}'.format(url))
-                        log.debug('Server returned: {}'.format(
-                            response.status_code))
+                        log.debug(
+                            'Server returned: {}'.format(response.status_code)
+                        )
                         log.debug('Server error: "{}"'.format(response.reason))
                         log.debug('=' * 20)
                         if srv == region_servers[-1]:

@@ -5023,9 +5023,7 @@ export DOCKER_CONFIG=/etc/containers
         utils.clean_cache()
         mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
         mock_Path.assert_called_once_with('/var/cache/cloudregister')
-        mock_Path.return_value.mkdir.assert_called_once_with(
-            parents=True
-        )
+        mock_Path.return_value.mkdir.assert_called_once_with(parents=True)
 
     @patch('shutil.rmtree')
     @patch('cloudregister.registerutils.Path')
