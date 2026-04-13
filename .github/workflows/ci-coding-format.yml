@@ -24,6 +24,6 @@ jobs:
       - name: Run black
         run: |
           make black
-          git diff --no-ext-diff --quiet --exit-code || echo "Coding format not applied, please run 'make black' and commit the result"
+          git diff --no-ext-diff --quiet --exit-code || bash -c 'echo "Coding format not applied, please run make black and commit the result"; false'
         env:
           PY_VER: ${{ matrix.python-version }}
