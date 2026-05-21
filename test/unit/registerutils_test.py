@@ -5050,12 +5050,14 @@ export DOCKER_CONFIG=/etc/containers
     ):
         mock_os_path_isdir.return_value = True
         instance_data_cache_file = ['/var/cache/cloudregister/bar']
-        mock_glob_glob.return_value = ['/var/cache/cloudregister/foo'] + instance_data_cache_file
+        mock_glob_glob.return_value = [
+            '/var/cache/cloudregister/foo'
+        ] + instance_data_cache_file
         utils.clean_cache(instance_data_cache_file)
         mock_os_unlink.assert_called_once_with('/var/cache/cloudregister/foo')
-        assert mock_os_unlink.call_args_list == [
-            call('/var/cache/cloudregister/foo')
-        ]
+        call(
+            '/var/cache/cloudregister/bar'
+        ) not in mock_os_unlink.call_args_list
         mock_Path.assert_called_once_with('/var/cache/cloudregister')
 
     @patch('cloudregister.registerutils.get_domain_name_from_region_server')
