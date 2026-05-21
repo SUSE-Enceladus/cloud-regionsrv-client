@@ -136,9 +136,10 @@ def clean_all_standard():
 
 
 # ----------------------------------------------------------------------------
-def clean_cache():
+def clean_cache(except_files=[]):
     if os.path.isdir(REGISTRATION_DATA_DIR):
-        shutil.rmtree(REGISTRATION_DATA_DIR)
+        registration_files = glob.glob(os.sep.join([REGISTRATION_DATA_DIR, '*']))
+        [os.unlink(reg_f) for reg_f in registration_files if reg_f not in except_files]
         # Python 3.4 compatibility does not have "exist_ok"
         try:
             Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
