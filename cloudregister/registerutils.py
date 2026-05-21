@@ -13,6 +13,7 @@
 
 """Utility functions for the cloud guest registration"""
 
+import shutil
 import base64
 import configparser
 import glob
@@ -136,15 +137,18 @@ def clean_all_standard():
 
 # ----------------------------------------------------------------------------
 def clean_cache(except_files=[]):
-    if os.path.isdir(REGISTRATION_DATA_DIR):
-        registration_files = glob.glob(
-            os.sep.join([REGISTRATION_DATA_DIR, '*'])
-        )
-        [
-            os.unlink(reg_f)
-            for reg_f in registration_files
-            if reg_f not in except_files
-        ]
+    registration_data_path = Path(REGISTRATION_DATA_DIR)
+    if registration_data_path.exists() and registration_data_path.is_dir():
+        for reg_file in registration_data_path.iterdir():
+            # skip the specific file to preserve
+            if reg_file.resolve() in except_files:
+                continue
+
+            if reg_file.is_file() or reg_file.is_symlink():
+                reg_file.unlink()
+            elif reg_file.is_dir():
+                # recursively deletes the subfolder and its contents
+                shutil.rmtree(reg_file)
         # Python 3.4 compatibility does not have "exist_ok"
         try:
             Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
