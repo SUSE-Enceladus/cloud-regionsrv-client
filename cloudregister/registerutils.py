@@ -2911,7 +2911,7 @@ def _move_files_to_tmp(preserve_files=[]):
         file_path = Path(preserve_file).parent
         # join tmp path with the path to be preserved
         # remove starting / from preserve path otherwise, join has no effect
-        new_dir = os.path.join(parent_tmp_dir, str(file_path)[1:])
+        new_dir = os.path.join(parent_tmp_dir, str(file_path).removeprefix(os.sep))
         try:
             Path(new_dir).mkdir(parents=True)
         except FileExistsError:
