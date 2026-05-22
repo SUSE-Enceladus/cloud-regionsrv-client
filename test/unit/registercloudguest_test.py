@@ -3048,7 +3048,7 @@ class TestRegisterCloudGuest:
 
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.add_hosts_entry')
-    @patch('cloudregister.registercloudguest.cleanup')
+    @patch('cloudregister.registerutils.clean_cache')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
@@ -3063,7 +3063,7 @@ class TestRegisterCloudGuest:
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
-        mock_cleanup,
+        mock_clean_cache,
         mock_add_hosts_entry,
         mock_register_product,
     ):
