@@ -64,6 +64,7 @@ from cloudregister.defaults import (
     ZYPP_CREDENTIALS_PATH,
     ZYPPER_IS_LOCKED,
     ZYPPER_PID,
+    PRESERVE_FILES,
 )
 
 requests.packages.urllib3.disable_warnings(
@@ -137,23 +138,18 @@ def clean_all_standard():
 
 # ----------------------------------------------------------------------------
 def clean_cache(except_files=[]):
-    registration_data_path = Path(REGISTRATION_DATA_DIR)
-    if registration_data_path.exists() and registration_data_path.is_dir():
-        for reg_file in registration_data_path.iterdir():
-            # skip the specific file to preserve
-            if reg_file.resolve() in except_files:
-                continue
-
-            if reg_file.is_file() or reg_file.is_symlink():
-                reg_file.unlink()
-            elif reg_file.is_dir():
-                # recursively deletes the subfolder and its contents
-                shutil.rmtree(reg_file)
-        # Python 3.4 compatibility does not have "exist_ok"
-        try:
-            Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
-        except FileExistsError:
-            pass
+    if except_files:
+        _move_files_to_tmp(preserve_files=except_files)
+    if os.path.isdir(REGISTRATION_DATA_DIR):
+        shutil.rmtree(REGISTRATION_DATA_DIR)
+        if except_files:
+            _move_tmp_files_back(target_dir=REGISTRATION_DATA_DIR)
+        else:
+            # Python 3.4 compatibility does not have "exist_ok"
+            try:
+                Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
+            except FileExistsError:
+                pass
 
 
 # ----------------------------------------------------------------------------
@@ -2905,3 +2901,35 @@ def _matches_susecloud(elements):
         if 'registry-' in element and 'susecloud.net' in element:
             return element
     return ''
+
+
+# ----------------------------------------------------------------------------
+def _move_files_to_tmp(preserve_files=[]):
+    """Move file in preserve_files list to tmp/PRESERVE_FILES."""
+    parent_tmp_dir = os.path.join(os.sep, 'tmp', PRESERVE_FILES)
+    for preserve_file in preserve_files:
+        file_path = Path(preserve_file).parent
+        # join tmp path with the path to be preserved
+        # remove starting / from preserve path otherwise, join has no effect
+        new_dir = os.path.join(parent_tmp_dir, str(file_path)[1:])
+        try:
+            Path(new_dir).mkdir(parents=True)
+        except FileExistsError:
+            pass
+
+        shutil.move(preserve_file, new_dir)
+
+
+# ----------------------------------------------------------------------------
+def _move_tmp_files_back(target_dir=''):
+    """Move data from tmp/PRESERVE_FILES/target_dir to target_dir
+    and remove tmp/PRESERVE_FILES/target_dir."""
+    parent_tmp_dir = os.path.join(
+        os.sep, 'tmp', PRESERVE_FILES, target_dir.removeprefix(os.sep)
+    )
+    # move the preserved data back
+    shutil.move(parent_tmp_dir, target_dir)
+    tmp_dir = os.path.join(
+        os.sep, 'tmp', PRESERVE_FILES, Path(target_dir).parts[1]
+    )
+    shutil.rmtree(tmp_dir)

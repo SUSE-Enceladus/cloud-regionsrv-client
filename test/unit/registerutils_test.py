@@ -4987,6 +4987,42 @@ export DOCKER_CONFIG=/etc/containers
             == 'registry-azure.susecloud.net'
         )
 
+    # ---------------------------------------------------------------------------
+    @patch('shutil.move')
+    @patch('cloudregister.registerutils.Path.mkdir')
+    def test_move_tmp_files_to_tmp(self, mock_Path, mock_shutil_move):
+        mock_Path.side_effect = FileExistsError('boo')
+        utils._move_files_to_tmp(['foo'])
+        mock_Path.assert_called_once_with(parents=True)
+        mock_shutil_move.assert_called_once_with(
+            'foo', '/tmp/preserve_cloudregister_files/'
+        )
+
+    # ---------------------------------------------------------------------------
+    @patch('shutil.move')
+    @patch('cloudregister.registerutils.Path.mkdir')
+    def test_move_tmp_files_to_tmp_w_exception(
+        self, mock_Path, mock_shutil_move
+    ):
+        utils._move_files_to_tmp(['foo'])
+        mock_Path.assert_called_once_with(parents=True)
+        mock_shutil_move.assert_called_once_with(
+            'foo', '/tmp/preserve_cloudregister_files/'
+        )
+
+    # ---------------------------------------------------------------------------
+    @patch('shutil.rmtree')
+    @patch('shutil.move')
+    def test_move_tmp_files_back(self, mock_shutil_move, mock_shutil_rmtree):
+        utils._move_tmp_files_back(target_dir='/foo')
+        mock_shutil_move.assert_called_once_with(
+            '/tmp/preserve_cloudregister_files/foo', '/foo'
+        )
+        mock_shutil_rmtree.assert_called_once_with(
+            '/tmp/preserve_cloudregister_files/foo'
+        )
+
+    # ---------------------------------------------------------------------------
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
@@ -5015,50 +5051,50 @@ export DOCKER_CONFIG=/etc/containers
 
     @patch('shutil.rmtree')
     @patch('cloudregister.registerutils.Path')
-    def test_clean_cache(self, mock_Path, mock_shutil_rmtree):
-        mock_Path.return_value.exists.return_value = True
-        mock_Path.return_value.is_file.side_effect = [False, True]
-        mock_Path.return_value.is_symlink.side_effect = [False, True]
-        mock_Path.return_value.is_dir.side_effect = [True, True, False]
-        mock_Path.return_value.iterdir.return_value = [
-            mock_Path('/var/cache/cloudregister/foo/'),
-            mock_Path('/var/cache/cloudregister/bar'),
-        ]
+    @patch('os.path.isdir')
+    def test_clean_cache(
+        self, mock_os_path_isdir, mock_Path, mock_shutil_rmtree
+    ):
+        mock_os_path_isdir.return_value = True
         utils.clean_cache()
-        mock_shutil_rmtree.assert_called_once_with(
-            mock_Path('/var/cache/cloudregister/foo/')
-        )
+        mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
+        mock_Path.assert_called_once_with('/var/cache/cloudregister')
         mock_Path.return_value.mkdir.assert_called_once_with(parents=True)
 
     @patch('shutil.rmtree')
     @patch('cloudregister.registerutils.Path')
-    def test_clean_cache_w_except(self, mock_Path, mock_shutil_rmtree):
-        mock_Path.return_value.exists.return_value = True
-        mock_Path.return_value.is_file.return_value = False
-        mock_Path.return_value.is_symlink.return_value = False
-        mock_Path.return_value.is_dir.return_value = True
-        mock_Path.return_value.iterdir.return_value = [
-            mock_Path('/var/cache/cloudregister')
-        ]
-        mock_Path.return_value.mkdir.side_effect = FileExistsError('boo')
+    @patch('os.path.isdir')
+    def test_clean_cache_w_except(
+        self, mock_os_path_isdir, mock_Path, mock_shutil_rmtree
+    ):
+        mock_os_path_isdir.return_value = True
+        mock_Path.side_effect = FileExistsError('boo')
         utils.clean_cache()
-        mock_shutil_rmtree.assert_called_once_with(
-            mock_Path('/var/cache/cloudregister')
-        )
+        mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
+        mock_Path.assert_called_once_with('/var/cache/cloudregister')
 
+    @patch('cloudregister.registerutils._move_tmp_files_back')
+    @patch('cloudregister.registerutils._move_files_to_tmp')
+    @patch('shutil.rmtree')
     @patch('cloudregister.registerutils.Path')
-    def test_clean_cache_keep_file(self, mock_Path):
-        mock_Path.return_value.exists.return_value = True
-        mock_Path.return_value.is_file.side_effect = [False, True]
-        mock_Path.return_value.is_symlink.side_effect = [False, True]
-        mock_Path.return_value.is_dir.side_effect = [True, True, False]
-        mock_Path.return_value.resolve.return_value = mock_Path(
-            '/var/cache/cloudregister/bar'
+    @patch('os.path.isdir')
+    def test_clean_cache_keep_files(
+        self,
+        mock_os_path_isdir,
+        mock_Path,
+        mock_shutil_rmtree,
+        mock_move_files_tmp,
+        mock_move_file_back,
+    ):
+        mock_os_path_isdir.return_value = True
+        utils.clean_cache(['/var/cache/cloudregister/bar'])
+        mock_shutil_rmtree.assert_called_once_with('/var/cache/cloudregister')
+        mock_move_files_tmp.assert_called_once_with(
+            preserve_files=['/var/cache/cloudregister/bar']
         )
-        instance_data_cache_file = [mock_Path('/var/cache/cloudregister/bar')]
-        mock_Path.return_value.iterdir.return_value = instance_data_cache_file
-        utils.clean_cache(instance_data_cache_file)
-        mock_Path.return_value.mkdir.assert_called_once_with(parents=True)
+        mock_move_file_back.assert_called_once_with(
+            target_dir='/var/cache/cloudregister'
+        )
 
     @patch('cloudregister.registerutils.get_domain_name_from_region_server')
     def test_clean_hosts_file_no_domain_set(
