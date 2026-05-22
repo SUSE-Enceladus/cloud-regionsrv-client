@@ -389,7 +389,7 @@ def register_base_product(
                     utils.clean_hosts_file(
                         registration_target.get_domain_name()
                     )
-                    utils.clean_cache([instance_data_filepath])
+                    utils.clean_cache(preserve_files=[instance_data_filepath])
                     registration_target = smt_srv
                     break
         else:

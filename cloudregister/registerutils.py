@@ -137,12 +137,12 @@ def clean_all_standard():
 
 
 # ----------------------------------------------------------------------------
-def clean_cache(except_files=[]):
-    if except_files:
-        _move_files_to_tmp(preserve_files=except_files)
+def clean_cache(preserve_files=[]):
+    if preserve_files:
+        _move_files_to_tmp(preserve_files=preserve_files)
     if os.path.isdir(REGISTRATION_DATA_DIR):
         shutil.rmtree(REGISTRATION_DATA_DIR)
-        if except_files:
+        if preserve_files:
             _move_tmp_files_back(target_dir=REGISTRATION_DATA_DIR)
         else:
             # Python 3.4 compatibility does not have "exist_ok"
