@@ -4992,10 +4992,10 @@ export DOCKER_CONFIG=/etc/containers
     @patch('cloudregister.registerutils.Path.mkdir')
     def test_move_tmp_files_to_tmp(self, mock_Path, mock_shutil_move):
         mock_Path.side_effect = FileExistsError('boo')
-        utils._move_files_to_tmp(['foo'])
+        utils._move_files_to_tmp(['/foo'])
         mock_Path.assert_called_once_with(parents=True)
         mock_shutil_move.assert_called_once_with(
-            'foo', '/tmp/preserve_cloudregister_files/'
+            '/foo', '/tmp/preserve_cloudregister_files/'
         )
 
     # ---------------------------------------------------------------------------
@@ -5004,10 +5004,10 @@ export DOCKER_CONFIG=/etc/containers
     def test_move_tmp_files_to_tmp_w_exception(
         self, mock_Path, mock_shutil_move
     ):
-        utils._move_files_to_tmp(['foo'])
+        utils._move_files_to_tmp(['/foo'])
         mock_Path.assert_called_once_with(parents=True)
         mock_shutil_move.assert_called_once_with(
-            'foo', '/tmp/preserve_cloudregister_files/'
+            '/foo', '/tmp/preserve_cloudregister_files/'
         )
 
     # ---------------------------------------------------------------------------
