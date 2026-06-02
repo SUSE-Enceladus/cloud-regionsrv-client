@@ -32,6 +32,7 @@ import sys
 import time
 import toml
 import yaml
+import uuid
 
 from collections import namedtuple
 from lxml import etree
@@ -2863,6 +2864,24 @@ def set_registry_fqdn_suma(private_registry_fqdn):
 
     # the registry value inside the file has the update server registry FQDN
     return True
+
+
+# ----------------------------------------------------------------------------
+def write_instance_data(cfg=None):
+    if not cfg:
+        cfg = get_config()
+
+    # Check if we need to send along any instance data
+    instance_data_filepath = ''
+    instance_data = get_instance_data(cfg)
+    if instance_data:
+        instance_data_filepath = os.path.join(
+            get_state_dir(), str(uuid.uuid4())
+        )
+        with open(instance_data_filepath, 'w') as inst_data_out:
+            inst_data_out.write(instance_data)
+
+    return instance_data_filepath
 
 
 # ----------------------------------------------------------------------------
