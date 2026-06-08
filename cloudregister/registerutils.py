@@ -2112,8 +2112,7 @@ def refresh_zypper_pid_cache():
 # ----------------------------------------------------------------------------
 def set_as_current_smt(smt):
     """Store the given SMT as the current SMT server."""
-    if not os.path.exists(get_state_dir()):
-        os.system('mkdir -p %s' % get_state_dir())
+    create_state_dir()
     store_smt_data(_get_registered_smt_file_path(), smt)
 
 
