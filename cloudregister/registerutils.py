@@ -139,7 +139,6 @@ def clean_all_standard():
 def clean_cache():
     if os.path.isdir(REGISTRATION_DATA_DIR):
         shutil.rmtree(REGISTRATION_DATA_DIR)
-        # Python 3.4 compatibility does not have "exist_ok"
         create_state_dir()
 
 
@@ -2436,6 +2435,7 @@ def get_suma_registry_content():
 
 # ----------------------------------------------------------------------------
 def create_state_dir():
+    # Python 3.4 compatibility does not have "exist_ok"
     try:
         Path(get_state_dir()).mkdir(parents=True)
     except FileExistsError:
