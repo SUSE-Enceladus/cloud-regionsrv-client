@@ -137,8 +137,8 @@ def clean_all_standard():
 
 # ----------------------------------------------------------------------------
 def clean_cache():
-    if os.path.isdir(REGISTRATION_DATA_DIR):
-        shutil.rmtree(REGISTRATION_DATA_DIR)
+    if os.path.isdir(get_state_dir()):
+        shutil.rmtree(get_state_dir())
         # Python 3.4 compatibility does not have "exist_ok"
         try:
             Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
@@ -1102,7 +1102,7 @@ def clean_registry_auth(registry_fqdn):
             % (REGISTRY_CREDENTIALS_PATH, REGISTRY_CREDENTIALS_PATH)
         )
         mv_file_cmd = 'mv -Z {} {}.bak'.format(
-            REGISTRATION_DATA_DIR, REGISTRY_CREDENTIALS_PATH
+            get_state_dir(), REGISTRY_CREDENTIALS_PATH
         )
         _, _, status = exec_subprocess(mv_file_cmd)
         message = 'File not preserved.' if status else 'File preserved.'
