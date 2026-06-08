@@ -34,7 +34,7 @@ import requests
 import sys
 import time
 import urllib.parse
-import uuid
+
 
 from cloudregister.lock import Lock
 from cloudregister.logger import Logger
@@ -390,6 +390,9 @@ def register_base_product(
                         registration_target.get_domain_name()
                     )
                     utils.clean_cache()
+                    # instance data is passed to the registration utility,
+                    # make sure it persists when attempting a retry
+                    instance_data_filepath = utils.write_instance_data()
                     registration_target = smt_srv
                     break
         else:
@@ -750,17 +753,7 @@ def main(args):
         find_alive_registration_target(registration_smt, region_smt_servers)
     )
 
-    # Check if we need to send along any instance data
-    instance_data_filepath = ''
-    instance_data = utils.get_instance_data(cfg)
-    if instance_data:
-        instance_data_filepath = os.path.join(
-            utils.get_state_dir(), str(uuid.uuid4())
-        )
-        inst_data_out = open(instance_data_filepath, 'w')
-        inst_data_out.write(instance_data)
-        inst_data_out.close()
-
+    instance_data_filepath = utils.write_instance_data(cfg)
     if registration_target_found:
         # 1. check/setup the container registry for this target
         if not setup_registry(registration_smt):

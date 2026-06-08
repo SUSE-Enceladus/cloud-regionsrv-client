@@ -1,11 +1,12 @@
 diff --git a/cloudregister/smt.py b/cloudregister/smt.py
-index 62c461a..19c7ebd 100644
+index 55f189f..59cb0e4 100644
 --- a/cloudregister/smt.py
 +++ b/cloudregister/smt.py
-@@ -128,6 +128,7 @@ class SMT:
+@@ -132,6 +132,8 @@ class SMT:
      # --------------------------------------------------------------------
      def get_ipv6(self):
          """Return the IP address"""
++        # Disable for SLE12
 +        return None
          # Before handling ipv6 the IP address was stored in the _ip
          # member. When the SMT object is restored from an old pickeled
