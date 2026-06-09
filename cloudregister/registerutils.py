@@ -138,13 +138,13 @@ def clean_all_standard():
 
 # ----------------------------------------------------------------------------
 def clean_cache():
-  if os.path.isdir(get_state_dir()):
+    if os.path.isdir(get_state_dir()):
         shutil.rmtree(get_state_dir())
-        # Python 3.4 compatibility does not have "exist_ok"
-        try:
-            Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
-        except FileExistsError:
-            pass
+    # Python 3.4 compatibility does not have "exist_ok"
+    try:
+        Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
+    except FileExistsError:
+        pass
 
 
 # ----------------------------------------------------------------------------
