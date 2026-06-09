@@ -22,16 +22,14 @@ import os
 import sys
 
 import cloudregister.registerutils as utils
-from cloudregister.defaults import FRAMEWORK_IDENTIFIER
+from cloudregister.defaults import FRAMEWORK_IDENTIFIER, REGISTRATION_DATA_DIR
 
 
 def app():
-    region_info_path = os.path.join(utils.get_state_dir(), FRAMEWORK_IDENTIFIER)
+    region_info_path = os.path.join(REGISTRATION_DATA_DIR, FRAMEWORK_IDENTIFIER)
 
     if os.path.exists(region_info_path):
         sys.exit(0)
 
-    if not os.path.isdir(utils.get_state_dir()):
-        os.makedirs(utils.get_state_dir())
-
+    utils.create_state_dir()
     utils.write_framework_identifier(utils.get_config())
