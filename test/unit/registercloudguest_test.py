@@ -35,8 +35,8 @@ class TestRegisterCloudGuest:
     def inject_fixtures(self, caplog):
         self._caplog = caplog
 
-    @patch('os.makedirs')
-    def test_register_cloud_guest_missing_param(self, mock_makedirs):
+    @patch('cloudregister.registerutils.create_state_dir')
+    def test_register_cloud_guest_missing_param(self, mock_create_state_dir):
         fake_args = SimpleNamespace(
             user_smt_ip='fc00::1',
             user_smt_fqdn='foo.susecloud.net',
@@ -45,10 +45,10 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    @patch('os.makedirs')
+    @patch('cloudregister.registerutils.create_state_dir')
     @patch('cloudregister.registerutils.has_network_access_by_ip_address')
     def test_register_cloud_guest_no_connection_ip(
-        self, mock_has_network, mock_makedirs
+        self, mock_has_network, mock_create_state_dir
     ):
         mock_has_network.return_value = False
         fake_args = SimpleNamespace(
@@ -59,8 +59,8 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    @patch('os.makedirs')
-    def test_register_cloud_guest_non_ip_value(self, mock_makedirs):
+    @patch('cloudregister.registerutils.create_state_dir')
+    def test_register_cloud_guest_non_ip_value(self, mock_create_state_dir):
         fake_args = SimpleNamespace(
             user_smt_ip='Not.an.IP.Address',
             user_smt_fqdn='foo.susecloud.net',
@@ -69,8 +69,8 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    @patch('os.makedirs')
-    def test_register_cloud_guest_mixed_param(self, mock_makedirs):
+    @patch('cloudregister.registerutils.create_state_dir')
+    def test_register_cloud_guest_mixed_param(self, mock_create_state_dir):
         fake_args = SimpleNamespace(
             clean_up=True,
             force_new_registration=True,
@@ -82,8 +82,8 @@ class TestRegisterCloudGuest:
         with raises(SystemExit):
             assert register_cloud_guest.main(fake_args) is None
 
-    @patch('os.makedirs')
-    def test_register_cloud_guest_no_regcode_email(self, mock_makedirs):
+    @patch('cloudregister.registerutils.create_state_dir')
+    def test_register_cloud_guest_no_regcode_email(self, mock_create_dir):
         fake_args = SimpleNamespace(
             clean_up=False,
             force_new_registration=False,
@@ -102,12 +102,16 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('time.sleep')
     @patch('cloudregister.registerutils.get_config')
+    @patch('cloudregister.registerutils.clean_cache')
+    @patch('cloudregister.registerutils.create_state_dir')
     @patch('cloudregister.registerutils.clear_new_registration_flag')
     @patch('cloudregister.registerutils.clean_smt_cache')
     def test_register_cloud_guest_cleanup(
         self,
         mock_clean_smt_cache,
         mock_clear_reg_flag,
+        mock_create_state_dir,
+        mock_clean_cache,
         mock_get_config,
         mock_time_sleep,
         mock_deregister_non_free_extensions,
@@ -138,14 +142,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_zypper_running(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -173,9 +175,11 @@ class TestRegisterCloudGuest:
         mock_get_available_smt_servers.return_value = ['some', 'smt', 'servers']
         mock_has_network_access.return_value = True
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_new_registration_flag')
@@ -186,14 +190,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_zypper_runnning_write_config(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -220,9 +222,11 @@ class TestRegisterCloudGuest:
         mock_get_available_smt_servers.return_value = []
         mock_has_network_access.return_value = True
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
 
     @patch.object(SMT, 'is_equivalent')
@@ -239,7 +243,6 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     @patch('cloudregister.registercloudguest.get_update_servers')
@@ -250,7 +253,6 @@ class TestRegisterCloudGuest:
         mock_get_update_servers,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -304,10 +306,12 @@ class TestRegisterCloudGuest:
         mock_get_update_servers.return_value = [smt_server]
         mock_utils_fetch_smt_data.return_value = [child]
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            with self._caplog.at_level(logging.DEBUG):
-                register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    with self._caplog.at_level(logging.DEBUG):
+                        register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
         assert 'Configured update server is unresponsive' in self._caplog.text
 
@@ -334,14 +338,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_zypper_not_running_region_not_changed(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -403,9 +405,11 @@ class TestRegisterCloudGuest:
         mock_has_rmt_in_hosts.return_value = False
         mock_has_registry_in_hosts.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -431,7 +435,6 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     @patch('cloudregister.registerutils.clean_registry_setup')
@@ -440,7 +443,6 @@ class TestRegisterCloudGuest:
         mock_clean_registry_setup,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -504,9 +506,11 @@ class TestRegisterCloudGuest:
         mock_has_registry_in_hosts.return_value = False
         mock_setup_registry.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
             assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -532,14 +536,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_region_not_changed_proxy_ok(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -602,9 +604,11 @@ class TestRegisterCloudGuest:
         mock_has_rmt_in_hosts.return_value = False
         mock_has_registry_in_hosts.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.replace_hosts_entry')
@@ -633,14 +637,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_region_not_responsive_proxy_ok(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -708,9 +710,11 @@ class TestRegisterCloudGuest:
         mock_has_registry_in_hosts.return_value = False
         mock_has_ipv6_access.return_value = True
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -736,14 +740,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_rmt_scc_as_proxy(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -805,9 +807,11 @@ class TestRegisterCloudGuest:
         mock_has_rmt_in_hosts.return_value = False
         mock_has_registry_in_hosts.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
             assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -836,14 +840,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_no_executable_found(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -909,9 +911,11 @@ class TestRegisterCloudGuest:
         mock_has_registry_in_hosts.return_value = False
         mock_os_access.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
             assert 'No registration executable found' in self._caplog.text
             assert sys_exit.value.code == 1
 
@@ -942,14 +946,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_registration_not_supported(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1018,9 +1020,11 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = False
         mock_is_registration_supported.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -1050,14 +1054,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_no_products_installed(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1126,9 +1128,11 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = None
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
         assert 'No products installed on system' in self._caplog.text
         assert sys_exit.value.code == 1
 
@@ -1160,14 +1164,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_reg_cert_import_failed(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1237,10 +1239,13 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = 'foo'
         mock_import_smt_cert.return_value = False
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+                with patch(
+                    'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                    new=tdir,
+                ):
+                    register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
@@ -1272,7 +1277,6 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
@@ -1287,7 +1291,6 @@ class TestRegisterCloudGuest:
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1358,8 +1361,6 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = 'foo'
         mock_import_smt_cert.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -1367,7 +1368,12 @@ class TestRegisterCloudGuest:
             returncode=67, output='registration code', error='stderr'
         )
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+                with patch(
+                    'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                    new=tdir,
+                ):
+                    register_cloud_guest.main(fake_args)
         assert 'Baseproduct registration failed' in self._caplog.text
         assert sys_exit.value.code == 1
 
@@ -1406,14 +1412,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_guest_force_baseprod_registration_ok_failed_extensions(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1490,8 +1494,6 @@ class TestRegisterCloudGuest:
         mock_get_installed_products.return_value = 'foo'
         mock_import_smt_cert.return_value = True
         mock_remove_state_file.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -1522,7 +1524,12 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+                with patch(
+                    'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                    new=tdir,
+                ):
+                    register_cloud_guest.main(fake_args)
         assert (
             'Unable to obtain product information from server "1.2.3.5,None"'
             in self._caplog.text
@@ -1566,7 +1573,6 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
@@ -1581,7 +1587,6 @@ class TestRegisterCloudGuest:
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1657,8 +1662,6 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
         mock_import_smt_cert.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -1725,7 +1728,12 @@ class TestRegisterCloudGuest:
         mock_set_proxy.return_value = False
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
         with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
+            with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+                with patch(
+                    'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                    new=tdir,
+                ):
+                    register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 6
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
@@ -1771,14 +1779,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_baseprod_registration_ok_extensions_ok_complete(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -1861,8 +1867,6 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
         mock_import_smt_cert.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -1943,7 +1947,11 @@ class TestRegisterCloudGuest:
             fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
-        assert register_cloud_guest.main(fake_args) is None
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                assert register_cloud_guest.main(fake_args) is None
         assert 'Forced new registration' in self._caplog.text
         assert (
             'Using user specified SMT server:\n\n\t"IP:1.2.3.5"\n\t"'
@@ -1997,14 +2005,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -2086,8 +2092,6 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
         mock_import_smt_cert.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -2168,7 +2172,11 @@ class TestRegisterCloudGuest:
             fragment='url-parsing',
         )
         mock_set_proxy.return_value = False
-        assert register_cloud_guest.main(fake_args) is None
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                assert register_cloud_guest.main(fake_args) is None
         assert 'Forced new registration' in self._caplog.text
         assert (
             'Using user specified SMT server:\n\n\t"IP:fc00::1"\n\t"'
@@ -2183,6 +2191,7 @@ class TestRegisterCloudGuest:
             in self._caplog.text
         )
 
+    @patch('cloudregister.registerutils.create_state_dir')
     @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('os.system')
@@ -2228,14 +2237,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_reg_cloud_baseprod_ok_recommended_extensions_failed_is_transactional(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -2280,6 +2287,7 @@ class TestRegisterCloudGuest:
         mock_os_system,
         mock_set_registration_completed_flag,
         mock_remove_state_file,
+        mock_create_state_dir,
     ):
         smt_data_ipv46 = dedent(
             '''\
@@ -2312,7 +2320,7 @@ class TestRegisterCloudGuest:
         mock_uses_rmt_as_scc_proxy.return_value = False
         mock_get_instance_data.return_value = None
         mock_smt_is_responsive.return_value = True
-        mock_os_path_exists.side_effect = [False, True, True, True]
+        mock_os_path_exists.side_effect = [True, False, True, True]
         mock_update_rmt_cert.return_value = True
         mock_has_rmt_in_hosts.return_value = False
         mock_has_registry_in_hosts.return_value = False
@@ -2320,8 +2328,6 @@ class TestRegisterCloudGuest:
         mock_get_installed_products.return_value = 'SLES-LTSS-FOO/15.4/x86_64'
         mock_import_smt_cert.return_value = True
         mock_remove_state_file.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -2409,7 +2415,12 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
 
-        assert register_cloud_guest.main(fake_args) is None
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            with patch(
+                'cloudregister.registercloudguest.REGISTRATION_DATA_DIR',
+                new=tdir,
+            ):
+                assert register_cloud_guest.main(fake_args) is None
 
         assert 'Registration succeeded' in self._caplog.text
         assert (
@@ -2464,14 +2475,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_register_cloud_baseprod_ok_recommended_extensions_ok_complete_no_ip(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -2558,8 +2567,6 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = True
         mock_get_installed_products.return_value = 'SLES-LTSS/15.4/x86_64'
         mock_import_smt_cert.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -2641,7 +2648,12 @@ class TestRegisterCloudGuest:
         )
         with raises(SystemExit) as sys_exit:
             with patch('builtins.open', mock_open()):
-                register_cloud_guest.main(fake_args)
+                with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+                    with patch(
+                        'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                        new=tdir,
+                    ):
+                        register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 0
         assert (
             'Region change detected, registering to new servers'
@@ -3049,7 +3061,7 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.write_instance_data')
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.add_hosts_entry')
-    @patch('cloudregister.registercloudguest.cleanup')
+    @patch('cloudregister.registerutils.clean_cache')
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
     @patch('cloudregister.registerutils.deregister_from_SCC')
@@ -3064,7 +3076,7 @@ class TestRegisterCloudGuest:
         mock_deregister_from_SCC,
         mock_deregister_from_update_infrastructure,
         mock_deregister_non_free_extensions,
-        mock_cleanup,
+        mock_clean_cache,
         mock_add_hosts_entry,
         mock_register_product,
         mock_write_instance_data,
@@ -3165,14 +3177,12 @@ class TestRegisterCloudGuest:
     @patch('os.makedirs')
     @patch('os.path.isdir')
     @patch('time.sleep')
-    @patch('cloudregister.registerutils.get_state_dir')
     @patch('cloudregister.registerutils.get_config')
     @patch('cloudregister.registercloudguest.cleanup')
     def test_reg_cloud_baseprod_ok_setup_registry_failed(
         self,
         mock_cleanup,
         mock_get_config,
-        mock_get_state_dir,
         mock_time_sleep,
         mock_os_path_isdir,
         mock_os_makedirs,
@@ -3249,7 +3259,7 @@ class TestRegisterCloudGuest:
         mock_uses_rmt_as_scc_proxy.return_value = False
         mock_get_instance_data.return_value = None
         mock_smt_is_responsive.return_value = True
-        mock_os_path_exists.side_effect = [False, True, True, True]
+        mock_os_path_exists.side_effect = [True, False, True, True, True]
         mock_update_rmt_cert.return_value = True
         mock_has_rmt_in_hosts.return_value = False
         mock_has_registry_in_hosts.return_value = False
@@ -3257,8 +3267,6 @@ class TestRegisterCloudGuest:
         mock_get_installed_products.return_value = 'SLES-LTSS-FOO/15.4/x86_64'
         mock_import_smt_cert.return_value = True
         mock_remove_state_file.return_value = True
-        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-            mock_get_state_dir.return_value = tdir
         prod_reg_type = namedtuple(
             'prod_reg_type', ['returncode', 'output', 'error']
         )
@@ -3346,6 +3354,10 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
         mock_setup_registry.return_value = False
-        with raises(SystemExit) as sys_exit:
-            register_cloud_guest.main(fake_args)
-            assert sys_exit.value.code == 1
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
+            ):
+                with raises(SystemExit) as sys_exit:
+                    register_cloud_guest.main(fake_args)
+                    assert sys_exit.value.code == 1

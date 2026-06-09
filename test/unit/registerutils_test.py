@@ -115,9 +115,8 @@ class TestRegisterUtils:
         available_servers = utils.get_available_smt_servers()
         assert [] == available_servers
 
-    @patch('cloudregister.registerutils.get_state_dir')
-    def test_get_available_smt_servers_cache(self, state_dir):
-        state_dir.return_value = data_path
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new=data_path)
+    def test_get_available_smt_servers_cache(self):
         available_servers = utils.get_available_smt_servers()
         assert len(available_servers) == 3
         for srv in available_servers:
@@ -133,13 +132,8 @@ class TestRegisterUtils:
         assert user == 'SCC_1'
         assert passwd == 'a23'
 
-    def test_get_state_dir(self):
-        state_dir = utils.get_state_dir()
-        assert state_dir == '/var/cache/cloudregister'
-
-    @patch('cloudregister.registerutils.get_state_dir')
-    def test_get_zypper_pid_cache_has_cache(self, state_dir):
-        state_dir.return_value = data_path
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new=data_path)
+    def test_get_zypper_pid_cache_has_cache(self):
         assert utils.get_zypper_pid_cache() == '28989'
 
     @patch('os.path.exists')
@@ -2769,9 +2763,8 @@ class TestRegisterUtils:
             in self._caplog.text
         )
 
-    @patch('cloudregister.registerutils.get_state_dir')
-    def test_is_new_registration_not_new(self, mock_state_dir):
-        mock_state_dir.return_value = data_path
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new=data_path)
+    def test_is_new_registration_not_new(self):
         assert utils.is_new_registration() is False
 
     def test_is_registration_supported_exception(self):
@@ -2779,9 +2772,8 @@ class TestRegisterUtils:
         del cfg_template['server']
         assert utils.is_registration_supported(cfg_template) is False
 
-    @patch('cloudregister.registerutils.get_state_dir')
-    def test_registration_completed(self, mock_state_dir):
-        mock_state_dir.return_value = data_path
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new=data_path)
+    def test_registration_completed(self):
         assert utils.is_registration_completed() is False
 
     def test_is_registration_supported(self):
@@ -2808,14 +2800,16 @@ class TestRegisterUtils:
         mock_get_zypper_pid.return_value = 42
         assert utils.is_zypper_running()
 
-    @patch('cloudregister.registerutils.get_state_dir')
-    def test_refresh_zypper_pid_cache(self, mock_get_state_dir):
+    def test_refresh_zypper_pid_cache(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            mock_get_state_dir.return_value = tmpdirname
-            utils.refresh_zypper_pid_cache()
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                new=tmpdirname,
+            ):
+                utils.refresh_zypper_pid_cache()
 
-    @patch('cloudregister.registerutils.get_state_dir')
-    def test_set_as_current_smt(self, mock_get_state_dir):
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new=data_path)
+    def test_set_as_current_smt(self):
         smt_data_ipv46 = dedent(
             '''\
             <smtInfo fingerprint="00:11:22:33"
@@ -2828,8 +2822,11 @@ class TestRegisterUtils:
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         with tempfile.TemporaryDirectory() as tmpdirname:
-            mock_get_state_dir.return_value = tmpdirname + '/foo'
-            utils.set_as_current_smt(smt_server)
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                new=tmpdirname + '/foo',
+            ):
+                utils.set_as_current_smt(smt_server)
 
     @patch.dict(
         os.environ, {'http_proxy': 'foo', 'https_proxy': 'bar'}, clear=True
@@ -3370,6 +3367,7 @@ class TestRegisterUtils:
         )
         region_smt_data = etree.fromstring(smt_xml)
         mock_fetch_smt_data.return_value = region_smt_data
+        mock_create_state_dir.return_value = '/var/cache/cloudregister'
         utils._populate_srv_cache()
         assert 'Populating server cache' in self._caplog.text
         smt_data_ipv46 = dedent(
@@ -5224,20 +5222,18 @@ export DOCKER_CONFIG=/etc/containers
 
     # ---------------------------------------------------------------------------
     @patch('cloudregister.registerutils.uuid.uuid4')
-    @patch('cloudregister.registerutils.get_state_dir')
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new='foo')
     @patch('cloudregister.registerutils.get_instance_data')
     @patch('cloudregister.registerutils.get_config')
     def test_write_instance_data_present(
         self,
         mock_get_config,
         mock_get_instance_data,
-        mock_get_state_dir,
         mock_uuid4,
     ):
         cfg = configparser.RawConfigParser()
         cfg.read(data_path + '/regionserverclnt.cfg')
         mock_get_config.return_value = cfg
-        mock_get_state_dir.return_value = 'foo'
         mock_get_instance_data.return_value = 'foo'
         mock_uuid4.return_value = '1-2-3-4'
         with patch('builtins.open', create=True):
@@ -5245,20 +5241,18 @@ export DOCKER_CONFIG=/etc/containers
 
     # ---------------------------------------------------------------------------
     @patch('cloudregister.registerutils.uuid.uuid4')
-    @patch('cloudregister.registerutils.get_state_dir')
+    @patch('cloudregister.registerutils.REGISTRATION_DATA_DIR', new='foo')
     @patch('cloudregister.registerutils.get_instance_data')
     @patch('cloudregister.registerutils.get_config')
     def test_write_instance_data_not_present(
         self,
         mock_get_config,
         mock_get_instance_data,
-        mock_get_state_dir,
         mock_uuid4,
     ):
         cfg = configparser.RawConfigParser()
         cfg.read(data_path + '/regionserverclnt.cfg')
         mock_get_config.return_value = cfg
-        mock_get_state_dir.return_value = 'foo'
         mock_get_instance_data.return_value = None
         mock_uuid4.return_value = '1-2-3-4'
         with patch('builtins.open', create=True):

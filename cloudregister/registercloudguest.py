@@ -411,7 +411,7 @@ def find_alive_registration_target(registration_smt, region_smt_servers):
     target_found = False
     if registration_smt:
         registration_smt_cache_file_name = os.path.join(
-            utils.get_state_dir(), REGISTERED_SMT_SERVER_DATA_FILE_NAME
+            REGISTRATION_DATA_DIR, REGISTERED_SMT_SERVER_DATA_FILE_NAME
         )
 
         updated = utils.update_rmt_cert(registration_smt)
@@ -556,7 +556,7 @@ def get_update_servers(region_smt_data, cfg):
         # Write the available servers to cache as well
         utils.store_smt_data(
             os.path.join(
-                utils.get_state_dir(), AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
+                REGISTRATION_DATA_DIR, AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
             ),
             smt_server,
         )
@@ -625,7 +625,7 @@ def main(args):
     # Create our cache dir, we can nolonger handle this in the package.
     # Packaging content outside /usr and /etc is verboten even if we are
     # not really packaging any content
-    os.makedirs(REGISTRATION_DATA_DIR, exist_ok=True)
+    utils.create_state_dir()
     if args.user_smt_ip or args.user_smt_fqdn or args.user_smt_fp:
         if not (args.user_smt_ip and args.user_smt_fqdn and args.user_smt_fp):
             msg = '--smt-ip, --smt-fqdn, and --smt-fp must be used together'
@@ -675,9 +675,7 @@ def main(args):
         cleanup()
         sys.exit(0)
 
-    if not os.path.isdir(utils.get_state_dir()):
-        os.makedirs(utils.get_state_dir())
-
+    utils.create_state_dir()
     utils.set_new_registration_flag()
     if args.force_new_registration:
         log.debug('Forced new registration')
@@ -783,9 +781,7 @@ def main(args):
     registration_target = get_responding_update_server(region_smt_servers)
 
     # Create location to store data if it does not exist
-    if not os.path.exists(utils.get_state_dir()):
-        os.system('mkdir -p %s' % utils.get_state_dir())
-
+    utils.create_state_dir()
     # Write the data of the current target server
     utils.set_as_current_smt(registration_target)
 

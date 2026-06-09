@@ -231,7 +231,7 @@ def clean_repo_artifacts():
 # ----------------------------------------------------------------------------
 def clean_smt_cache():
     """Clean the disk cache for SMT data"""
-    smt_data = glob.glob(os.sep.join([get_state_dir(), '*SMTInfo*']))
+    smt_data = glob.glob(os.sep.join([REGISTRATION_DATA_DIR, '*SMTInfo*']))
     for cache_entry in smt_data:
         os.unlink(cache_entry)
 
@@ -239,7 +239,7 @@ def clean_smt_cache():
 # ----------------------------------------------------------------------------
 def clear_new_registration_flag():
     """Clear the new registration marker"""
-    flag_path = os.sep.join([get_state_dir(), NEW_REGISTRATION_MARKER])
+    flag_path = os.sep.join([REGISTRATION_DATA_DIR, NEW_REGISTRATION_MARKER])
     return _remove_state_file(flag_path)
 
 
@@ -780,11 +780,12 @@ def get_activations():
 def get_available_smt_servers():
     """Return a list of available SMT servers"""
     available_smt_servers = []
-    state_dir = get_state_dir()
-    if not os.path.exists(state_dir):
+    if not os.path.exists(REGISTRATION_DATA_DIR):
         return available_smt_servers
     smt_data_files = glob.glob(
-        os.sep.join([state_dir, AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*'])
+        os.sep.join(
+            [REGISTRATION_DATA_DIR, AVAILABLE_SMT_SERVER_DATA_FILE_NAME % '*']
+        )
     )
     for smt_data in smt_data_files:
         available_smt_servers.append(get_smt_from_store(smt_data))
@@ -1433,7 +1434,7 @@ def get_current_smt():
 # ----------------------------------------------------------------------------
 def get_framework_identifier_path():
     """Return the path for the framework identifier file."""
-    return os.sep.join([get_state_dir(), FRAMEWORK_IDENTIFIER])
+    return os.sep.join([REGISTRATION_DATA_DIR, FRAMEWORK_IDENTIFIER])
 
 
 # ----------------------------------------------------------------------------
@@ -1667,11 +1668,6 @@ def get_smt_from_store(smt_store_file_path):
 
 
 # ----------------------------------------------------------------------------
-def get_state_dir():
-    return REGISTRATION_DATA_DIR
-
-
-# ----------------------------------------------------------------------------
 def get_update_server_name_from_hosts(ignore_inconsistent=False):
     """Try and extract the update server name from the /etc/hosts file"""
     if not ignore_inconsistent:
@@ -1720,7 +1716,7 @@ def get_zypper_pid():
 def get_zypper_pid_cache():
     """Return the PID for zypper stored in cache"""
     zypper_pid = 0
-    zypper_pid_cache_file = os.sep.join([get_state_dir(), ZYPPER_PID])
+    zypper_pid_cache_file = os.sep.join([REGISTRATION_DATA_DIR, ZYPPER_PID])
     if not os.path.exists(zypper_pid_cache_file):
         return zypper_pid
     with open(zypper_pid_cache_file) as zypper_state_file:
@@ -1983,7 +1979,7 @@ def is_new_registration():
     marker file. Note it is the responsibility of the process to properly
     manage the marker file"""
     return os.path.exists(
-        os.sep.join([get_state_dir(), NEW_REGISTRATION_MARKER])
+        os.sep.join([REGISTRATION_DATA_DIR, NEW_REGISTRATION_MARKER])
     )
 
 
@@ -1993,7 +1989,7 @@ def is_registration_completed():
     marker file. Note it is the responsibility of the process to properly
     manage the marker file"""
     return os.path.exists(
-        os.sep.join([get_state_dir(), REGISTRATION_COMPLETED_MARKER])
+        os.sep.join([REGISTRATION_DATA_DIR, REGISTRATION_COMPLETED_MARKER])
     )
 
 
@@ -2106,7 +2102,9 @@ def is_zypper_running():
 def refresh_zypper_pid_cache():
     """Write the current zypper pid to the cache file"""
     zypper_pid = get_zypper_pid()
-    with open(os.sep.join([get_state_dir(), 'zypper_pid']), 'w') as cache_file:
+    with open(
+        os.sep.join([REGISTRATION_DATA_DIR, 'zypper_pid']), 'w'
+    ) as cache_file:
         cache_file.write(zypper_pid)
 
 
@@ -2157,20 +2155,24 @@ def set_proxy():
 # ----------------------------------------------------------------------------
 def set_new_registration_flag():
     """Set a marker that this is the beginning of the registration process"""
-    _set_state_file(os.sep.join([get_state_dir(), NEW_REGISTRATION_MARKER]))
+    _set_state_file(
+        os.sep.join([REGISTRATION_DATA_DIR, NEW_REGISTRATION_MARKER])
+    )
 
 
 # ----------------------------------------------------------------------------
 def set_rmt_as_scc_proxy_flag():
     """Set a marker that the RMT registration is a proxy for SCC"""
-    _set_state_file(os.sep.join([get_state_dir(), RMT_AS_SCC_PROXY_MARKER]))
+    _set_state_file(
+        os.sep.join([REGISTRATION_DATA_DIR, RMT_AS_SCC_PROXY_MARKER])
+    )
 
 
 # ----------------------------------------------------------------------------
 def set_registration_completed_flag():
     """Set a marker that the registration process is successfully completed"""
     _set_state_file(
-        os.sep.join([get_state_dir(), REGISTRATION_COMPLETED_MARKER])
+        os.sep.join([REGISTRATION_DATA_DIR, REGISTRATION_COMPLETED_MARKER])
     )
 
 
@@ -2342,7 +2344,7 @@ def update_rmt_cert(server):
 def uses_rmt_as_scc_proxy():
     """Check if the RMT registration is used as an SCC proxy"""
 
-    return Path(get_state_dir(), RMT_AS_SCC_PROXY_MARKER).is_file()
+    return Path(REGISTRATION_DATA_DIR, RMT_AS_SCC_PROXY_MARKER).is_file()
 
 
 # ----------------------------------------------------------------------------
@@ -2437,7 +2439,7 @@ def get_suma_registry_content():
 def create_state_dir():
     # Python 3.4 compatibility does not have "exist_ok"
     try:
-        Path(get_state_dir()).mkdir(parents=True)
+        Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
     except FileExistsError:
         pass
 
@@ -2554,7 +2556,9 @@ def _get_region_server_args(plugin):
 def _get_registered_smt_file_path():
     """Return the file path for the SMT infor stored for the registered
     server"""
-    return os.sep.join([get_state_dir(), REGISTERED_SMT_SERVER_DATA_FILE_NAME])
+    return os.sep.join(
+        [REGISTRATION_DATA_DIR, REGISTERED_SMT_SERVER_DATA_FILE_NAME]
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -2617,7 +2621,7 @@ def _populate_srv_cache():
         update_server = smt.SMT(child)
         server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
         store_smt_data(
-            os.sep.join([get_state_dir(), server_cache_file_name]),
+            os.sep.join([REGISTRATION_DATA_DIR, server_cache_file_name]),
             update_server,
         )
         cnt += 1
@@ -2881,7 +2885,7 @@ def write_instance_data(cfg=None):
     instance_data = get_instance_data(cfg)
     if instance_data:
         instance_data_filepath = os.path.join(
-            get_state_dir(), str(uuid.uuid4())
+            REGISTRATION_DATA_DIR, str(uuid.uuid4())
         )
         with open(instance_data_filepath, 'w') as inst_data_out:
             inst_data_out.write(instance_data)
