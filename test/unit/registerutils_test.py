@@ -3342,6 +3342,7 @@ class TestRegisterUtils:
         mock_glob.return_value = []
         assert utils._has_credentials('foo') is False
 
+    @patch('cloudregister.registerutils.create_state_dir')
     @patch('cloudregister.registerutils.store_smt_data')
     @patch('cloudregister.registerutils.fetch_smt_data')
     @patch('cloudregister.registerutils.get_config')
@@ -3352,6 +3353,7 @@ class TestRegisterUtils:
         mock_get_config,
         mock_fetch_smt_data,
         mock_store_smt_data,
+        mock_create_state_dir,
     ):
         mock_set_proxy.return_value = True
         mock_get_config.return_value = get_test_config()
@@ -5219,6 +5221,48 @@ export DOCKER_CONFIG=/etc/containers
         assert (
             'Unable to remove client registration from SCC' in self._caplog.text
         )
+
+    # ---------------------------------------------------------------------------
+    @patch('cloudregister.registerutils.uuid.uuid4')
+    @patch('cloudregister.registerutils.get_state_dir')
+    @patch('cloudregister.registerutils.get_instance_data')
+    @patch('cloudregister.registerutils.get_config')
+    def test_write_instance_data_present(
+        self,
+        mock_get_config,
+        mock_get_instance_data,
+        mock_get_state_dir,
+        mock_uuid4,
+    ):
+        cfg = configparser.RawConfigParser()
+        cfg.read(data_path + '/regionserverclnt.cfg')
+        mock_get_config.return_value = cfg
+        mock_get_state_dir.return_value = 'foo'
+        mock_get_instance_data.return_value = 'foo'
+        mock_uuid4.return_value = '1-2-3-4'
+        with patch('builtins.open', create=True):
+            assert utils.write_instance_data() == 'foo/1-2-3-4'
+
+    # ---------------------------------------------------------------------------
+    @patch('cloudregister.registerutils.uuid.uuid4')
+    @patch('cloudregister.registerutils.get_state_dir')
+    @patch('cloudregister.registerutils.get_instance_data')
+    @patch('cloudregister.registerutils.get_config')
+    def test_write_instance_data_not_present(
+        self,
+        mock_get_config,
+        mock_get_instance_data,
+        mock_get_state_dir,
+        mock_uuid4,
+    ):
+        cfg = configparser.RawConfigParser()
+        cfg.read(data_path + '/regionserverclnt.cfg')
+        mock_get_config.return_value = cfg
+        mock_get_state_dir.return_value = 'foo'
+        mock_get_instance_data.return_value = None
+        mock_uuid4.return_value = '1-2-3-4'
+        with patch('builtins.open', create=True):
+            assert utils.write_instance_data() == ''
 
 
 # ---------------------------------------------------------------------------

@@ -3046,6 +3046,7 @@ class TestRegisterCloudGuest:
         assert 'LTSS registration failed' in self._caplog.text
         assert 'is wrong' in self._caplog.text
 
+    @patch('cloudregister.registerutils.write_instance_data')
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.add_hosts_entry')
     @patch('cloudregister.registercloudguest.cleanup')
@@ -3066,6 +3067,7 @@ class TestRegisterCloudGuest:
         mock_cleanup,
         mock_add_hosts_entry,
         mock_register_product,
+        mock_write_instance_data,
     ):
         prod_reg = Mock()
         prod_reg.returncode = 0

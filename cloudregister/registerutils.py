@@ -32,6 +32,7 @@ import sys
 import time
 import toml
 import yaml
+import uuid
 
 from collections import namedtuple
 from lxml import etree
@@ -137,7 +138,7 @@ def clean_all_standard():
 
 # ----------------------------------------------------------------------------
 def clean_cache():
-    if os.path.isdir(get_state_dir()):
+  if os.path.isdir(get_state_dir()):
         shutil.rmtree(get_state_dir())
         # Python 3.4 compatibility does not have "exist_ok"
         try:
@@ -2116,8 +2117,7 @@ def refresh_zypper_pid_cache():
 # ----------------------------------------------------------------------------
 def set_as_current_smt(smt):
     """Store the given SMT as the current SMT server."""
-    if not os.path.exists(get_state_dir()):
-        os.system('mkdir -p %s' % get_state_dir())
+    create_state_dir()
     store_smt_data(_get_registered_smt_file_path(), smt)
 
 
@@ -2437,6 +2437,15 @@ def get_suma_registry_content():
     return {}, True
 
 
+# ----------------------------------------------------------------------------
+def create_state_dir():
+    # Python 3.4 compatibility does not have "exist_ok"
+    try:
+        Path(get_state_dir()).mkdir(parents=True)
+    except FileExistsError:
+        pass
+
+
 # Private
 # ----------------------------------------------------------------------------
 def _check_ip_access(ips_addresses):
@@ -2607,6 +2616,7 @@ def _populate_srv_cache():
     log.debug('Populating server cache')
     region_smt_data = fetch_smt_data(cfg, proxies, True)
     cnt = 1
+    create_state_dir()
     for child in region_smt_data:
         update_server = smt.SMT(child)
         server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
@@ -2863,6 +2873,24 @@ def set_registry_fqdn_suma(private_registry_fqdn):
 
     # the registry value inside the file has the update server registry FQDN
     return True
+
+
+# ----------------------------------------------------------------------------
+def write_instance_data(cfg=None):
+    if not cfg:
+        cfg = get_config()
+
+    # Check if we need to send along any instance data
+    instance_data_filepath = ''
+    instance_data = get_instance_data(cfg)
+    if instance_data:
+        instance_data_filepath = os.path.join(
+            get_state_dir(), str(uuid.uuid4())
+        )
+        with open(instance_data_filepath, 'w') as inst_data_out:
+            inst_data_out.write(instance_data)
+
+    return instance_data_filepath
 
 
 # ----------------------------------------------------------------------------
