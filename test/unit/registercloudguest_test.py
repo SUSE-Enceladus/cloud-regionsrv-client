@@ -176,8 +176,7 @@ class TestRegisterCloudGuest:
         mock_has_network_access.return_value = True
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -224,8 +223,7 @@ class TestRegisterCloudGuest:
         mock_has_network_access.return_value = True
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -309,8 +307,7 @@ class TestRegisterCloudGuest:
         mock_utils_fetch_smt_data.return_value = [child]
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     with self._caplog.at_level(logging.DEBUG):
@@ -409,8 +406,7 @@ class TestRegisterCloudGuest:
         mock_has_registry_in_hosts.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -511,8 +507,7 @@ class TestRegisterCloudGuest:
         mock_setup_registry.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -610,8 +605,7 @@ class TestRegisterCloudGuest:
         mock_has_registry_in_hosts.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -717,8 +711,7 @@ class TestRegisterCloudGuest:
         mock_has_ipv6_access.return_value = True
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -815,8 +808,7 @@ class TestRegisterCloudGuest:
         mock_has_registry_in_hosts.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -920,8 +912,7 @@ class TestRegisterCloudGuest:
         mock_os_access.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -1030,8 +1021,7 @@ class TestRegisterCloudGuest:
         mock_is_registration_supported.return_value = False
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -1139,8 +1129,7 @@ class TestRegisterCloudGuest:
         mock_get_installed_products.return_value = None
         with tempfile.TemporaryDirectory(suffix='foo') as tdir:
             with patch(
-                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                new=tdir
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR', new=tdir
             ):
                 with raises(SystemExit) as sys_exit:
                     register_cloud_guest.main(fake_args)
@@ -1254,7 +1243,7 @@ class TestRegisterCloudGuest:
             with tempfile.TemporaryDirectory(suffix='foo') as tdir:
                 with patch(
                     'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                    new=tdir
+                    new=tdir,
                 ):
                     register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
@@ -1382,7 +1371,7 @@ class TestRegisterCloudGuest:
             with tempfile.TemporaryDirectory(suffix='foo') as tdir:
                 with patch(
                     'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                    new=tdir
+                    new=tdir,
                 ):
                     register_cloud_guest.main(fake_args)
         assert 'Baseproduct registration failed' in self._caplog.text
