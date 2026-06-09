@@ -3342,6 +3342,7 @@ class TestRegisterUtils:
         mock_glob.return_value = []
         assert utils._has_credentials('foo') is False
 
+    @patch('cloudregister.registerutils.create_state_dir')
     @patch('cloudregister.registerutils.store_smt_data')
     @patch('cloudregister.registerutils.fetch_smt_data')
     @patch('cloudregister.registerutils.get_config')
@@ -3352,6 +3353,7 @@ class TestRegisterUtils:
         mock_get_config,
         mock_fetch_smt_data,
         mock_store_smt_data,
+        mock_create_state_dir,
     ):
         mock_set_proxy.return_value = True
         mock_get_config.return_value = get_test_config()

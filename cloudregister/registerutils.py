@@ -140,11 +140,7 @@ def clean_all_standard():
 def clean_cache():
     if os.path.isdir(REGISTRATION_DATA_DIR):
         shutil.rmtree(REGISTRATION_DATA_DIR)
-        # Python 3.4 compatibility does not have "exist_ok"
-        try:
-            Path(REGISTRATION_DATA_DIR).mkdir(parents=True)
-        except FileExistsError:
-            pass
+        create_state_dir()
 
 
 # ----------------------------------------------------------------------------
@@ -2117,8 +2113,7 @@ def refresh_zypper_pid_cache():
 # ----------------------------------------------------------------------------
 def set_as_current_smt(smt):
     """Store the given SMT as the current SMT server."""
-    if not os.path.exists(get_state_dir()):
-        os.system('mkdir -p %s' % get_state_dir())
+    create_state_dir()
     store_smt_data(_get_registered_smt_file_path(), smt)
 
 
@@ -2438,6 +2433,15 @@ def get_suma_registry_content():
     return {}, True
 
 
+# ----------------------------------------------------------------------------
+def create_state_dir():
+    # Python 3.4 compatibility does not have "exist_ok"
+    try:
+        Path(get_state_dir()).mkdir(parents=True)
+    except FileExistsError:
+        pass
+
+
 # Private
 # ----------------------------------------------------------------------------
 def _check_ip_access(ips_addresses):
@@ -2608,6 +2612,7 @@ def _populate_srv_cache():
     log.debug('Populating server cache')
     region_smt_data = fetch_smt_data(cfg, proxies, True)
     cnt = 1
+    create_state_dir()
     for child in region_smt_data:
         update_server = smt.SMT(child)
         server_cache_file_name = AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
