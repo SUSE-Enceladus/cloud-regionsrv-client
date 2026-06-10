@@ -1,4 +1,12 @@
 -------------------------------------------------------------------
+Tue Jun  9 16:23:11 UTC 2026 - Jesús Bermúdez Velázquez <jesus.bv@suse.com>
+
+- Update to version 11.0.3
+  + Write instance data cache file after
+  cleaning the cache when the update server fails (bsc#1265930)
+  + Create the cache directory when populating the cache (bsc#1267739)
+
+-------------------------------------------------------------------
 Fri Mar 20 12:52:43 UTC 2026 - Robert Schweikert <rjschwei@suse.com>
 
 - Update to version 11.0.2 (bsc#1260421)
