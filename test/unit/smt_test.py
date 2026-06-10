@@ -408,7 +408,7 @@ class TestSMT:
         mock_get_cert.return_value = "what a cert"
         smt = SMT(etree.fromstring(smt_data_ipv4))
         with tempfile.TemporaryDirectory() as tmpdirname:
-            smt.write_cert(tmpdirname)
+            smt.write_cert(tmpdirname, Mock())
             certs = glob.glob("%s/*.pem" % tmpdirname)
             assert len(certs) == 1
             assert certs[0] == (
