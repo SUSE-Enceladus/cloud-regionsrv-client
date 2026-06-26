@@ -399,12 +399,13 @@ def enable_repository(repo_name):
 
 
 # ----------------------------------------------------------------------------
-def exec_subprocess(cmd, tolog=True):
+def exec_subprocess(cmd, tolog=True, timeout=None):
     """
     Execute the given command as a subprocess (blocking)
     Returns a tuple list:
         (binary_stdout, binary_stderr, exitcode)
         A -1 exitcode indicates an OSError at command invocation
+        A -2 exitcode indicates a timeout occurred
     """
     stdout = b''
     stderr = b''
@@ -415,8 +416,13 @@ def exec_subprocess(cmd, tolog=True):
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        stdout, stderr = proc.communicate()
+        stdout, stderr = proc.communicate(timeout=timeout)
         rcode = proc.returncode
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        rcode = -2
+        log.warning('EXEC timeout after {} seconds: {}'.format(timeout, cmd))
     except OSError as issue:
         log.debug('EXEC failed with: {}'.format(issue))
     return (stdout, stderr, rcode)
@@ -1454,9 +1460,30 @@ def get_instance_data(config):
                     errMsg = 'Could not find configured dataProvider: %s' % cmd
                     log.error(errMsg)
             if os.access(cmd, os.X_OK):
+                # Validate DNS resolution for URLs in the command
+                url_match = re.search(r'https?://([^\s/:]+)', instance_data_cmd)
+                if url_match:
+                    domain = url_match.group(1)
+                    try:
+                        socket.gethostbyname(domain)
+                        log.debug('DNS validation passed for domain: %s' % domain)
+                    except socket.gaierror:
+                        warn_msg = 'Domain "%s" in dataProvider does not resolve. ' % domain
+                        warn_msg += 'Skipping instance data collection.'
+                        log.warning(warn_msg)
+                        # Skip execution and return early with empty instance data
+                        return '<repoformat>plugin:susecloud</repoformat>\n'
+
+                # Execute with 30 second timeout to prevent indefinite hangs
                 instance_data, errors, returncode = exec_subprocess(
-                    instance_data_cmd.split()
+                    instance_data_cmd.split(),
+                    timeout=30
                 )
+                if returncode == -2:
+                    # Timeout occurred
+                    warn_msg = 'dataProvider command timed out after 30 seconds. '
+                    warn_msg += 'Instance data collection failed.'
+                    log.warning(warn_msg)
                 if errors:
                     errMsg = 'Data collected from stderr for instance '
                     errMsg += 'data collection "%s"' % errors.decode()
