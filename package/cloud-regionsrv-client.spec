@@ -24,7 +24,6 @@
 %define pythons python3
 %endif
 %endif
-%global _sitelibdir %{%{pythons}_sitelib}
 
 %define eflag /run/azuretimer-was-enabled
 %define aflag /run/azuretimer-was-running
@@ -344,17 +343,17 @@ fi
 %endif
 %{_unitdir}/guestregister.service
 %{_unitdir}/containerbuild-regionsrv.service
-%exclude %{_sitelibdir}/cloudregister/google*
-%exclude %{_sitelibdir}/cloudregister/amazon*
-%exclude %{_sitelibdir}/cloudregister/msft*
-%exclude %{_sitelibdir}/cloudregister/cloudguest_lic_watcher.py
-%{_sitelibdir}/cloudregister/
+%exclude %{python_sitelib}/cloudregister/google*
+%exclude %{python_sitelib}/cloudregister/amazon*
+%exclude %{python_sitelib}/cloudregister/msft*
+%exclude %{python_sitelib}/cloudregister/cloudguest_lic_watcher.py
+%{python_sitelib}/cloudregister/
 %if 0%{?suse_version} > 1315
-%{_sitelibdir}/cloudregister-*.dist-info/
+%{python_sitelib}/cloudregister-*.dist-info/
 %else
-%dir %{_sitelibdir}/cloudregister-%{base_version}-py%{py3_ver}.egg-info
-%dir %{_sitelibdir}/cloudregister/
-%{_sitelibdir}/cloudregister-%{base_version}-py%{py3_ver}.egg-info/*
+%dir %{python_sitelib}/cloudregister-%{base_version}-py%{py3_ver}.egg-info
+%dir %{python_sitelib}/cloudregister/
+%{python_sitelib}/cloudregister-%{base_version}-py%{py3_ver}.egg-info/*
 %endif
 
 %files generic-config
@@ -366,21 +365,21 @@ fi
 
 %files plugin-gce
 %defattr(-,root,root,-)
-%{_sitelibdir}/cloudregister/google*
+%{python_sitelib}/cloudregister/google*
 
 %files plugin-ec2
 %defattr(-,root,root,-)
-%{_sitelibdir}/cloudregister/amazon*
+%{python_sitelib}/cloudregister/amazon*
 
 %files plugin-azure
 %defattr(-,root,root,-)
-%{_sitelibdir}/cloudregister/msft*
+%{python_sitelib}/cloudregister/msft*
 
 %files license-watcher
 %defattr(-,root,root,-)
 %{_unitdir}/guestregister-lic-watcher.service
 %{_unitdir}/guestregister-lic-watcher.timer
-%{_sitelibdir}/cloudregister/cloudguest_lic_watcher.py
+%{python_sitelib}/cloudregister/cloudguest_lic_watcher.py
 %attr(744, root, root) %{_sbindir}/cloudguest-lic-watcher
 
 
