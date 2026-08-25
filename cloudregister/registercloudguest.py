@@ -339,7 +339,12 @@ def setup_ltss_registration(
 def register_base_product(
     registration_target, instance_data_filepath, args, region_smt_servers
 ):
-    """Register the base product and return the RMT update server registered."""
+    """Register the base product
+
+    Return the RMT update server registered with and the return code
+    of the base product registration
+    """
+    returncode = 0
     base_registered = False
     failed_smts = []
     while not base_registered:
@@ -351,11 +356,12 @@ def register_base_product(
             instance_data_filepath=instance_data_filepath,
         )
         if prod_reg.returncode:
+            returncode = prod_reg.returncode
             # Even on error SUSEConnect writes messages to stdout, go figure
             error_message = prod_reg.output
             failed_smts.append(registration_target.get_ipv4())
             if len(failed_smts) == len(region_smt_servers) or (
-                prod_reg.returncode == SERVER_GENERAL_ERROR
+                returncode == SERVER_GENERAL_ERROR
                 and 'registration code' in error_message.lower()
                 and args.reg_code
             ):
@@ -404,11 +410,12 @@ def register_base_product(
         else:
             log.debug('Baseproduct registration complete')
             base_registered = True
+            returncode = 0
             utils.clear_new_registration_flag()
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
-    return registration_target
+    return registration_target, returncode
 
 
 # ----------------------------------------------------------------------------
@@ -809,7 +816,7 @@ def main(args):
         sys.exit(1)
 
     # Register the base product first
-    registration_target = register_base_product(
+    registration_target, registration_returncode = register_base_product(
         registration_target, instance_data_filepath, args, region_smt_servers
     )
     extensions = get_extensions(registration_target)
@@ -821,6 +828,7 @@ def main(args):
         instance_data_filepath,
         args.reg_code,
         failed=failed_extensions,
+        returncode=registration_returncode,
     )
     if os.path.exists(instance_data_filepath):
         os.unlink(instance_data_filepath)

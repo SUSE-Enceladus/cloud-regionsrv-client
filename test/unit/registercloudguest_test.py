@@ -3145,12 +3145,16 @@ class TestRegisterCloudGuest:
         commandline_args = Mock()
         region_smt_servers = [Mock(), Mock()]
         # Test success case
-        register_cloud_guest.register_base_product(
-            registration_target,
-            instance_data_filepath,
-            commandline_args,
-            region_smt_servers,
+        registered_target, returncode = (
+            register_cloud_guest.register_base_product(
+                registration_target,
+                instance_data_filepath,
+                commandline_args,
+                region_smt_servers,
+            )
         )
+        assert registered_target == registration_target
+        assert returncode == 0
         assert 'Baseproduct registration complete' in self._caplog.text
         mock_clear_new_registration_flag.assert_called_once_with()
         mock_set_rmt_as_scc_proxy_flag.assert_called_once_with()
