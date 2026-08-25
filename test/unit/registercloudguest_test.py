@@ -1538,7 +1538,6 @@ class TestRegisterCloudGuest:
         assert sys_exit.value.code == 1
 
     @patch('cloudregister.registerutils.set_proxy')
-    @patch('cloudregister.registercloudguest.registration_returncode', 0)
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
@@ -1744,7 +1743,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.get_repo_url')
     @patch('cloudregister.registerutils.find_repos')
     @patch('cloudregister.registerutils.has_nvidia_support')
-    @patch('cloudregister.registercloudguest.registration_returncode', 0)
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
@@ -1970,7 +1968,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.get_repo_url')
     @patch('cloudregister.registerutils.find_repos')
     @patch('cloudregister.registerutils.has_nvidia_support')
-    @patch('cloudregister.registercloudguest.registration_returncode', 0)
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
@@ -2202,7 +2199,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.get_repo_url')
     @patch('cloudregister.registerutils.find_repos')
     @patch('cloudregister.registerutils.has_nvidia_support')
-    @patch('cloudregister.registercloudguest.registration_returncode', 0)
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
@@ -2440,7 +2436,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.get_repo_url')
     @patch('cloudregister.registerutils.find_repos')
     @patch('cloudregister.registerutils.has_nvidia_support')
-    @patch('cloudregister.registercloudguest.registration_returncode', 0)
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
@@ -2689,8 +2684,16 @@ class TestRegisterCloudGuest:
                 'available': True,
             }
         ]
-        register_cloud_guest.register_modules(
-            extensions, ['SLES-LTSS/15.4/x86_64'], 'reg_target', 'path', [], []
+        assert (
+            register_cloud_guest.register_modules(
+                extensions,
+                ['SLES-LTSS/15.4/x86_64'],
+                'reg_target',
+                'path',
+                [],
+                [],
+            )
+            == 0
         )
 
     @patch('cloudregister.registerutils.register_product')
@@ -2724,9 +2727,61 @@ class TestRegisterCloudGuest:
                 'available': True,
             }
         ]
-        register_cloud_guest.register_modules(
-            extensions, ['SLES-LTSS/15.4/x86_64'], 'reg_target', 'path', [], []
+        assert (
+            register_cloud_guest.register_modules(
+                extensions,
+                ['SLES-LTSS/15.4/x86_64'],
+                'reg_target',
+                'path',
+                [],
+                [],
+            )
+            == 0
         )
+
+    @patch('cloudregister.registerutils.register_product')
+    def test_register_modules_undetermined(self, mock_register_product):
+        prod_reg_type = namedtuple(
+            'prod_reg_type', ['returncode', 'output', 'error']
+        )
+
+        mock_register_product.return_value = prod_reg_type(
+            returncode=67, output='', error='some other problem'
+        )
+        extensions = [
+            {
+                'id': 23,
+                'name': 'SUSE Linux Enterprise Server LTSS',
+                'identifier': 'SLES-LTSS',
+                'former_identifier': 'SLES-LTSS',
+                'version': '15.4',
+                'release_type': None,
+                'release_stage': 'released',
+                'arch': 'x86_64',
+                'friendly_name': 'SUSE Linux Enterprise Server LTSS 15 SP4 x86_64',
+                'product_class': 'SLES15-SP4-LTSS-X86',
+                'free': False,
+                'repositories': [],
+                'product_type': 'extension',
+                'extensions': [],
+                'recommended': False,
+                'available': True,
+            }
+        ]
+        # the registration status of a failure that is not related to
+        # the registration code is handed back to the caller
+        assert (
+            register_cloud_guest.register_modules(
+                extensions,
+                ['SLES-LTSS/15.4/x86_64'],
+                'reg_target',
+                'path',
+                [],
+                [],
+            )
+            == 67
+        )
+        assert 'undetermined' in self._caplog.text
 
     @patch('cloudregister.registerutils.is_registry_registered')
     @patch('cloudregister.registerutils.get_credentials_file')
@@ -3142,7 +3197,6 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.get_repo_url')
     @patch('cloudregister.registerutils.find_repos')
     @patch('cloudregister.registerutils.has_nvidia_support')
-    @patch('cloudregister.registercloudguest.registration_returncode', 0)
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
     @patch('cloudregister.registerutils.get_credentials')
