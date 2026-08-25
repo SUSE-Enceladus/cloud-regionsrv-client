@@ -368,16 +368,11 @@ def register_base_product(
                 # there are no more RMT servers to try or
                 # registration failed because of an invalid reg code
                 # and the SCC response will not change, independently
-                # of the RMT sibling selected
+                # of the RMT sibling selected. The caller handles the
+                # return code and takes care of the cleanup
                 log.error('Baseproduct registration failed')
                 log.error(error_message)
-                utils.deregister_non_free_extensions()
-                utils.deregister_from_update_infrastructure()
-                utils.deregister_from_SCC()
-                utils.clean_hosts_file(registration_target.get_domain_name())
-                utils.clean_base_credentials()
-                utils.clean_cache()
-                sys.exit(1)
+                break
             for smt_srv in region_smt_servers:
                 target_smt_ipv4 = registration_target.get_ipv4()
                 target_smt_ipv6 = registration_target.get_ipv6()
@@ -816,34 +811,48 @@ def main(args):
         sys.exit(1)
 
     # Register the base product first
-    registration_target, registration_returncode = register_base_product(
+    registration_target, base_returncode = register_base_product(
         registration_target, instance_data_filepath, args, region_smt_servers
     )
+    if base_returncode:
+        # Without the base product no other product can be registered,
+        # this is fatal
+        if os.path.exists(instance_data_filepath):
+            os.unlink(instance_data_filepath)
+        utils.deregister_non_free_extensions()
+        utils.deregister_from_update_infrastructure()
+        utils.deregister_from_SCC()
+        utils.clean_hosts_file(registration_target.get_domain_name())
+        utils.clean_base_credentials()
+        utils.clean_cache()
+        log.error(
+            'Registration failed(baseproduct), see {0} for details'.format(
+                LOG_FILE
+            )
+        )
+        sys.exit(base_returncode)
+
     extensions = get_extensions(registration_target)
     failed_extensions = []
-    registration_returncode = register_modules(
+    modules_returncode = register_modules(
         extensions,
         products,
         registration_target,
         instance_data_filepath,
         args.reg_code,
         failed=failed_extensions,
-        returncode=registration_returncode,
     )
     if os.path.exists(instance_data_filepath):
         os.unlink(instance_data_filepath)
 
-    if registration_returncode:
-        utils.deregister_non_free_extensions()
-        utils.deregister_from_update_infrastructure()
-        utils.deregister_from_SCC()
-        utils.clean_cache()
+    if modules_returncode:
+        # Module registration issues do not invalidate the registration
+        # of the system. The affected modules can be registered at a
+        # later point in time
         log.error(
-            'Registration failed(repository), see {0} for details'.format(
-                LOG_FILE
-            )
+            'Module registration failed(repository), see {0} for '
+            'details'.format(LOG_FILE)
         )
-        sys.exit(registration_returncode)
 
     # Setup container registry
     if not setup_registry(registration_target):

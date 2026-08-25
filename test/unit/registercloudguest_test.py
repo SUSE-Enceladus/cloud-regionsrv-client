@@ -1248,6 +1248,7 @@ class TestRegisterCloudGuest:
                     register_cloud_guest.main(fake_args)
         assert sys_exit.value.code == 1
 
+    @patch('os.unlink')
     @patch('cloudregister.registerutils.set_proxy')
     @patch('cloudregister.registerutils.register_product')
     @patch('cloudregister.registerutils.import_smt_cert')
@@ -1320,6 +1321,7 @@ class TestRegisterCloudGuest:
         mock_import_smt_cert,
         mock_register_product,
         mock_set_proxy,
+        mock_os_unlink,
     ):
         smt_data_ipv46 = dedent(
             '''\
@@ -1375,7 +1377,14 @@ class TestRegisterCloudGuest:
                 ):
                     register_cloud_guest.main(fake_args)
         assert 'Baseproduct registration failed' in self._caplog.text
-        assert sys_exit.value.code == 1
+        assert 'Registration failed(baseproduct)' in self._caplog.text
+        # the process exits with the return code of the registration
+        assert sys_exit.value.code == 67
+        # the caller of register_base_product cleans up
+        mock_deregister_non_free_extensions.assert_called_once_with()
+        mock_deregister_from_update_infrastructure.assert_called_once_with()
+        mock_deregister_from_SCC.assert_called_once_with()
+        mock_clean_cache.assert_called_once_with()
 
     @patch('cloudregister.registerutils._remove_state_file')
     @patch('cloudregister.registerutils.set_proxy')
@@ -1537,6 +1546,8 @@ class TestRegisterCloudGuest:
         assert 'Unable to register modules, exiting.' in self._caplog.text
         assert sys_exit.value.code == 1
 
+    @patch('cloudregister.registerutils.set_registration_completed_flag')
+    @patch('cloudregister.registerutils.has_nvidia_support')
     @patch('cloudregister.registerutils.set_proxy')
     @patch('os.unlink')
     @patch('cloudregister.registerutils.get_credentials_file')
@@ -1578,7 +1589,7 @@ class TestRegisterCloudGuest:
     @patch('cloudregister.registerutils.deregister_from_SCC')
     @patch('cloudregister.registerutils.clean_cache')
     @patch('cloudregister.registerutils.clean_all_standard')
-    def test_register_cloud_guest_force_baseprod_extensions_raise(
+    def test_register_cloud_guest_force_module_registration_failed(
         self,
         mock_clean_all_standard,
         mock_clean_cache,
@@ -1621,6 +1632,8 @@ class TestRegisterCloudGuest:
         mock_get_creds_file,
         mock_os_unlink,
         mock_set_proxy,
+        mock_has_nvidia_support,
+        mock_set_registration_completed_flag,
     ):
         smt_data_ipv46 = dedent(
             '''\
@@ -1634,6 +1647,7 @@ class TestRegisterCloudGuest:
 
         smt_server = SMT(etree.fromstring(smt_data_ipv46))
         mock_get_current_smt.return_value = smt_server
+        mock_has_nvidia_support.return_value = False
         fake_args = SimpleNamespace(
             clean_up=False,
             force_new_registration=True,
@@ -1726,14 +1740,18 @@ class TestRegisterCloudGuest:
         )
         mock_set_proxy.return_value = False
         mock_get_register_cmd.return_value = '/usr/sbin/SUSEConnect'
-        with raises(SystemExit) as sys_exit:
-            with tempfile.TemporaryDirectory(suffix='foo') as tdir:
-                with patch(
-                    'cloudregister.registerutils.REGISTRATION_DATA_DIR',
-                    new=tdir,
-                ):
-                    register_cloud_guest.main(fake_args)
-        assert sys_exit.value.code == 6
+        # A failed module registration does not fail the registration
+        # of the system, the process continues and does not exit
+        with tempfile.TemporaryDirectory(suffix='foo') as tdir:
+            with patch(
+                'cloudregister.registerutils.REGISTRATION_DATA_DIR',
+                new=tdir,
+            ):
+                register_cloud_guest.main(fake_args)
+        assert 'Module registration failed(repository)' in self._caplog.text
+        assert 'Registration succeeded' in self._caplog.text
+        mock_set_registration_completed_flag.assert_called_once_with()
+        mock_deregister_from_SCC.assert_not_called()
 
     @patch('cloudregister.registerutils.set_registration_completed_flag')
     @patch('cloudregister.registerutils.set_proxy')
@@ -3161,18 +3179,25 @@ class TestRegisterCloudGuest:
 
         # Test error case
         prod_reg.returncode = 1
-        with raises(SystemExit):
+        # The failure is handed to the caller, the method does not exit
+        registered_target, returncode = (
             register_cloud_guest.register_base_product(
                 registration_target,
                 instance_data_filepath,
                 commandline_args,
                 region_smt_servers,
             )
-            mock_deregister_non_free_extensions.assert_called_once_with()
-            mock_deregister_non_free_extensions.assert_called_once_with()
-            mock_deregister_from_update_infrastructure.assert_called_once_with()
-            mock_deregister_from_SCC.assert_called_once_with()
-            mock_clean_hosts_file.assert_called_once_with()
+        )
+        assert returncode == 1
+        assert 'Baseproduct registration failed' in self._caplog.text
+        # the update server the registration was attempted with last
+        assert registered_target == region_smt_servers[0]
+        # cleanup happened once, when the registration switched over to
+        # the sibling update server. The cleanup for the final failure
+        # is up to the caller
+        mock_deregister_non_free_extensions.assert_called_once_with()
+        mock_deregister_from_update_infrastructure.assert_called_once_with()
+        mock_deregister_from_SCC.assert_called_once_with()
 
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
