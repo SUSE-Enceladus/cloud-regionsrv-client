@@ -85,9 +85,13 @@ def register_modules(
 ):
     """Register modules obeying dependencies
 
-    The given returncode is the registration status of the modules
-    registered so far. It is updated by the registrations this call
-    performs and returned to the caller
+    The given returncode is the failed registration status of the
+    modules registered so far. It is recursively updated in case a
+    module registrations fails. The very first call of register_modules()
+    is expected to run without a returncode set, or explicitly set to 0,
+    such that the final returncode from register_modules is either 0
+    (if all module registrations succeeded) or the failed return code
+    from the last module that has failed the registration.
     """
     for extension in extensions:
         # If the extension is recommended it gets installed with the
@@ -129,6 +133,7 @@ def register_modules(
                 ZYPPER_UNKNOWN_ERROR,
             )
             if prod_reg.returncode:
+                # module registration has failed, set this returncode
                 returncode = prod_reg.returncode
                 # Older versions of SUSEConnect wrote error messages to stdout
                 error_message = prod_reg.output
@@ -139,22 +144,19 @@ def register_modules(
                     or 'system credentials' in error_message.lower()
                 ):
                     log.error(
-                        '\tModule registration unsuccesful: {}'.format(
-                            error_message
+                        '\tModule registration unsuccesful: {} code {}'.format(
+                            error_message, returncode
                         )
                     )
                     failed.append(triplet)
-                    # Module registration is a best effort approach. We
-                    # do not fail the system registration if we end up
-                    # missing a specific module, it can always be added
-                    # later.
-                    returncode = 0
                 else:
                     # Zypper sets codes that do not indicate registration
                     # failure but the registration is not clean
-                    warn_msg = '\tModule registration status for '
-                    warn_msg += '{} undetermined'.format(triplet)
-                    log.warning(warn_msg)
+                    log.warning(
+                        '\tModule registration status for {} undetermined: code {}'.format(
+                            triplet, returncode
+                        )
+                    )
             else:
                 log.info('Registration of {} succeeded'.format(triplet))
                 registered.append(triplet)
@@ -841,6 +843,7 @@ def main(args):
         instance_data_filepath,
         args.reg_code,
         failed=failed_extensions,
+        returncode=0,
     )
     if os.path.exists(instance_data_filepath):
         os.unlink(instance_data_filepath)

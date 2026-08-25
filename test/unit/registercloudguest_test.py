@@ -2711,7 +2711,7 @@ class TestRegisterCloudGuest:
                 [],
                 [],
             )
-            == 0
+            == 67
         )
 
     @patch('cloudregister.registerutils.register_product')
@@ -2754,7 +2754,7 @@ class TestRegisterCloudGuest:
                 [],
                 [],
             )
-            == 0
+            == 67
         )
 
     @patch('cloudregister.registerutils.register_product')
