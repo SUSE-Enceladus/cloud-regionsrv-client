@@ -146,7 +146,7 @@ def register_modules(
                     'registration code' in error_message.lower()
                     or 'system credentials' in error_message.lower()
                 ):
-                    log.debug(
+                    log.warning(
                         '\tModule registration unsuccesful: {} code {}'.format(
                             error_message, returncode
                         )
@@ -155,7 +155,7 @@ def register_modules(
                 else:
                     # Zypper sets codes that do not indicate registration
                     # failure but the registration is not clean
-                    log.debug(
+                    log.warning(
                         '\tModule registration status for {} undetermined: code {}'.format(
                             triplet, returncode
                         )
