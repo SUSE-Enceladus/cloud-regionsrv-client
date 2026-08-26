@@ -868,17 +868,19 @@ def main(args):
         )
 
     if failed_extensions:
-        log.warning(
-            'There are products that were not registered because they need '
-            'an additional registration code, to register them please run '
-            'the following command:'
-        )
+        msg = 'There are products that were not registered because they need '
+        msg += 'an additional registration code, to register them please run '
+        msg += 'the following command(s): '
+
         activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
         if utils.is_transactional_system():
             activate_prod_cmd = 'transactional-update register -p {} '
             activate_prod_cmd += '-r ADDITIONAL REGCODE'
+
         for failed_extension in failed_extensions:
-            log.error(activate_prod_cmd.format(failed_extension))
+            msg += activate_prod_cmd.format(failed_extension)
+
+        log.warning(msg)
 
     # Enable Nvidia repo if repo(s) are configured
     # and destination can be reached
