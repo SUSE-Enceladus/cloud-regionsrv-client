@@ -143,7 +143,7 @@ def register_modules(
                     'registration code' in error_message.lower()
                     or 'system credentials' in error_message.lower()
                 ):
-                    log.error(
+                    log.debug(
                         '\tModule registration unsuccesful: {} code {}'.format(
                             error_message, returncode
                         )
@@ -152,7 +152,7 @@ def register_modules(
                 else:
                     # Zypper sets codes that do not indicate registration
                     # failure but the registration is not clean
-                    log.warning(
+                    log.debug(
                         '\tModule registration status for {} undetermined: code {}'.format(
                             triplet, returncode
                         )
@@ -848,15 +848,6 @@ def main(args):
     if os.path.exists(instance_data_filepath):
         os.unlink(instance_data_filepath)
 
-    if modules_returncode:
-        # Module registration issues do not invalidate the registration
-        # of the system. The affected modules can be registered at a
-        # later point in time
-        log.error(
-            'Module registration failed(repository), see {0} for '
-            'details'.format(LOG_FILE)
-        )
-
     # Setup container registry
     if not setup_registry(registration_target):
         cleanup()
@@ -865,6 +856,15 @@ def main(args):
     utils.set_registration_completed_flag()
 
     log.info('Registration succeeded')
+
+    if modules_returncode:
+        # Module registration issues do not invalidate the registration
+        # of the system. The affected modules can be registered at a
+        # later point in time
+        log.warning(
+            'Module registration failed(repository), see {0} for '
+            'details'.format(LOG_FILE)
+        )
 
     if failed_extensions:
         log.warning(
