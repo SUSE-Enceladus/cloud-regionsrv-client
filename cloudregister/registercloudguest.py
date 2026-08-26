@@ -135,11 +135,12 @@ def register_modules(
             if prod_reg.returncode:
                 # module registration has failed, set this returncode
                 returncode = prod_reg.returncode
+
                 # Older versions of SUSEConnect wrote error messages to stdout
                 error_message = prod_reg.output
                 if not error_message:
                     error_message = prod_reg.error
-                if returncode in reg_fail_codes and (
+                if prod_reg.returncode in reg_fail_codes and (
                     'registration code' in error_message.lower()
                     or 'system credentials' in error_message.lower()
                 ):
