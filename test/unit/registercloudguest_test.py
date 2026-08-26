@@ -1748,7 +1748,7 @@ class TestRegisterCloudGuest:
                 new=tdir,
             ):
                 register_cloud_guest.main(fake_args)
-        assert 'Module registration failed(repository)' in self._caplog.text
+        assert 'Following module registration(s) failed' in self._caplog.text
         assert 'Registration succeeded' in self._caplog.text
         mock_set_registration_completed_flag.assert_called_once_with()
         mock_deregister_from_SCC.assert_not_called()

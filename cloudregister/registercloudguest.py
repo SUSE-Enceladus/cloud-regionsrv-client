@@ -81,6 +81,7 @@ def register_modules(
     regcode='',
     registered=[],
     failed=[],
+    failed_undetermined=[],
     returncode=0,
 ):
     """Register modules obeying dependencies
@@ -105,6 +106,7 @@ def register_modules(
                 regcode,
                 registered,
                 failed,
+                failed_undetermined,
                 returncode,
             )
             continue
@@ -158,6 +160,7 @@ def register_modules(
                             triplet, returncode
                         )
                     )
+                    failed_undetermined.append(triplet)
             else:
                 log.info('Registration of {} succeeded'.format(triplet))
                 registered.append(triplet)
@@ -170,6 +173,7 @@ def register_modules(
             regcode,
             registered,
             failed,
+            failed_undetermined,
             returncode,
         )
 
@@ -837,13 +841,15 @@ def main(args):
 
     extensions = get_extensions(registration_target)
     failed_extensions = []
-    modules_returncode = register_modules(
+    failed_extensions_undetermined = []
+    register_modules(
         extensions,
         products,
         registration_target,
         instance_data_filepath,
         args.reg_code,
         failed=failed_extensions,
+        failed_undetermined=failed_extensions_undetermined,
         returncode=0,
     )
     if os.path.exists(instance_data_filepath):
@@ -858,27 +864,34 @@ def main(args):
 
     log.info('Registration succeeded')
 
-    if modules_returncode:
+    if failed_extensions:
         # Module registration issues do not invalidate the registration
         # of the system. The affected modules can be registered at a
         # later point in time
-        log.warning(
-            'Module registration failed(repository), see {0} for '
-            'details'.format(LOG_FILE)
-        )
-
-    if failed_extensions:
         msg = 'There are products that were not registered because they need '
         msg += 'an additional registration code, to register them please run '
-        msg += 'the following command(s): '
+        msg += 'the following command(s):\n'
 
-        activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
+        activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE\n'
         if utils.is_transactional_system():
             activate_prod_cmd = 'transactional-update register -p {} '
-            activate_prod_cmd += '-r ADDITIONAL REGCODE'
+            activate_prod_cmd += '-r ADDITIONAL REGCODE\n'
 
         for failed_extension in failed_extensions:
             msg += activate_prod_cmd.format(failed_extension)
+
+        log.warning(msg)
+
+    if failed_extensions_undetermined:
+        # There are module registrations with an undetermined error code
+        # Report this as a warning to the user.
+        msg = 'Following module registration(s) failed '
+        msg += 'with an undetermined error code, see {0} for details:\n'.format(
+            LOG_FILE
+        )
+
+        for failed_extension in failed_extensions_undetermined:
+            msg += '{}\n'.format(failed_extension)
 
         log.warning(msg)
 
