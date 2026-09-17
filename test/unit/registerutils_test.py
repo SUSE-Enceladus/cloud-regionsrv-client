@@ -2668,19 +2668,19 @@ class TestRegisterUtils:
         with patch('builtins.open', mock_open(read_data=content)):
             assert utils.has_services('foo') is True
 
-    @patch('cloudregister.registerutils.requests.post')
+    @patch('cloudregister.registerutils.requests.get')
     @patch('cloudregister.registerutils.HTTPBasicAuth')
     def test_has_smt_access_unauthorized(self, mock_http_basic_auth, mock_post):
         response = Response()
-        response.reason = 'Unauthorized'
+        response.status_code = 401
         mock_post.return_value = response
         assert utils.has_smt_access('foo', 'bar', 'foobar') is False
 
-    @patch('cloudregister.registerutils.requests.post')
+    @patch('cloudregister.registerutils.requests.get')
     @patch('cloudregister.registerutils.HTTPBasicAuth')
     def test_has_smt_access_authorized(self, mock_http_basic_auth, mock_post):
         response = Response()
-        response.reason = 'Super_Authorized'
+        response.status_code = 200
         mock_post.return_value = response
         assert utils.has_smt_access('foo', 'bar', 'foobar') is True
 
