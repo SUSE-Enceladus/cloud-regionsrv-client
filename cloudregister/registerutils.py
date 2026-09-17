@@ -1884,10 +1884,10 @@ def has_smt_access(update_server_fqdn, user, password):
     """Check if the given update server can be accessed with the provided
     credentials."""
     auth_creds = HTTPBasicAuth(user, password)
-    api = 'https://%s/connect/systems/products/migrations'
-    res = requests.post(api % update_server_fqdn, auth=auth_creds, json={})
+    api = 'https://%s/connect/systems/activations'
+    res = requests.get(api % update_server_fqdn, auth=auth_creds)
     # Anything else bubbles to the top
-    if res.reason == 'Unauthorized':
+    if res.status_code == 401:
         return False
 
     return True
