@@ -70,7 +70,6 @@ log = Logger.get_logger()
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
 )
-registration_returncode = 0
 
 
 # ----------------------------------------------------------------------------
@@ -82,14 +81,24 @@ def register_modules(
     regcode='',
     registered=[],
     failed=[],
+    failed_undetermined=[],
+    returncode=0,
 ):
-    """Register modules obeying dependencies"""
-    global registration_returncode
+    """Register modules obeying dependencies
+
+    The given returncode is the failed registration status of the
+    modules registered so far. It is recursively updated in case a
+    module registrations fails. The very first call of register_modules()
+    is expected to run without a returncode set, or explicitly set to 0,
+    such that the final returncode from register_modules is either 0
+    (if all module registrations succeeded) or the failed return code
+    from the last module that has failed the registration.
+    """
     for extension in extensions:
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
         if extension.get('recommended'):
-            register_modules(
+            returncode = register_modules(
                 extension.get('extensions'),
                 products,
                 registration_target,
@@ -97,6 +106,8 @@ def register_modules(
                 regcode,
                 registered,
                 failed,
+                failed_undetermined,
+                returncode,
             )
             continue
 
@@ -124,37 +135,37 @@ def register_modules(
                 ZYPPER_UNKNOWN_ERROR,
             )
             if prod_reg.returncode:
-                registration_returncode = prod_reg.returncode
+                # module registration has failed, set this returncode
+                returncode = prod_reg.returncode
+
                 # Older versions of SUSEConnect wrote error messages to stdout
                 error_message = prod_reg.output
                 if not error_message:
                     error_message = prod_reg.error
-                if registration_returncode in reg_fail_codes and (
+                if prod_reg.returncode in reg_fail_codes and (
                     'registration code' in error_message.lower()
                     or 'system credentials' in error_message.lower()
                 ):
-                    log.error(
-                        '\tModule registration unsuccesful: {}'.format(
-                            error_message
+                    log.warning(
+                        '\tModule registration unsuccesful: {} code {}'.format(
+                            error_message, returncode
                         )
                     )
                     failed.append(triplet)
-                    # Module registration is a best effort approach. We
-                    # do not fail the system registration if we end up
-                    # missing a specific module, it can always be added
-                    # later.
-                    registration_returncode = 0
                 else:
                     # Zypper sets codes that do not indicate registration
                     # failure but the registration is not clean
-                    warn_msg = '\tModule registration status for '
-                    warn_msg += '{} undetermined'.format(triplet)
-                    log.warning(warn_msg)
+                    log.warning(
+                        '\tModule registration status for {} undetermined: code {}'.format(
+                            triplet, returncode
+                        )
+                    )
+                    failed_undetermined.append(triplet)
             else:
                 log.info('Registration of {} succeeded'.format(triplet))
                 registered.append(triplet)
 
-        register_modules(
+        returncode = register_modules(
             extension.get('extensions'),
             products,
             registration_target,
@@ -162,7 +173,11 @@ def register_modules(
             regcode,
             registered,
             failed,
+            failed_undetermined,
+            returncode,
         )
+
+    return returncode
 
 
 # ----------------------------------------------------------------------------
@@ -331,8 +346,12 @@ def setup_ltss_registration(
 def register_base_product(
     registration_target, instance_data_filepath, args, region_smt_servers
 ):
-    """Register the base product and return the RMT update server registered."""
-    global registration_returncode
+    """Register the base product
+
+    Return the RMT update server registered with and the return code
+    of the base product registration
+    """
+    returncode = 0
     base_registered = False
     failed_smts = []
     while not base_registered:
@@ -344,28 +363,23 @@ def register_base_product(
             instance_data_filepath=instance_data_filepath,
         )
         if prod_reg.returncode:
-            registration_returncode = prod_reg.returncode
+            returncode = prod_reg.returncode
             # Even on error SUSEConnect writes messages to stdout, go figure
             error_message = prod_reg.output
             failed_smts.append(registration_target.get_ipv4())
             if len(failed_smts) == len(region_smt_servers) or (
-                registration_returncode == SERVER_GENERAL_ERROR
+                returncode == SERVER_GENERAL_ERROR
                 and 'registration code' in error_message.lower()
                 and args.reg_code
             ):
                 # there are no more RMT servers to try or
                 # registration failed because of an invalid reg code
                 # and the SCC response will not change, independently
-                # of the RMT sibling selected
+                # of the RMT sibling selected. The caller handles the
+                # return code and takes care of the cleanup
                 log.error('Baseproduct registration failed')
                 log.error(error_message)
-                utils.deregister_non_free_extensions()
-                utils.deregister_from_update_infrastructure()
-                utils.deregister_from_SCC()
-                utils.clean_hosts_file(registration_target.get_domain_name())
-                utils.clean_base_credentials()
-                utils.clean_cache()
-                sys.exit(1)
+                break
             for smt_srv in region_smt_servers:
                 target_smt_ipv4 = registration_target.get_ipv4()
                 target_smt_ipv6 = registration_target.get_ipv6()
@@ -398,12 +412,12 @@ def register_base_product(
         else:
             log.debug('Baseproduct registration complete')
             base_registered = True
-            registration_returncode = 0
+            returncode = 0
             utils.clear_new_registration_flag()
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
 
-    return registration_target
+    return registration_target, returncode
 
 
 # ----------------------------------------------------------------------------
@@ -621,7 +635,6 @@ argparse.add_argument('-v', '--version', action='version', version=__version__)
 
 def main(args):
     log.debug('registercloudguest {}'.format(__version__))
-    global registration_returncode  # noqa: F824
     # Create our cache dir, we can nolonger handle this in the package.
     # Packaging content outside /usr and /etc is verboten even if we are
     # not really packaging any content
@@ -805,11 +818,30 @@ def main(args):
         sys.exit(1)
 
     # Register the base product first
-    registration_target = register_base_product(
+    registration_target, base_returncode = register_base_product(
         registration_target, instance_data_filepath, args, region_smt_servers
     )
+    if base_returncode:
+        # Without the base product no other product can be registered,
+        # this is fatal
+        if os.path.exists(instance_data_filepath):
+            os.unlink(instance_data_filepath)
+        utils.deregister_non_free_extensions()
+        utils.deregister_from_update_infrastructure()
+        utils.deregister_from_SCC()
+        utils.clean_hosts_file(registration_target.get_domain_name())
+        utils.clean_base_credentials()
+        utils.clean_cache()
+        log.error(
+            'Registration failed(baseproduct), see {0} for details'.format(
+                LOG_FILE
+            )
+        )
+        sys.exit(base_returncode)
+
     extensions = get_extensions(registration_target)
     failed_extensions = []
+    failed_extensions_undetermined = []
     register_modules(
         extensions,
         products,
@@ -817,21 +849,11 @@ def main(args):
         instance_data_filepath,
         args.reg_code,
         failed=failed_extensions,
+        failed_undetermined=failed_extensions_undetermined,
+        returncode=0,
     )
     if os.path.exists(instance_data_filepath):
         os.unlink(instance_data_filepath)
-
-    if registration_returncode:
-        utils.deregister_non_free_extensions()
-        utils.deregister_from_update_infrastructure()
-        utils.deregister_from_SCC()
-        utils.clean_cache()
-        log.error(
-            'Registration failed(repository), see {0} for details'.format(
-                LOG_FILE
-            )
-        )
-        sys.exit(registration_returncode)
 
     # Setup container registry
     if not setup_registry(registration_target):
@@ -843,17 +865,35 @@ def main(args):
     log.info('Registration succeeded')
 
     if failed_extensions:
-        log.warning(
-            'There are products that were not registered because they need '
-            'an additional registration code, to register them please run '
-            'the following command:'
-        )
-        activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE'
+        # Module registration issues do not invalidate the registration
+        # of the system. The affected modules can be registered at a
+        # later point in time
+        msg = 'There are products that were not registered because they need '
+        msg += 'an additional registration code, to register them please run '
+        msg += 'the following command(s):\n'
+
+        activate_prod_cmd = 'SUSEConnect -p {} -r ADDITIONAL REGCODE\n'
         if utils.is_transactional_system():
             activate_prod_cmd = 'transactional-update register -p {} '
-            activate_prod_cmd += '-r ADDITIONAL REGCODE'
+            activate_prod_cmd += '-r ADDITIONAL REGCODE\n'
+
         for failed_extension in failed_extensions:
-            log.error(activate_prod_cmd.format(failed_extension))
+            msg += activate_prod_cmd.format(failed_extension)
+
+        log.warning(msg)
+
+    if failed_extensions_undetermined:
+        # There are module registrations with an undetermined error code
+        # Report this as a warning to the user.
+        msg = 'Following module registration(s) failed '
+        msg += 'with an undetermined error code, see {0} for details:\n'.format(
+            LOG_FILE
+        )
+
+        for failed_extension in failed_extensions_undetermined:
+            msg += '{}\n'.format(failed_extension)
+
+        log.warning(msg)
 
     # Enable Nvidia repo if repo(s) are configured
     # and destination can be reached
