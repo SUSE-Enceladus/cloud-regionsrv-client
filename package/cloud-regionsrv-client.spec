@@ -48,6 +48,7 @@ Requires:       sed
 Requires:       SUSEConnect > 0.3.31
 Requires:       ca-certificates
 Requires:       cloud-regionsrv-client-config
+Requires:       cloud-regionsrv-client-plugin = %{version}
 %ifarch %ix86 x86_64
 Requires:       dmidecode
 %endif
@@ -112,8 +113,6 @@ Obtain cloud SMT server information from the region server configured in
 /etc/regionserverclnt.cfg
 
 %package generic-config
-Version:        1.0.0
-Release:        0
 Summary:        Cloud Environment Guest Registration Configuration
 Group:          Productivity/Networking/Web/Servers
 Provides:       cloud-regionsrv-client-config
@@ -124,46 +123,55 @@ Conflicts:      otherproviders(cloud-regionsrv-client-config)
 Generic configuration for the registration client. The configuration needs
 to be adapted for the specific cloud framework after installation.
 
+%package plugin
+Summary:        Cloud Environment Guest Registration Plugin, Generic
+Group:          Productivity/Networking/Web/Servers
+Provides:       cloud-regionsrv-client-plugin = %{version}
+Conflicts:      otherproviders(cloud-regionsrv-client-plugin)
+Requires:       cloud-regionsrv-client = %{version}
+
+%description plugin
+Generic Guest registration plugin providing no framework
+specific implementation
+
 %package plugin-gce
-Version:        2.0.0
-Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for GCE
 Group:          Productivity/Networking/Web/Servers
-Requires:       cloud-regionsrv-client >= 10.5.4
+Provides:       cloud-regionsrv-client-plugin = %{version}
+Conflicts:      otherproviders(cloud-regionsrv-client-plugin)
+Requires:       cloud-regionsrv-client = %{version}
 
 %description plugin-gce
 Guest registration plugin for images intended for Google Compute Engine
 providing information to get the appropriate data form the region server.
 
 %package plugin-ec2
-Version:        2.0.0
-Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Amazon EC2
 Group:          Productivity/Networking/Web/Servers
-Requires:       cloud-regionsrv-client >= 10.5.4
+Provides:       cloud-regionsrv-client-plugin = %{version}
+Conflicts:      otherproviders(cloud-regionsrv-client-plugin)
+Requires:       cloud-regionsrv-client = %{version}
 
 %description plugin-ec2
 Guest registration plugin for images intended for Amazon EC2 providing
 information to get the appropriate data form the region server.
 
 %package plugin-azure
-Version:        3.0.0
-Release:        0
 Summary:        Cloud Environment Guest Registration Plugin for Microsoft Azure
 Group:          Productivity/Networking/Web/Servers
-Requires:       cloud-regionsrv-client >= 10.5.4
+Provides:       cloud-regionsrv-client-plugin = %{version}
+Conflicts:      otherproviders(cloud-regionsrv-client-plugin)
 Requires:       %{pythons}-dnspython
+Requires:       cloud-regionsrv-client = %{version}
 
 %description plugin-azure
 Guest registration plugin for images intended for Microsoft Azure providing
 information to get the appropriate data form the region server.
 
 %package license-watcher
-Version:	1.0.0
-Release:	0
-Summary:	Enable/Disable Guest Registration for a running instance
-Group:		Productivity/Networking/Web/Servers
-Requires:	cloud-regionsrv-client >= 10.5.4
+Summary:        Enable/Disable Guest Registration for a running instance
+Group:          Productivity/Networking/Web/Servers
+Requires:       cloud-regionsrv-client = %{version}
 Requires:       python-instance-billing-flavor-check >= 1.0.0
 Provides:       cloud-regionsrv-client-addon-azure = 1.0.6
 Obsoletes:      cloud-regionsrv-client-addon-azure <= 1.0.5
@@ -240,9 +248,9 @@ sed -i s/python3/python3.11/ %{buildroot}/usr/lib/zypp/plugins/urlresolver/susec
 # new service.
 if [ $1 -ge 1 ]; then \
     if [ x$(systemctl is-enabled regionsrv-enabler-azure.timer 2>/dev/null ||:) = "xenabled" ]; then
-		touch %eflag
-	fi
-	systemctl is-active regionsrv-enabler-azure.timer &>/dev/null && touch %aflag ||:
+        touch %eflag
+    fi
+    systemctl is-active regionsrv-enabler-azure.timer &>/dev/null && touch %aflag ||:
 fi
 
 %preun
@@ -363,6 +371,9 @@ fi
 %dir /usr/lib/regionService/certs
 %config %{_sysconfdir}/regionserverclnt.cfg
 %config %{_sysconfdir}/logrotate.d/cloudregionsrvclient
+
+%files plugin
+%defattr(-,root,root,-)
 
 %files plugin-gce
 %defattr(-,root,root,-)
