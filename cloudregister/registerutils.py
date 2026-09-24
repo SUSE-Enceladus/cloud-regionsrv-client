@@ -1884,13 +1884,19 @@ def has_smt_access(update_server_fqdn, user, password):
     """Check if the given update server can be accessed with the provided
     credentials."""
     auth_creds = HTTPBasicAuth(user, password)
-    api = 'https://%s/connect/systems/activations'
+    api = 'https://%s/api/auth/check'
     res = requests.get(api % update_server_fqdn, auth=auth_creds)
+    # The endpoint answers with an empty body
+    # not setting the header on purpose to skip the SCC check for BYOS
+    # Without X-Original-URI there is no repo path to authorize,
+    # so a system whose credentials the server knows gets 403 and
+    # only unknown credentials get 401
+    # if we set X-Original-URI: /product.license/ that would return 200 for BYOS
+    # and 403 for PAYG/HYBRID as no instance data check
+    # no gain setting the header and we skip a dependency not setting it
+    # see bsc#1279237
     # Anything else bubbles to the top
-    if res.status_code == 401:
-        return False
-
-    return True
+    return res.status_code != 401
 
 
 # ----------------------------------------------------------------------------
