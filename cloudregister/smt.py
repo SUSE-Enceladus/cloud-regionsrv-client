@@ -202,7 +202,7 @@ class SMT:
         self._protocol = protocol
 
     # --------------------------------------------------------------------
-    def write_cert(self, target_dir):
+    def write_cert(self, target_dir, etc_content=None):
         """Write the certificate to the given directory"""
         cert = self.get_cert()
         if not cert:
@@ -227,7 +227,9 @@ class SMT:
         # we write here with the known pattern.
         for cert_name in certs_to_write:
             try:
-                with open(ca_file_path % cert_name, "w") as smt_ca_file:
+                if etc_content:
+                    etc_content.manage(ca_file_path % cert_name)
+                with open(ca_file_path % cert_name, 'w') as smt_ca_file:
                     smt_ca_file.write(cert)
             except IOError:
                 errMsg = "Could not store update server certificate"
