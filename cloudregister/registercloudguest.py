@@ -348,13 +348,45 @@ def register_base_product(
 ):
     """Register the base product
 
-    Return the RMT update server registered with and the return code
-    of the base product registration
+    The registration is attempted with the given registration target
+    first. If it fails, it is attempted with the other update servers
+    of the region in turn, see get_registration_candidates(). Every
+    update server is attempted once, the attempts end with the first
+    successful registration or once all update servers failed.
+
+    Return the RMT update server registered with, or attempted to
+    register with last, and the return code of the base product
+    registration
     """
     returncode = 0
-    base_registered = False
-    failed_smts = []
-    while not base_registered:
+    error_message = ''
+    candidates = get_registration_candidates(
+        registration_target, region_smt_servers
+    )
+    for attempt, smt_srv in enumerate(candidates):
+        if attempt:
+            error_msg = 'Registration with %s failed. Trying %s'
+            log.error(
+                error_msg
+                % (
+                    str(
+                        (
+                            registration_target.get_ipv4(),
+                            registration_target.get_ipv6(),
+                        )
+                    ),
+                    str((smt_srv.get_ipv4(), smt_srv.get_ipv6())),
+                )
+            )
+            utils.deregister_non_free_extensions()
+            utils.deregister_from_update_infrastructure()
+            utils.deregister_from_SCC()
+            utils.clean_hosts_file(registration_target.get_domain_name())
+            utils.clean_cache()
+            # instance data is passed to the registration utility,
+            # make sure it persists when attempting a retry
+            instance_data_filepath = utils.write_instance_data()
+            registration_target = smt_srv
         utils.add_hosts_entry(registration_target)
         prod_reg = utils.register_product(
             registration_target=registration_target,
@@ -362,62 +394,49 @@ def register_base_product(
             regcode=args.reg_code,
             instance_data_filepath=instance_data_filepath,
         )
-        if prod_reg.returncode:
-            returncode = prod_reg.returncode
-            # Even on error SUSEConnect writes messages to stdout, go figure
-            error_message = prod_reg.output
-            failed_smts.append(registration_target.get_ipv4())
-            if len(failed_smts) == len(region_smt_servers) or (
-                returncode == SERVER_GENERAL_ERROR
-                and 'registration code' in error_message.lower()
-                and args.reg_code
-            ):
-                # there are no more RMT servers to try or
-                # registration failed because of an invalid reg code
-                # and the SCC response will not change, independently
-                # of the RMT sibling selected. The caller handles the
-                # return code and takes care of the cleanup
-                log.error('Baseproduct registration failed')
-                log.error(error_message)
-                break
-            for smt_srv in region_smt_servers:
-                target_smt_ipv4 = registration_target.get_ipv4()
-                target_smt_ipv6 = registration_target.get_ipv6()
-                new_smt_ipv4 = smt_srv.get_ipv4()
-                new_smt_ipv6 = smt_srv.get_ipv6()
-                if (
-                    smt_srv.get_ipv4() != registration_target.get_ipv4()
-                    and smt_srv.get_ipv4() not in failed_smts
-                ):
-                    error_msg = 'Registration with %s failed. Trying %s'
-                    log.error(
-                        error_msg
-                        % (
-                            str((target_smt_ipv4, target_smt_ipv6)),
-                            str((new_smt_ipv4, new_smt_ipv6)),
-                        )
-                    )
-                    utils.deregister_non_free_extensions()
-                    utils.deregister_from_update_infrastructure()
-                    utils.deregister_from_SCC()
-                    utils.clean_hosts_file(
-                        registration_target.get_domain_name()
-                    )
-                    utils.clean_cache()
-                    # instance data is passed to the registration utility,
-                    # make sure it persists when attempting a retry
-                    instance_data_filepath = utils.write_instance_data()
-                    registration_target = smt_srv
-                    break
-        else:
+        if not prod_reg.returncode:
             log.debug('Baseproduct registration complete')
-            base_registered = True
-            returncode = 0
             utils.clear_new_registration_flag()
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
+            return registration_target, 0
+        returncode = prod_reg.returncode
+        # Even on error SUSEConnect writes messages to stdout, go figure
+        error_message = prod_reg.output
+        if (
+            returncode == SERVER_GENERAL_ERROR
+            and 'registration code' in error_message.lower()
+            and args.reg_code
+        ):
+            # registration failed because of an invalid reg code and
+            # the SCC response will not change, independently of the
+            # RMT sibling selected
+            break
 
+    # The caller handles the return code and takes care of the cleanup
+    log.error('Baseproduct registration failed')
+    log.error(error_message)
     return registration_target, returncode
+
+
+# ----------------------------------------------------------------------------
+def get_registration_candidates(registration_target, region_smt_servers):
+    """Return the update servers to attempt the base product
+    registration with, in order
+
+    The given registration target is first in the list, followed by the
+    update servers of the region. Update servers are added by their IPv4
+    address, each of them is listed once. The registration target is
+    therefore not listed again if it is one of the update servers of
+    the region.
+    """
+    candidates = [registration_target]
+    candidate_ipv4s = [registration_target.get_ipv4()]
+    for smt_srv in region_smt_servers:
+        if smt_srv.get_ipv4() not in candidate_ipv4s:
+            candidates.append(smt_srv)
+            candidate_ipv4s.append(smt_srv.get_ipv4())
+    return candidates
 
 
 # ----------------------------------------------------------------------------

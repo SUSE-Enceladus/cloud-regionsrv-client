@@ -3177,12 +3177,13 @@ class TestRegisterCloudGuest:
         mock_clear_new_registration_flag.assert_called_once_with()
         mock_set_rmt_as_scc_proxy_flag.assert_called_once_with()
 
-        # Test error case
+        # Test error case, the registration target is one of the
+        # update servers of the region as main() selects it
         prod_reg.returncode = 1
         # The failure is handed to the caller, the method does not exit
         registered_target, returncode = (
             register_cloud_guest.register_base_product(
-                registration_target,
+                region_smt_servers[0],
                 instance_data_filepath,
                 commandline_args,
                 region_smt_servers,
@@ -3191,13 +3192,149 @@ class TestRegisterCloudGuest:
         assert returncode == 1
         assert 'Baseproduct registration failed' in self._caplog.text
         # the update server the registration was attempted with last
-        assert registered_target == region_smt_servers[0]
+        assert registered_target == region_smt_servers[1]
         # cleanup happened once, when the registration switched over to
         # the sibling update server. The cleanup for the final failure
         # is up to the caller
         mock_deregister_non_free_extensions.assert_called_once_with()
         mock_deregister_from_update_infrastructure.assert_called_once_with()
         mock_deregister_from_SCC.assert_called_once_with()
+
+    @staticmethod
+    def _update_server(ipv4):
+        update_server = Mock()
+        update_server.get_ipv4.return_value = ipv4
+        update_server.get_ipv6.return_value = None
+        update_server.get_domain_name.return_value = 'susecloud.net'
+        return update_server
+
+    @staticmethod
+    def _attempted_update_servers(mock_register_product):
+        return [
+            registration_call.kwargs['registration_target']
+            for registration_call in mock_register_product.call_args_list
+        ]
+
+    @patch('cloudregister.registerutils.write_instance_data')
+    @patch('cloudregister.registerutils.register_product')
+    @patch('cloudregister.registerutils.add_hosts_entry')
+    @patch('cloudregister.registerutils.clean_cache')
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_hosts_file')
+    @patch('cloudregister.registerutils.clear_new_registration_flag')
+    @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
+    def test_register_base_product_attempts_every_server_once(
+        self,
+        mock_set_rmt_as_scc_proxy_flag,
+        mock_clear_new_registration_flag,
+        mock_clean_hosts_file,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions,
+        mock_clean_cache,
+        mock_add_hosts_entry,
+        mock_register_product,
+        mock_write_instance_data,
+    ):
+        mock_register_product.return_value = Mock(
+            returncode=1, output='zypper output'
+        )
+        commandline_args = Mock()
+        a, b, c = [
+            self._update_server(ipv4)
+            for ipv4 in ('1.1.1.1', '2.2.2.2', '3.3.3.3')
+        ]
+        target_outside = self._update_server('9.9.9.9')
+        target_alias = self._update_server('2.2.2.2')
+        for registration_target, region_smt_servers, attempted in [
+            # the registration target first, then its siblings
+            (a, [a, b, c], [a, b, c]),
+            (b, [a, b, c], [b, a, c]),
+            # without update servers of the region the registration
+            # target is attempted once, it is not attempted forever
+            (target_outside, [], [target_outside]),
+            # a registration target which is not an update server of
+            # the region does not take the place of one of them, no
+            # update server of the region is skipped
+            (target_outside, [a, b, c], [target_outside, a, b, c]),
+            # an update server is attempted once, also if it is listed
+            # more than once
+            (target_alias, [a, b, c, b], [target_alias, a, c]),
+        ]:
+            mock_register_product.reset_mock()
+            registered_target, returncode = (
+                register_cloud_guest.register_base_product(
+                    registration_target,
+                    'some',
+                    commandline_args,
+                    region_smt_servers,
+                )
+            )
+            assert returncode == 1
+            assert (
+                self._attempted_update_servers(mock_register_product)
+                == attempted
+            )
+            assert registered_target == attempted[-1]
+
+        # the attempts end with the first successful registration
+        mock_register_product.reset_mock()
+        mock_register_product.side_effect = [
+            Mock(returncode=1, output='zypper output'),
+            Mock(returncode=0, output='zypper output'),
+        ]
+        registered_target, returncode = (
+            register_cloud_guest.register_base_product(
+                a, 'some', commandline_args, [a, b, c]
+            )
+        )
+        assert returncode == 0
+        assert registered_target == b
+        assert self._attempted_update_servers(mock_register_product) == [a, b]
+
+    @patch('cloudregister.registerutils.write_instance_data')
+    @patch('cloudregister.registerutils.register_product')
+    @patch('cloudregister.registerutils.add_hosts_entry')
+    @patch('cloudregister.registerutils.clean_cache')
+    @patch('cloudregister.registerutils.deregister_non_free_extensions')
+    @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
+    @patch('cloudregister.registerutils.deregister_from_SCC')
+    @patch('cloudregister.registerutils.clean_hosts_file')
+    @patch('cloudregister.registerutils.clear_new_registration_flag')
+    @patch('cloudregister.registerutils.set_rmt_as_scc_proxy_flag')
+    def test_register_base_product_invalid_regcode(
+        self,
+        mock_set_rmt_as_scc_proxy_flag,
+        mock_clear_new_registration_flag,
+        mock_clean_hosts_file,
+        mock_deregister_from_SCC,
+        mock_deregister_from_update_infrastructure,
+        mock_deregister_non_free_extensions,
+        mock_clean_cache,
+        mock_add_hosts_entry,
+        mock_register_product,
+        mock_write_instance_data,
+    ):
+        # An invalid registration code fails with every update server,
+        # the siblings are not attempted
+        mock_register_product.return_value = Mock(
+            returncode=register_cloud_guest.SERVER_GENERAL_ERROR,
+            output='Unknown Registration Code.',
+        )
+        commandline_args = Mock(reg_code='bogus')
+        a, b = [self._update_server(ipv4) for ipv4 in ('1.1.1.1', '2.2.2.2')]
+        registered_target, returncode = (
+            register_cloud_guest.register_base_product(
+                a, 'some', commandline_args, [a, b]
+            )
+        )
+        assert returncode == register_cloud_guest.SERVER_GENERAL_ERROR
+        assert registered_target == a
+        assert self._attempted_update_servers(mock_register_product) == [a]
+        assert 'Unknown Registration Code.' in self._caplog.text
+        mock_deregister_from_SCC.assert_not_called()
 
     @patch('cloudregister.registerutils.deregister_non_free_extensions')
     @patch('cloudregister.registerutils.deregister_from_update_infrastructure')
