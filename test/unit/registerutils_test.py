@@ -4518,11 +4518,15 @@ export DOCKER_CONFIG=/etc/containers
             )
 
     # ---------------------------------------------------------------------------
+    @patch('cloudregister.registerutils.os.path.exists')
     @patch('toml.dump')
     @patch('cloudregister.registerutils.get_registry_conf_file')
     def test_set_registry_order_search_podman_no_configured(
-        self, mock_get_registry_file, mock_toml_dump
+        self, mock_get_registry_file, mock_toml_dump, mock_os_path_exists
     ):
+        # the registries.conf of the host is not used, its content is
+        # provided by the mocked get_registry_conf_file
+        mock_os_path_exists.return_value = True
         with open('../data/unconfigured_registry.conf') as f:
             registry_conf = toml.load(f)
         mock_get_registry_file.return_value = registry_conf, False
@@ -4551,11 +4555,15 @@ export DOCKER_CONFIG=/etc/containers
             )
 
     # ---------------------------------------------------------------------------
+    @patch('cloudregister.registerutils.os.path.exists')
     @patch('toml.dump')
     @patch('cloudregister.registerutils.get_registry_conf_file')
     def test_set_registry_order_search_podman_conf_missing_suse_registry(
-        self, mock_get_registry_file, mock_toml_dump
+        self, mock_get_registry_file, mock_toml_dump, mock_os_path_exists
     ):
+        # the registries.conf of the host is not used, its content is
+        # provided by the mocked get_registry_conf_file
+        mock_os_path_exists.return_value = True
         with open('../data/registry_conf.conf') as f:
             registry_conf = toml.load(f)
         mock_get_registry_file.return_value = registry_conf, False
