@@ -34,7 +34,7 @@ import requests
 import sys
 import time
 import urllib.parse
-
+from collections import OrderedDict
 
 from cloudregister.lock import Lock
 from cloudregister.logger import Logger
@@ -285,20 +285,26 @@ def setup_registry(registration_target):
 
 
 # ----------------------------------------------------------------------------
-def get_responding_update_server(region_smt_servers):
+def get_responding_update_servers(region_smt_servers):
     """
-    Figure out which update server is responsive
-    If no update server responds, exit with an error message
-    that lists the tested servers
+    Return the update servers that respond, in the order of the
+    given update servers. If no update server responds, exit with
+    an error message that lists the tested servers
     """
-    tested_smt_servers = []
+    responding_servers = []
+    failed_servers = []
     for smt_srv in region_smt_servers:
-        tested_smt_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
         if smt_srv.is_responsive():
-            utils.set_as_current_smt(smt_srv)
-            return smt_srv
-    log.error('No response from: {}'.format(tested_smt_servers))
-    sys.exit(1)
+            responding_servers.append(smt_srv)
+        else:
+            failed_servers.append((smt_srv.get_ipv4(), smt_srv.get_ipv6()))
+
+    if not responding_servers:
+        # no server was found in the list that responded
+        log.error('No response from: {}'.format(failed_servers))
+        sys.exit(1)
+
+    return responding_servers
 
 
 # ----------------------------------------------------------------------------
@@ -355,76 +361,97 @@ def register_base_product(
 ):
     """Register the base product
 
-    Return the RMT update server registered with and the return code
-    of the base product registration
+    The registration is attempted with the given registration target
+    first. If it fails, it is attempted with the given other update
+    servers of the region in turn, the responding ones as provided by
+    get_responding_update_servers(). Every update server is attempted
+    once, the attempts end with the first successful registration or
+    once all update servers failed.
+
+    The registration target is expected to be setup as the current
+    update server with its certificate imported. For any other update
+    server this is done before its registration attempt. The update
+    server attempted last stays the current update server.
+
+    Return the RMT update server registered with, or attempted to
+    register with last, and the return code of the base product
+    registration
     """
-    returncode = 0
-    base_registered = False
-    failed_smts = []
-    while not base_registered:
-        utils.add_hosts_entry(registration_target)
+    returncode = 1
+    registration_server = registration_target
+    failed_server = None
+    for smt_srv in OrderedDict.fromkeys(
+        [registration_target] + region_smt_servers
+    ):
+        if failed_server:
+            log.error(
+                'Registration with {}|{} failed. Trying {}|{}'.format(
+                    failed_server.get_ipv4(),
+                    failed_server.get_ipv6(),
+                    smt_srv.get_ipv4(),
+                    smt_srv.get_ipv6(),
+                )
+            )
+            # cleanup such that the next try with a new server starts
+            # from a clean state. The cleanup refers to the current
+            # update server, which is the failed one
+            utils.deregister_non_free_extensions()
+            utils.deregister_from_update_infrastructure()
+            utils.deregister_from_SCC()
+            utils.clean_hosts_file(failed_server.get_domain_name())
+            failed_server = None
+
+        if smt_srv is not registration_target:
+            if not utils.import_smt_cert(smt_srv):
+                log.error(
+                    'Importing the certificate of {}|{} failed, '
+                    'skipping it'.format(smt_srv.get_ipv4(), smt_srv.get_ipv6())
+                )
+                continue
+            utils.set_as_current_smt(smt_srv)
+
+        registration_server = smt_srv
+        utils.add_hosts_entry(smt_srv)
         prod_reg = utils.register_product(
-            registration_target=registration_target,
+            registration_target=smt_srv,
             email=args.email,
             regcode=args.reg_code,
             instance_data_filepath=instance_data_filepath,
         )
-        if prod_reg.returncode:
-            returncode = prod_reg.returncode
-            # Even on error SUSEConnect writes messages to stdout, go figure
-            error_message = prod_reg.output
-            failed_smts.append(registration_target.get_ipv4())
-            if len(failed_smts) == len(region_smt_servers) or (
-                returncode == SERVER_GENERAL_ERROR
-                and 'registration code' in error_message.lower()
-                and args.reg_code
-            ):
-                # there are no more RMT servers to try or
-                # registration failed because of an invalid reg code
-                # and the SCC response will not change, independently
-                # of the RMT sibling selected. The caller handles the
-                # return code and takes care of the cleanup
-                log.error('Baseproduct registration failed')
-                log.error(error_message)
-                break
-            for smt_srv in region_smt_servers:
-                target_smt_ipv4 = registration_target.get_ipv4()
-                target_smt_ipv6 = registration_target.get_ipv6()
-                new_smt_ipv4 = smt_srv.get_ipv4()
-                new_smt_ipv6 = smt_srv.get_ipv6()
-                if (
-                    smt_srv.get_ipv4() != registration_target.get_ipv4()
-                    and smt_srv.get_ipv4() not in failed_smts
-                ):
-                    error_msg = 'Registration with %s failed. Trying %s'
-                    log.error(
-                        error_msg
-                        % (
-                            str((target_smt_ipv4, target_smt_ipv6)),
-                            str((new_smt_ipv4, new_smt_ipv6)),
-                        )
-                    )
-                    utils.deregister_non_free_extensions()
-                    utils.deregister_from_update_infrastructure()
-                    utils.deregister_from_SCC()
-                    utils.clean_hosts_file(
-                        registration_target.get_domain_name()
-                    )
-                    utils.clean_cache()
-                    # instance data is passed to the registration utility,
-                    # make sure it persists when attempting a retry
-                    instance_data_filepath = utils.write_instance_data()
-                    registration_target = smt_srv
-                    break
-        else:
-            log.debug('Baseproduct registration complete')
-            base_registered = True
-            returncode = 0
+        returncode = prod_reg.returncode
+        if not returncode:
             utils.clear_new_registration_flag()
             if args.email or args.reg_code:
                 utils.set_rmt_as_scc_proxy_flag()
+            # All good, leave
+            break
 
-    return registration_target, returncode
+        # Failed, analyse to continue or not
+        # Even on error SUSEConnect writes messages to stdout, go figure
+        error_message = prod_reg.output
+        log.error(error_message)
+        if (
+            returncode == SERVER_GENERAL_ERROR
+            and 'registration code' in error_message.lower()
+            and args.reg_code
+        ):
+            # registration failed because of an invalid reg code and
+            # the SCC response will not change, independently of the
+            # RMT sibling selected
+            break
+
+        failed_server = smt_srv
+
+    # The caller handles the return code and takes care of the cleanup
+    if not returncode:
+        # returncode is 0
+        log.debug('Baseproduct registration complete')
+    else:
+        # returncode is > 0
+        log.error('Baseproduct registration failed')
+
+    # Return in any case with the last server tried and its returncode
+    return registration_server, returncode
 
 
 # ----------------------------------------------------------------------------
@@ -573,14 +600,16 @@ def get_update_servers(region_smt_data, cfg):
     https_only = utils.https_only(cfg)
     for cnt, child in enumerate(region_smt_data, start=1):
         smt_server = smt.SMT(child, https_only)
-        region_smt_servers.append(smt_server)
-        # Write the available servers to cache as well
-        utils.store_smt_data(
-            os.path.join(
-                REGISTRATION_DATA_DIR, AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt
-            ),
-            smt_server,
-        )
+        if smt_server not in region_smt_servers:
+            region_smt_servers.append(smt_server)
+            # Write the available servers to cache as well
+            utils.store_smt_data(
+                os.path.join(
+                    REGISTRATION_DATA_DIR,
+                    AVAILABLE_SMT_SERVER_DATA_FILE_NAME % cnt,
+                ),
+                smt_server,
+            )
 
     return region_smt_servers
 
@@ -798,7 +827,8 @@ def main(args):
 
     # The system is not yet registered, Figure out which server
     # is responsive and use it as registration target
-    registration_target = get_responding_update_server(region_smt_servers)
+    responding_smt_servers = get_responding_update_servers(region_smt_servers)
+    registration_target = responding_smt_servers[0]
 
     # Create location to store data if it does not exist
     utils.create_state_dir()
@@ -826,7 +856,10 @@ def main(args):
 
     # Register the base product first
     registration_target, base_returncode = register_base_product(
-        registration_target, instance_data_filepath, args, region_smt_servers
+        registration_target,
+        instance_data_filepath,
+        args,
+        responding_smt_servers,
     )
     if base_returncode:
         # Without the base product no other product can be registered,
