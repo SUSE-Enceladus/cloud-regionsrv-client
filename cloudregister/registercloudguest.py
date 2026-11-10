@@ -79,9 +79,9 @@ def register_modules(
     registration_target,
     instance_data_filepath,
     regcode='',
-    registered=[],
-    failed=[],
-    failed_undetermined=[],
+    registered=None,
+    failed=None,
+    failed_undetermined=None,
     returncode=0,
 ):
     """Register modules obeying dependencies
@@ -94,6 +94,13 @@ def register_modules(
     (if all module registrations succeeded) or the failed return code
     from the last module that has failed the registration.
     """
+    if registered is None:
+        registered = []
+    if failed is None:
+        failed = []
+    if failed_undetermined is None:
+        failed_undetermined = []
+
     for extension in extensions:
         # If the extension is recommended it gets installed with the
         # baseproduct registration. No need to run another registration
