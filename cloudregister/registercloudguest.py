@@ -431,11 +431,9 @@ def get_registration_candidates(registration_target, region_smt_servers):
     the region.
     """
     candidates = [registration_target]
-    candidate_ipv4s = [registration_target.get_ipv4()]
     for smt_srv in region_smt_servers:
-        if smt_srv.get_ipv4() not in candidate_ipv4s:
+        if smt_srv not in candidates:
             candidates.append(smt_srv)
-            candidate_ipv4s.append(smt_srv.get_ipv4())
     return candidates
 
 
