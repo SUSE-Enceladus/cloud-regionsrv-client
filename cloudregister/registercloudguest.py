@@ -388,6 +388,7 @@ def register_base_product(
             # make sure it persists when attempting a retry
             instance_data_filepath = utils.write_instance_data()
             registration_target = smt_srv
+            utils.set_as_current_smt(smt_srv)
         utils.add_hosts_entry(registration_target)
         prod_reg = utils.register_product(
             registration_target=registration_target,
