@@ -26,7 +26,8 @@ unreachable. The system is registered with the first responsive update server.
 None of the region and update servers are resolvable via DNS and the update
 server name resolution is enforced via an entry in /etc/hosts.
 
-For on-demand (PAYG) instances users should not modify the default repository
+For on-demand (PAYG) instances the initial registration must not use the
+\-\-regcode option. Also users should not modify the default repository
 configuration. It is highly likely that something on the system will break
 if repositories are removed using SUSEConnect functionality. The addition
 of other repositories is supported. However, adding other repositories may
