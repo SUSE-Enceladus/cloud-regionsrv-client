@@ -382,6 +382,7 @@ def register_base_product(
             utils.deregister_from_update_infrastructure()
             utils.deregister_from_SCC()
             utils.clean_hosts_file(registration_target.get_domain_name())
+            utils.clean_base_credentials()
             utils.clean_cache()
             # instance data is passed to the registration utility,
             # make sure it persists when attempting a retry
