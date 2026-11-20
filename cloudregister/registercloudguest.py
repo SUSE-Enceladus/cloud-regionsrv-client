@@ -382,11 +382,13 @@ def register_base_product(
             utils.deregister_from_update_infrastructure()
             utils.deregister_from_SCC()
             utils.clean_hosts_file(registration_target.get_domain_name())
+            utils.clean_base_credentials()
             utils.clean_cache()
             # instance data is passed to the registration utility,
             # make sure it persists when attempting a retry
             instance_data_filepath = utils.write_instance_data()
             registration_target = smt_srv
+            utils.set_as_current_smt(smt_srv)
         utils.add_hosts_entry(registration_target)
         prod_reg = utils.register_product(
             registration_target=registration_target,
