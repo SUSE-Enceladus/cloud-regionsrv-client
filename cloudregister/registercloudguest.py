@@ -425,10 +425,12 @@ def get_registration_candidates(registration_target, region_smt_servers):
     registration with, in order
 
     The given registration target is first in the list, followed by the
-    update servers of the region. Update servers are added by their IPv4
-    address, each of them is listed once. The registration target is
-    therefore not listed again if it is one of the update servers of
-    the region.
+    update servers of the region. Update servers are added by the
+    result of the comparison code from the SMT class (__eq__) which
+    registration_target and each element of the region_smt_servers must
+    be an instance from. Each of them is listed once. The registration
+    target is therefore not listed again if it is one of the update
+    servers of the region.
     """
     candidates = [registration_target]
     for smt_srv in region_smt_servers:
