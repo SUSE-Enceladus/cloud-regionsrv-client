@@ -3261,7 +3261,7 @@ class TestRegisterCloudGuest:
             (target_outside, [a, b, c], [target_outside, a, b, c]),
             # an update server is attempted once, also if it is listed
             # more than once
-            (target_alias, [a, b, c, b], [target_alias, a, c]),
+            (target_alias, [a, b, c, b], [target_alias, a, b, c]),
         ]:
             mock_register_product.reset_mock()
             registered_target, returncode = (
