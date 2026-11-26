@@ -126,6 +126,16 @@ class TestSMT:
         assert smt1 == smt2
 
     # ------------------------------------------------------------------------
+    def test_hash(self):
+        """Test equal SMT servers have the same hash, such that an
+        update server is found only once in a set or dict"""
+        smt1 = SMT(etree.fromstring(smt_data_ipv46))
+        smt2 = SMT(etree.fromstring(smt_data_ipv46))
+        smt3 = SMT(etree.fromstring(smt_data_ipv4))
+        assert hash(smt1) == hash(smt2)
+        assert list(dict.fromkeys([smt1, smt3, smt2])) == [smt1, smt3]
+
+    # ------------------------------------------------------------------------
     def test_not_equal_ipv4_ipv6(self):
         """Test two SMT servers with different data are not equal"""
         smt1 = SMT(etree.fromstring(smt_data_ipv4))

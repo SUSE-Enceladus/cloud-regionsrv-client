@@ -62,6 +62,19 @@ class SMT:
         )
 
     # --------------------------------------------------------------------
+    def __hash__(self):
+        return hash(
+            (
+                self.get_ipv4(),
+                self.get_ipv6(),
+                self.get_FQDN(),
+                self.get_registry_FQDN(),
+                self.get_fingerprint(),
+                self.get_region(),
+            )
+        )
+
+    # --------------------------------------------------------------------
     def __eq__(self, other_smt):
         if not isinstance(other_smt, SMT):
             return False
